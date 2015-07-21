@@ -10,12 +10,6 @@ inputdata/grid-descriptor-file		:
 example target grid descriptor files following the SCRIP convention for specifying
 control volumes for the remapping
 
-
-inputdata/intermediate-cubed-sphere-file:  
-=========================================
-
-example intermediate cubed-sphere data
-
 inputdata/namelists			:
 =========================================
 
