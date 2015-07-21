@@ -1,22 +1,35 @@
+This software is documented in:
+
+NCAR global model topography generation software for unstructured grids
+P. H. Lauritzen, J. T. Bacmeister, P. F. Callaghan, and M. A. Taylor
+Geosci. Model Dev. Discuss., 8, 4623-4651, 2015
+www.geosci-model-dev-discuss.net/8/4623/2015/
+doi:10.5194/gmdd-8-4623-2015
+
+http://www.geosci-model-dev-discuss.net/8/4623/2015/gmdd-8-4623-2015-discussion.html
+
+Overview
+========
+
 0. make_rll_grid_descriptor_file:
-=================================
+---------------------------------
 
 Make grid-descriptor files for regular lat-lon grids
 
 1. create_netCDF_from_USGS
-==========================
+--------------------------
 
 Program to make netCDF version of the USGS gtopo30 data in binary format.
 This netCDF file is used as input for bin_to_cube.
 
 2. bin_to_cube:
-===============
+---------------
 
 Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid.
 Creates intermediate cubed-sphere data for cube_to_target.
 
 3. cube_to_target:
-==================
+------------------
 
 Remap elevation data to target grid and compute associated variables.
 
