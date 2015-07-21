@@ -6,7 +6,6 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 #FC = nagfor
-#FC = lf95
 FC = gfortran
 #FC = pgf95
 
@@ -57,9 +56,6 @@ endif
 #
 
 ifeq ($(FC),pgf95)
-#
-# Tramhill
-#
   INC_NETCDF :=/opt/local/include
   LIB_NETCDF :=/opt/local/lib
 
@@ -84,8 +80,11 @@ ifeq ($(FC),gfortran)
 #
 # Tramhill
 #
-  INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
-  LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
+#  INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
+#  LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
+
+  INC_NETCDF := /opt/local/include
+  LIB_NETCDF := /opt/local/lib
 
   LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff 
   FFLAGS   := -c  -fdollar-ok  -I$(INC_NETCDF)

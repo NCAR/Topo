@@ -82,7 +82,7 @@ program convterr
   ! read in USGS data from netCDF file
   !
   !        status = nf_open('topo-lowres.nc', 0, ncid) !for debugging
-  status = nf_open('usgs-rawdata.nc', 0, ncid)
+  status = nf_open('../create_netCDF_from_USGS/usgs-rawdata.nc', 0, ncid)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   
   status = NF_INQ_DIMID(ncid, 'lat', dimlatid)
