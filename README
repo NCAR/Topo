@@ -1,0 +1,14 @@
+bin_to_cube:
+============
+
+Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid
+
+cube_to_target:
+===============
+
+Remap elevation data to target grid and compute associated variables.  
+
+make_rll_grid_descriptor_file:
+==============================
+
+Make grid-descriptor files for regular lat-lon grids.

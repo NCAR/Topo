@@ -1,0 +1,32 @@
+intputdata/externally-smoothed-PHIS	:
+=========================================
+
+example elevation data that has been smoothed by external software
+
+
+inputdata/grid-descriptor-file		:
+=========================================
+
+example target grid descriptor files following the SCRIP convention for specifying
+control volumes for the remapping
+
+
+inputdata/intermediate-cubed-sphere-file:  
+=========================================
+
+example intermediate cubed-sphere data
+
+inputdata/namelists			:
+=========================================
+
+example namelists
+
+ncl:
+====
+
+example NCL script to plot PHIS, SGH, SGH30 and LANDFRAC
+
+outputdata:
+===========
+
+example output data
