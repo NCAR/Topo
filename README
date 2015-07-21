@@ -1,16 +1,23 @@
-make_rll_grid_descriptor_file:
-==============================
+0. make_rll_grid_descriptor_file:
+=================================
 
 Make grid-descriptor files for regular lat-lon grids
 
-bin_to_cube:
-============
+1. create_netCDF_from_USGS
+==========================
 
-Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid.
-Creates intermediate cubed-sphere data for cube_to_target,
+Program to make netCDF version of the USGS gtopo30 data in binary format.
+This netCDF file is used as input for bin_to_cube.
 
-cube_to_target:
+2. bin_to_cube:
 ===============
 
+Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid.
+Creates intermediate cubed-sphere data for cube_to_target.
+
+3. cube_to_target:
+==================
+
 Remap elevation data to target grid and compute associated variables.
+
 
