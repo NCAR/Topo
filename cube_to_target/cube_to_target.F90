@@ -146,7 +146,7 @@ program convterr
      jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
      write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
    else
-     jmax_segments = 10000   !can be tweaked
+     jmax_segments = 100000   !can be tweaked
    end if
    nreconstruction = 1
    allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
@@ -288,7 +288,8 @@ program convterr
   WRITE(*,*) "compute variance with respect to 3km cubed-sphere data: SGH"
   !  
   IF (lsmooth_terr) THEN
-    call smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file)
+    call smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file,&
+         nlon,nlat)
   END IF
   !
   ! compute mean height (globally) of topography about sea-level for target grid filtered elevation

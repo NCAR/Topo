@@ -22,18 +22,19 @@ MODULE shared_vars
 
   
     
-    subroutine smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file)
+    subroutine smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file,&
+         nlon,nlat)
       implicit none
 #     include         <netcdf.inc>
       logical, intent(in) :: lexternal_smooth_terr, ltarget_latlon
-      integer, intent(in) :: ntarget
+      integer, intent(in) :: ntarget,nlon,nlat
       character(len=1024), intent(in) :: externally_smoothed_topo_file
       real(r8), intent(out):: terr_target(ntarget)
 
 
       integer :: ncid,status, alloc_error, ntarget_id, ntarget_smooth, phisid
       integer :: i,j,ii
-      integer :: nlon,nlat,nlon_smooth,nlat_smooth
+      integer :: nlon_smooth,nlat_smooth
       real(r8), allocatable :: terr_smooth(:,:)
 
       WRITE(*,*) "smoothing PHIS"
