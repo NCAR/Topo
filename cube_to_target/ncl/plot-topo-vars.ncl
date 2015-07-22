@@ -12,6 +12,7 @@ begin
 ; date  : July 2014
 ;
 ;******************************************************
+
   f     = addfile(dataFile,"r")
 
   lat1d = f->lat          ; Pull off lat/lon variable and
@@ -23,13 +24,15 @@ begin
   landfrac  = f->LANDFRAC
 
 ;******************************************************
- 
+
   res                     = True         ; plot modifications desired
   res@gsnMaximize         = True         ; Maximize size of plot in frame
   res@gsnSpreadColors     = True         ; Use full colormap, but start
 
-  res@sfXArray            = lon1d        ; Required to tell NCL where to
-  res@sfYArray            = lat1d        ; overlay data on globe.
+  if (not_latlon) then
+    res@sfXArray            = lon1d        ; Required to tell NCL where to
+    res@sfYArray            = lat1d        ; overlay data on globe.
+  end if
 
   res@cnFillOn            = True         ; Turn on contour fill
 ;  res@cnFillMode         = "AreaFill"   ; Style of fill. You can also
