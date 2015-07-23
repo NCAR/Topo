@@ -144,7 +144,7 @@
 !        integer , dimension(2) ::
 !       &        nc_dims2_id        ! netCDF dim id array for 2-d arrays
         
-      character(20), parameter :: grid_file_out = 'output/rll.nc'
+      character(20), parameter :: grid_file_out = 'rll.nc'
 !     &             grid_name = 'Lat/lon 1 degree Grid',             
 
         character (len=32) :: fout       ! NetCDF output file
@@ -159,11 +159,11 @@
         integer :: atm_add
         real(r8) :: centerlon,centerlat,minlat,minlon,maxlat,maxlon
 
-        dx = 360.0/real(im)
+        dx = 360.0D0/real(im)
         if (lpole) then
-          dy = 180.0/real(jm-1)
+          dy = 180.0D0/real(jm-1)
         else
-          dy = 180.0/real(jm)
+          dy = 180.0D0/real(jm)
         end if
         grid_dims(1) = im
         grid_dims(2) = jm
@@ -175,15 +175,15 @@
         do i = 1,im
 !          lonar(i)=  dx * (i-0.5)  !this line must be uncommented to
 !          match 10 min data
-          lonar(i)=  dx * (i-1.0) !CAM-FV grid
+          lonar(i)=  dx * DBLE((i-1)) !CAM-FV grid
         enddo
         if (lpole) THEN
           do j = 1,jm
-            latar(j)= -90.0 + dy * (j-1)
+            latar(j)= -90.0D0 + dy * DBLE(j-1)
           enddo
         else
           do j = 1,jm
-            latar(j)= -90.0 + dy * (j-0.5)
+            latar(j)= -90.0D0 + dy * (DBLE(j)-0.5D0)
           enddo          
         end if
         
@@ -193,18 +193,18 @@
           IF (lpole.AND.j==1) THEN
             minlat = centerlat
           ELSE
-            minlat = centerlat - 0.5*dy
+            minlat = centerlat - 0.5D0*dy
           END IF
           IF (lpole.AND.j==jm) THEN
             maxlat = centerlat 
           ELSE
-            maxlat = centerlat + 0.5*dy
+            maxlat = centerlat + 0.5D0*dy
           END IF
           
           do i=1,im
             centerlon = lonar(i)
-            minlon = centerlon - 0.5*dx
-            maxlon = centerlon + 0.5*dx
+            minlon = centerlon - 0.5D0*dx
+            maxlon = centerlon + 0.5D0*dx
             
             atm_add = (j-1)*im + i
             

@@ -75,35 +75,6 @@ ifeq ($(FC),pgf95)
 
 endif
 
-#------------------------------------------------------------------------
-# LF95
-#------------------------------------------------------------------------
-#
-# setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/lib
-#
-ifeq ($(FC),lf95)
-#
-# Tramhill
-#
-  INC_NETCDF :=/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/include
-  LIB_NETCDF :=/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/lib
-
-#  INC_NETCDF :=/usr/local/netcdf-gcc-lf95/include
-#  LIB_NETCDF :=/usr/local/netcdf-gcc-lf95/lib
-
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff -lcurl -lhdf5 -lhdf5_hl -mcmodel=medium 
-  FFLAGS   := -c --trace --trap --wide -CcdRR8 -I$(INC_NETCDF) 
-
-
-  ifeq ($(DEBUG),TRUE)
-#   FFLAGS += --chk aesu  -Cpp --trace
-    FFLAGS += -g --chk a,e,s,u --pca
-  else
-    FFLAGS += -O
-  endif
-
-endif
-
 
 #------------------------------------------------------------------------
 # GFORTRAN
@@ -115,6 +86,9 @@ ifeq ($(FC),gfortran)
 #
   INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
   LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
+
+  INC_NETCDF := /opt/local/include
+  LIB_NETCDF := /opt/local/lib
 
   LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff 
   FFLAGS   := -c  -fdollar-ok  -I$(INC_NETCDF)
