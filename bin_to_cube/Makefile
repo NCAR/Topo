@@ -5,7 +5,6 @@ RM = rm
 .SUFFIXES:
 .SUFFIXES: .F90 .o
 
-
 #
 # setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/lib
 #
