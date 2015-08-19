@@ -25,8 +25,8 @@ program convterr
   integer :: im, jm
   integer :: im_gmted2010, jm_gmted2010
   
-  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
-!  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - form debugging
+!  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
+  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - form debugging
   
   integer*2,  allocatable, dimension(:,:) :: terr               ! global 30-sec terrain data
   integer*2,  allocatable, dimension(:,:) :: terr_gmted2010     ! global 30-sec terrain data
@@ -88,7 +88,7 @@ program convterr
   ! read in USGS data from netCDF file
   !
   !        status = nf_open('topo-lowres.nc', 0, ncid) !for debugging
-  status = nf_open('../create_netCDF_from_USGS/usgs-rawdata.nc', 0, ncid)
+  status = nf_open('../create_netCDF_from_USGS/usgs-rawdata-gtopo30.nc', 0, ncid)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   
   status = NF_INQ_DIMID(ncid, 'lat', dimlatid)
@@ -435,7 +435,7 @@ program convterr
 
      write(*,*) "MINVAL lon_gmted2010",MINVAL(lon_gmted2010)
      write(*,*) "MAXVAL lon_gmted2010",MAXVAL(lon_gmted2010)
-     lon_gmted2010  = deg2rad*(lon_gmted2010)
+     lon_gmted2010  = deg2rad*lon_gmted2010
      lat_gmted2010  = deg2rad*lat_gmted2010
      dlat_gmted2010 = pi/DBLE(jm_gmted2010)
      allocate ( terr_cube_gmted2010(ncube,ncube,6),stat=alloc_error )
@@ -444,11 +444,9 @@ program convterr
         stop
      end if
      terr_cube_gmted2010 = 0.0D0
-     im = im_gmted2010
-     jm = jm_gmted2010
 
-     DO j=1,jm
-        DO i=1,im
+     DO j=1,jm_gmted2010
+        DO i=1,im_gmted2010
            call CubedSphereABPFromRLL(lon_gmted2010(i), lat_gmted2010(j), alpha, beta, ipanel)            
            icube = CEILING((alpha + piq) / da)
            jcube = CEILING((beta  + piq) / da)
@@ -477,8 +475,6 @@ program convterr
            ENDDO
         END DO
      END DO
-!     deallocate(terr_cube_gmted2010)
-     deallocate(weight_gmted2010)
   end if
 
   dx = deg2rad*(lon_landm(2)-lon_landm(1))
@@ -586,6 +582,16 @@ program convterr
   sgh30_cube = 0.0
 
   if (gmted2010) then
+     DO j=1,jm_gmted2010
+        DO i=1,im_gmted2010
+           icube  = idx(i,j)
+           jcube  = idy(i,j)
+           ipanel = idp(i,j)
+           wt    = SIN( lat_gmted2010(j)+0.5D0*dlat_gmted2010) - SIN( lat_gmted2010(j)-0.5D0*dlat_gmted2010)
+           sgh30_cube(icube,jcube,ipanel) = sgh30_cube(icube,jcube,ipanel) + &
+                (wt*(terr_cube_gmted2010(icube,jcube,ipanel)-terr_gmted2010(i,j))**2)/weight_gmted2010(icube,jcube,ipanel) 
+        END DO
+     END DO
   else
      DO j=1,jm
         DO i=1,im
@@ -599,6 +605,7 @@ program convterr
      END DO
   end if
   !        sgh30_cube=sgh30_cube/weight
+  sgh30_cube=SQRT(sgh30_cube)
   WRITE(*,*) "min/max value of sgh30_cube:", MINVAL(sgh30_cube), MAXVAL(sgh30_cube)
   !
   ! write data to NetCDF file
@@ -608,7 +615,7 @@ program convterr
   else
      CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,gmted2010)
   end if
-  DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
+  DEALLOCATE(weight,weight_gmted2010,terr,landfrac,idx,idy,idp,lat,lon,terr_cube_gmted2010)
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
 
