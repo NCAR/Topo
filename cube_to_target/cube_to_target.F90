@@ -59,7 +59,7 @@ program convterr
   !
   ! volume of topography
   !
-  real(r8) :: vol_target, vol_target_un, area_target_total,vol_source
+  real(r8) :: vol_target, vol_target_un, area_target_total,vol_source,area_source,mea_source
   integer :: nlon,nlat
   logical :: ltarget_latlon,lpole
 
@@ -75,6 +75,7 @@ program convterr
 !  real(r8), allocatable, dimension(:,:) :: recons,centroids
   integer :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
+  
 !  
 !  integer :: jmax_segments_coarse,jall_coarse,ncube_coarse
 
@@ -211,7 +212,7 @@ program convterr
   write(*,*) "MIN/MAX:", MINVAL(sgh30_target), MAXVAL(sgh30_target)
   deallocate(sgh30)
   deallocate(landm_coslat)
-  deallocate(landfrac)
+
   !deallocate(terr_smooth_internal)
 
   WRITE(*,*) "max difference between target grid area and remapping software area",&
@@ -267,7 +268,9 @@ program convterr
   !
   ! diagnostics
   !
-  vol_source     = 0.0
+  vol_source     = 0.0D0
+  mea_source     = 0.0D0
+  area_source    = 0.0D0
   allocate ( dA(ncube,ncube),stat=alloc_error )
   CALL EquiangularAllAreas(ncube, dA)
   DO jp=1,6
@@ -275,13 +278,20 @@ program convterr
       DO jx=1,ncube
         ii = (jp-1)*ncube*ncube+(jy-1)*ncube+jx
         vol_source = vol_source+terr(ii)*dA(jx,jy)
+        if (landfrac(ii)>0.0D0) then
+           mea_source   = mea_source  + terr(ii)*dA(jx,jy)
+           area_source  = area_source +          dA(jx,jy)
+        else
+        end if
       END DO
     END DO
   END DO
   WRITE(*,*) "volume of input cubed-sphere terrain           :",vol_source
   WRITE(*,*) "average elevation of input cubed-sphere terrain:",vol_source/(4.0D0*pi)
+  WRITE(*,*) "average elevation of input cubed-sphere terrain over land:",vol_source/area_source
   
   DEALLOCATE(dA)
+  deallocate(landfrac)
   !
   ! compute variance with respect to cubed-sphere data
   !
