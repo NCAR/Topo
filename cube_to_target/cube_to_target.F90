@@ -4,10 +4,12 @@
 !  DESCRIPTION:  Remap topo data from cubed-sphere grid to target grid using rigorous remapping
 !                (Lauritzen, Nair and Ullrich, 2010, J. Comput. Phys.)
 !
-!  Author: Peter Hjort Lauritzen (pel@ucar.edu), NCAR 
+!  Author: Peter Hjort Lauritzen (pel@ucar.edu), AMP/CGD/NCAR 
 !
 program convterr
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use subgrid_topo_ana
+  use ridge_ana
   use shared_vars
   use reconstruct
   implicit none
@@ -47,7 +49,7 @@ program convterr
   !
   integer :: ntarget, ncorner, nrank
 
-  integer :: ii,ip,jx,jy,jp
+  integer :: ii,ip,jx,jy,jp,np
   integer, parameter :: ngauss = 3
   integer :: jmax_segments,jall,jall_anticipated
   real(r8) :: tmp
@@ -71,11 +73,11 @@ program convterr
 !  integer , allocatable, dimension(:)   :: weights_lgr_index_all_coarse
 !  real(r8), allocatable, dimension(:)   :: area_target_coarse
 !  real(r8), allocatable, dimension(:,:) :: da_coarse,da
-  real(r8), allocatable, dimension(:,:) :: da
+  real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:)
 !  real(r8), allocatable, dimension(:,:) :: recons,centroids
   integer :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
-  
+  real(r8) :: volterr, volterr_sm  
 !  
 !  integer :: jmax_segments_coarse,jall_coarse,ncube_coarse
 
@@ -96,6 +98,12 @@ program convterr
   !
   logical :: lzero_out_ocean_point_phis = .FALSE.
   !
+  ! Cubed sphere terr is band-pass filtered using circular kernels
+  !
+  logical :: lsmooth_on_cubed_sphere = .FALSE.
+  integer :: ncube_sph_smooth_coarse = -1
+  integer :: ncube_sph_smooth_fine   = -1
+  !
   ! namelist variables for preferred sub-grid scale orientation
   !
   !
@@ -111,15 +119,17 @@ program convterr
   !
   INTEGER :: UNIT
 
+  INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw
+
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname,  externally_smoothed_topo_file
   
   namelist /topoparams/ &
        grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname, externally_smoothed_topo_file,&
-       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis,&
+       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis,lsmooth_on_cubed_sphere, &
        !
        ! variables for interal smoothing of topography
        !
-       ncube_coarse,norder,nmono,npd
+       ncube_coarse,norder,nmono,npd,ncube_sph_smooth_coarse,ncube_sph_smooth_fine
   
   UNIT=221
   OPEN( UNIT=UNIT, FILE="topo.nl" ) !, NML =  cntrls )
@@ -135,6 +145,59 @@ program convterr
 
   call read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
   call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
+   
+
+  allocate ( dA(ncube,ncube),stat=alloc_error )
+  CALL EquiangularAllAreas(ncube, dA)
+
+
+!++jtb
+ if (lsmooth_on_cubed_sphere) then
+ NSCL_c = ncube_sph_smooth_coarse
+ NSCL_f = ncube_sph_smooth_fine
+ nhalo  = NSCL_c ! 120      
+
+      allocate( terr_sm(ncube,ncube,6)  )
+      allocate( terr_dev(ncube,ncube,6) )
+      allocate( terr_2(ncube,ncube,6)  )
+
+
+      call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, terr_sm, terr_dev )
+
+      terr_2 = reshape( terr,    (/ncube,ncube,6/) )
+      volterr=0.
+      volterr_sm=0.
+      do np=1,6 
+         volterr    =  volterr    + sum( terr_2(:,:,np) * da )
+         volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
+      end do
+
+      write(*,*) " Topo volume BEFORE smoother = ",volterr/(6*sum(da))
+      write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
+      write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
+
+      write(711) size(terr_sm,1), size(terr_sm,2) ,size(terr_sm,3)
+      write(711) terr,terr_sm,terr_dev,da
+      close(711)
+
+      terr_sm = (volterr/volterr_sm)*terr_sm
+      volterr_sm=0.
+      do np=1,6 
+         volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
+      end do
+
+      write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
+
+nsb=50
+nsw=10
+nhalo=50
+ 
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw )
+
+  endif
+
+!--jtb
+
 
   ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
   ! in the 'exchange grid'
@@ -271,8 +334,13 @@ program convterr
   vol_source     = 0.0D0
   mea_source     = 0.0D0
   area_source    = 0.0D0
-  allocate ( dA(ncube,ncube),stat=alloc_error )
-  CALL EquiangularAllAreas(ncube, dA)
+!++jtb
+!   The two lines below moved up before call
+!   to smooth_intermediate_topo
+!
+  !allocate ( dA(ncube,ncube),stat=alloc_error )
+  !CALL EquiangularAllAreas(ncube, dA)
+!--jtb
   DO jp=1,6
     DO jy=1,ncube
       DO jx=1,ncube
@@ -320,7 +388,9 @@ program convterr
   if (lzero_out_ocean_point_phis) then
     WRITE(*,*) "if ocean mask PHIS=0.0"
   end if
-  
+
+
+  if(lsmooth_on_cubed_sphere ) terr_target=0.0
   sgh_target=0.0
   do counti=1,jall
     i    = weights_lgr_index_all(counti)!!
@@ -335,13 +405,23 @@ program convterr
     
     wt = weights_all(counti,1)
     
-    if (lzero_out_ocean_point_phis.AND.landfrac_target(i).lt.0.01_r8) then
-      terr_target(i) = 0.0_r8   !5*terr_target(i)
-    end if
-    sgh_target(i) = sgh_target(i)+wt*((terr_target(i)-terr(ii))**2)/area_target(i)
+
+    if( .not.(lsmooth_on_cubed_sphere) ) then
+      if (lzero_out_ocean_point_phis.AND.landfrac_target(i).lt.0.01_r8) then
+        terr_target(i) = 0.0_r8   !5*terr_target(i)
+      end if
+      sgh_target(i) = sgh_target(i)+wt*((terr_target(i)-terr(ii))**2)/area_target(i)
+    else
+      sgh_target  (i) = sgh_target  (i) + wt*(terr_dev(ix,iy,ip))**2/area_target(i)
+      terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
+    endif
   end do
 
-  
+
+  write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
+
+
+
   !
   ! zero out small values
   !

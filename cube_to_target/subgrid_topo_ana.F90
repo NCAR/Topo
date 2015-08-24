@@ -1,6 +1,5 @@
-!!#define REMOVEMEX
 !-----------------------------------------------------------------------------
-! MODULE subgrid_orientation
+! MODULE subgrid_topo_ana
 !
 ! Purpose:
 !
@@ -17,8 +16,12 @@ IMPLICIT NONE
 PRIVATE
 
 PUBLIC smooth_intermediate_topo
+
+
 CONTAINS
-  SUBROUTINE smooth_intermediate_topo(terr, ncube,nhalo, NSCL_f,NSCL_c )
+
+!=============================================================================
+  SUBROUTINE smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c,terr_sm,terr_dev )
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -26,9 +29,11 @@ CONTAINS
 
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr
-#if 0
     REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_bp
+            DIMENSION(ncube,ncube),   INTENT(INOUT) :: da
+#if 1
+    REAL (KIND=dbl_kind), &
+            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_dev
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_sm
 #endif
@@ -40,41 +45,58 @@ CONTAINS
 
     REAL (KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
-    REAL  ,                                                          &
+    REAL (KIND=dbl_kind),                                            &
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm
+    REAL (KIND=dbl_kind),                                            &
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6)    :: da_halo
+    REAL  (KIND=dbl_kind) ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_r4
-    REAL  ,                                                          &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_r4_sm
-    REAL  ,                                                          &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_r4_rw
-    REAL  ,                                                          &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_r4_fx
-    REAL  ,                                                          &
+    REAL  (KIND=dbl_kind) ,                                                          &
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_rw
+    REAL  (KIND=dbl_kind) ,                                                          &
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_fx
+    REAL  (KIND=dbl_kind) ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo)    :: smwt,ggaa,ggbb,ggab
-    REAL  ,                                                          &
+    REAL  (KIND=dbl_kind) ,                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
 
     INTEGER (KIND=int_kind):: np,i,j, ncube_halo,norx,nory,ipanel,x0,&
          x1,y0,y1,initd,ii0,ii1,jj0,jj1,nctest,NSM,NS2,ismi,NSB
 
 
-    REAL, allocatable ::  wt1p(:,:)
+    REAL (KIND=dbl_kind), allocatable ::  daxx(:,:,:)
+    REAL (KIND=dbl_kind), allocatable ::  wt1p(:,:),terr_patch(:,:)
     REAL(KIND=dbl_kind)  :: cosll, dx, dy ,dbet,dalp,diss,diss00
 
     INTEGER :: NOCTV , isx0, isx1, jsy0, jsy1,i2,j2,iix,jjx,i00
 
-    REAL :: RSM_scl, smoo,irho
+    REAL(KIND=dbl_kind) :: RSM_scl, smoo,irho,volt0,volt1,volume_after,volume_before
+
+
+
+
+    
 
 
 write(*,*) " NCUBE !!! " , ncube
 
-
-                                       
+    allocate( daxx(ncube,ncube,6) )
     DO np = 1, 6
-     CALL CubedSphereFillHalo_Linear_extended(terr, terr_halo(:,:,np), np, ncube+1,nhalo)  
+       daxx(:,:,np) = da
+    end do                                
+    DO np = 1, 6
+     !CALL CubedSphereFillHalo_Linear_extended(terr, terr_halo(:,:,np), np, ncube+1,nhalo)  
+     !CALL CubedSphereFillHalo_Linear_extended(daxx, da_halo(:,:,np), np, ncube+1,nhalo)  
+     CALL CubedSphereFillHalo(terr, terr_halo, np, ncube+1,nhalo)  
+     CALL CubedSphereFillHalo(daxx, da_halo, np, ncube+1,nhalo)  
     END DO
+    deallocate( daxx )
 
     ncube_halo = size( terr_halo(:,:,1), 1 )
 
+
+    !terr_halo(1-nhalo:1,1-nhalo:1,:)=0.
+    !terr_halo(ncube:ncube+nhalo,ncube:ncube+nhalo , :)=0.
 
 
     DO i=1-nhalo,ncube+nhalo
@@ -96,37 +118,30 @@ write(*,*) " NCUBE !!! " , ncube
     END DO
     END DO
 
-
-    terr_halo_r4 = terr_halo
-    terr_halo_r4_sm = terr_halo_r4
-    terr_halo_r4_fx = terr_halo_r4
-    terr_halo_r4_rw = terr_halo_r4
-
-
- ! SINGLE PASS SMOOTHING
+    terr_halo_sm = terr_halo
+    terr_halo_fx = terr_halo
+    terr_halo_rw = terr_halo
 
 
       if (NSCL_f > 1 ) then
       NSM=NSCL_f
       NS2=NSM/2
+
+
       allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
-      DO j=-ns2,ns2
-      DO i=-ns2,ns2
-         wt1p(i,j)=1.0 - sqrt( 1.*i**2 + 1.*j**2 )/(1.*ns2)
-      END DO
-      END DO
-      where (wt1p < 0.)
-         wt1p = 0.
-      end where
+      allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
 
       i00 = ncube/2
-      dalp   = alph(i00+ns2)-alph(i00)
+      dalp   = alph(i00+ns2 )-alph(i00)
       diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
+
+      terr_halo_fx = 0.0
 
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
         DO i=1-nhalo+ns2,ncube+nhalo-ns2
-
+           volt0  = terr_halo(i,j,np)*da_halo(i,j,np)
+           volt1 = 0.
            do j2=-ns2,ns2
            do i2=-ns2,ns2
               jjx = j+j2
@@ -134,60 +149,56 @@ write(*,*) " NCUBE !!! " , ncube
               dalp = alph(iix)-alph(i)
               dbet = beta(jjx)-beta(j)
               diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-              wt1p(i2,j2) = 1. - diss00 * sqrt( diss )
+              wt1p(i2,j2) = da_halo(iix,jjx,np)
+              terr_patch(i2,j2) = terr_halo(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
+              if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
+                terr_patch(i2,j2)=0.
+                wt1p(i2,j2)      =0.
+              end if
+              volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
            end do
            end do
-           where (wt1p < 0.)
-             wt1p = 0.
-           end where
 
+           if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
 
-           terr_halo_r4_sm( i, j, np ) = sum( wt1p*terr_halo_r4(i-ns2:i+ns2,j-ns2:j+ns2, np ) )/(sum(wt1p)) 
-
+           do j2=-ns2,ns2
+           do i2=-ns2,ns2
+              jjx = j+j2
+              iix = i+i2
+              terr_halo_fx(iix,jjx,np) = terr_halo_fx(iix,jjx,np) + terr_patch(i2,j2)
+           end do
+           end do
         END DO
         END DO
       END DO
 
-             deallocate( wt1p )
+      deallocate( wt1p )
+      deallocate( terr_patch )
 
-
-#ifdef NOZEROCN
-      where( terr_halo_r4 <= 0. )
-           terr_halo_r4_sm = terr_halo_r4
-      endwhere
-#endif
       else
        write(*,*)" No fine scale smoother "
-       terr_halo_r4_sm  = terr_halo_r4
+       terr_halo_fx  = terr_halo
       endif
 
-
-      ! store off partially-smoothed data at inner scale
-      terr_halo_r4_fx = terr_halo_r4_sm
-      ! continue smoothing to outer scale
 
 
       NSM=NSCL_c
       NS2=NSM/2
+
       allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
-      DO j=-ns2,ns2
-      DO i=-ns2,ns2
-         wt1p(i,j)=1.0 - sqrt( 1.*i**2 + 1.*j**2 )/(1.*ns2)
-      END DO
-      END DO
-      where (wt1p < 0.)
-         wt1p = 0.
-      end where
+      allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
 
       i00 = ncube/2
-      dalp   = alph(i00+ns2)-alph(i00)
+      dalp   = alph(i00+ns2 )-alph(i00)
       diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
+
+      terr_halo_sm = 0.0
 
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
         DO i=1-nhalo+ns2,ncube+nhalo-ns2
-
-
+           volt0  = terr_halo_fx(i,j,np)*da_halo(i,j,np)
+           volt1 = 0.
            do j2=-ns2,ns2
            do i2=-ns2,ns2
               jjx = j+j2
@@ -195,64 +206,46 @@ write(*,*) " NCUBE !!! " , ncube
               dalp = alph(iix)-alph(i)
               dbet = beta(jjx)-beta(j)
               diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-              wt1p(i2,j2) = 1. - diss00 * sqrt( diss )
+              wt1p(i2,j2) = da_halo(iix,jjx,np)
+              terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
+              if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
+                terr_patch(i2,j2)=0.
+                wt1p(i2,j2)      =0.
+              end if
+              volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
            end do
            end do
-           where (wt1p < 0.)
-             wt1p = 0.
-           end where
 
-                if ((i==0).and.(j==0).and.(np==6)) then
+           if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
 
-                     write(711) size(wt1p,1),size(wt1p,2)
-                     write(711) alph(i-ns2:i+ns2),beta(j-ns2:j+ns2),wt1p
-                            write(*,*) " wrote wt1p "   
-
-                endif
-                if ((i==i00).and.(j==i00).and.(np==6)) then
-
-                     write(711) size(wt1p,1),size(wt1p,2)
-                     write(711) alph(i-ns2:i+ns2),beta(j-ns2:j+ns2),wt1p
-                            write(*,*) " wrote wt1p "   
-
-                endif
-
-           terr_halo_r4_sm( i, j, np ) = sum( wt1p * terr_halo_r4(i-ns2:i+ns2,j-ns2:j+ns2, np ) )/(sum(wt1p) ) 
-
+           do j2=-ns2,ns2
+           do i2=-ns2,ns2
+              jjx = j+j2
+              iix = i+i2
+              terr_halo_sm(iix,jjx,np) = terr_halo_sm(iix,jjx,np) + terr_patch(i2,j2)
+           end do
+           end do
         END DO
                 if (mod(j,100) ==0 ) write(*,*) "One pass Crs Sm J = ",J, " Panel=",np
         END DO
       END DO
 
+      deallocate( wt1p )
+      deallocate( terr_patch )
 
-write(711) size(terr_halo_r4,1), size(terr_halo_r4,2) ,size(terr_halo_r4,3)
-write(711) ggaa,ggbb,ggab,alph,beta
-WRITE(711) terr_halo_r4
-WRITE(711) terr_halo_r4_fx
-WRITE(711) terr_halo_r4_sm
-
+#ifdef DEBUGGING
+write(711) size(terr_halo,1), size(terr_halo,2) ,size(terr_halo,3)
+write(711) ggaa,ggbb,ggab,alph,beta,da_halo
 WRITE(711) terr_halo
-write(711) size(terr,1), size(terr,2) ,size(terr,3)
-write(711) terr
-
-close(711)
-
-#ifdef NOZEROCN
-      where( terr_halo_r4 <= 0. )
-           terr_halo_r4_sm=terr_halo_r4
-      endwhere
+WRITE(711) terr_halo_fx
+WRITE(711) terr_halo_sm
 #endif
 
-    terr_halo_r4 =terr_halo_r4_sm
 
-    terr_halo_r4 = terr_halo_r4_fx - terr_halo_r4_sm
-
-#if 0
   do np=1,6
-    terr_bp(1:ncube,1:ncube,np) = DBLE ( terr_halo_r4(1:ncube,1:ncube,np ) )
-    terr_sm(1:ncube,1:ncube,np) = DBLE ( terr_halo_r4_sm(1:ncube,1:ncube,np ) )
+    terr_dev(1:ncube,1:ncube,np) = terr_halo_fx(1:ncube,1:ncube,np ) - terr_halo_sm(1:ncube,1:ncube,np )
+    terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
   end do
-#endif 
 
 
 END SUBROUTINE smooth_intermediate_topo
