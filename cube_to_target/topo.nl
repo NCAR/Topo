@@ -5,9 +5,12 @@
   lsmooth_terr = .false.
   lexternal_smooth_terr = .false.
   lzero_out_ocean_point_phis = .false.
-  lsmooth_on_cubed_sphere = .true.
-  ncube_sph_smooth_coarse = 28
+  lsmooth_on_cubed_sphere = .false.
+  ncube_sph_smooth_coarse = 20  
   ncube_sph_smooth_fine = 1
+  lfind_ridges = .false.
+  nwindow_halfwidth = 14
+  nridge_subsample = 14
 /
 #
 # the externally smoothed fv topography has been created with definesurf:

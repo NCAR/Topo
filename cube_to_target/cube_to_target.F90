@@ -101,10 +101,21 @@ program convterr
   ! Cubed sphere terr is band-pass filtered using circular kernels
   !
   logical :: lsmooth_on_cubed_sphere = .FALSE.
+  !                             *Radii* of smoothing circles
   integer :: ncube_sph_smooth_coarse = -1
   integer :: ncube_sph_smooth_fine   = -1
   !
-  ! namelist variables for preferred sub-grid scale orientation
+  ! namelist variables for detection of sub-grid scale orientation
+  ! i.e., "ridge finding"
+  !
+  logical :: lfind_ridges = .FALSE.
+  !                             Ridge analysis takes place on
+  !                             squares of 2*NW+1
+  integer :: nwindow_halfwidth = -1
+  !                             Centers of squares are placed
+  !                             NSB apart
+  integer :: nridge_subsample = -1
+  !
   !
   !
   ! For internal smoothing (experimental at this point)
@@ -125,11 +136,12 @@ program convterr
   
   namelist /topoparams/ &
        grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname, externally_smoothed_topo_file,&
-       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis,lsmooth_on_cubed_sphere, &
+       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis,lsmooth_on_cubed_sphere,lfind_ridges, &
        !
        ! variables for interal smoothing of topography
        !
-       ncube_coarse,norder,nmono,npd,ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+       ncube_coarse,norder,nmono,npd,ncube_sph_smooth_coarse,ncube_sph_smooth_fine, &
+       nwindow_halfwidth,nridge_subsample
   
   UNIT=221
   OPEN( UNIT=UNIT, FILE="topo.nl" ) !, NML =  cntrls )
@@ -152,10 +164,10 @@ program convterr
 
 
 !++jtb
- if (lsmooth_on_cubed_sphere) then
- NSCL_c = ncube_sph_smooth_coarse
- NSCL_f = ncube_sph_smooth_fine
- nhalo  = NSCL_c ! 120      
+   if (lsmooth_on_cubed_sphere) then
+      NSCL_c = 2*ncube_sph_smooth_coarse
+      NSCL_f = 2*ncube_sph_smooth_fine
+      nhalo  = NSCL_c ! 120      
 
       allocate( terr_sm(ncube,ncube,6)  )
       allocate( terr_dev(ncube,ncube,6) )
@@ -176,10 +188,6 @@ program convterr
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
 
-      write(711) size(terr_sm,1), size(terr_sm,2) ,size(terr_sm,3)
-      write(711) terr,terr_sm,terr_dev,da
-      close(711)
-
       terr_sm = (volterr/volterr_sm)*terr_sm
       volterr_sm=0.
       do np=1,6 
@@ -188,11 +196,20 @@ program convterr
 
       write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
 
-nsb=50
-nsw=10
-nhalo=50
- 
-      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw )
+      if(lfind_ridges) then
+        nsw = nwindow_halfwidth
+        nsb = nridge_subsample
+        nhalo=2*nsw
+        call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw )
+      endif
+
+   else
+
+      write(*,*) " No smoothing of intermediate topography "
+      if(lfind_ridges) then
+         write(*,*) " Can't do Ridge analysis without smoothing "
+         STOP
+      endif
 
   endif
 
@@ -417,6 +434,11 @@ nhalo=50
     endif
   end do
 
+
+  if((lsmooth_on_cubed_sphere).and.(lfind_ridges) ) then
+     call remapridge2target(area_target,weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
+         nreconstruction,ntarget,nhalo,nsb)
+  endif
 
   write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
 
