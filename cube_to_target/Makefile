@@ -6,8 +6,8 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 #FC = nagfor
-FC = gfortran
-#FC = pgf95
+#FC = gfortran
+FC = pgf95
 
 #DEBUG = TRUE
 DEBUG = FALSE
@@ -109,7 +109,7 @@ endif
 # Default rules and macros
 #------------------------------------------------------------------------
 
-OBJS :=  reconstruct.o remap.o cube_to_target.o shr_kind_mod.o shared_vars.o
+OBJS :=  reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o subgrid_topo_ana.o ridge_ana.o cube_to_target.o 
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
 	$(FC) -o $@ $(OBJS) $(LDFLAGS)

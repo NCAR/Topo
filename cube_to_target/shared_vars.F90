@@ -8,6 +8,7 @@ MODULE shared_vars
   real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
   real(r8), allocatable, dimension(:) :: landm_coslat_target, area_target
 
+  real(r8) , allocatable, dimension(:,:,:) :: terr_sm, terr_dev
 
   REAL    (r8):: pi, piq, pih, deg2rad
 
