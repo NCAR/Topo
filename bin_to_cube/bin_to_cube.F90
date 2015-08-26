@@ -1,7 +1,7 @@
 !
 !  DATE CODED:   Nov 7, 2011
 !
-!  DESCRIPTION:  This program reads USGS 30-sec terrain dataset from NetCDF file and
+!  DESCRIPTION:  This program reads lat-lon terrain dataset from NetCDF file and
 !                bins it to an approximately 3km cubed-sphere grid and outputs the
 !                data in netCDF format.
 !
@@ -23,7 +23,7 @@ program convterr
   integer :: im, jm
   
   integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
-!  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - form debugging
+!  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - for debugging
   
   integer*2,  allocatable, dimension(:,:) :: terr               ! global 30-sec terrain data
   integer*1,  allocatable, dimension(:,:) :: landfrac ! global 30-sec land fraction
@@ -73,12 +73,23 @@ program convterr
   real(r8) :: vol,dx_rad,vol_cube,area_latlon,darea_latlon       ! latitude array
   real(r8), allocatable, dimension(:,:) :: darea_cube
 
+  INTEGER :: UNIT
+
+  character(len=1024) :: raw_latlon_data_file
+  
+  namelist /binparams/ &
+       raw_latlon_data_file
+  
+  UNIT=221
+  OPEN( UNIT=UNIT, FILE="bin_to_cube.nl" ) !, NML =  cntrls )
+  READ( UNIT=UNIT, NML=binparams)
+  CLOSE(UNIT=UNIT)
+
   !
-  ! read in USGS data from netCDF file
+  ! read in data from netCDF file
   !
-  !        status = nf_open('topo-lowres.nc', 0, ncid) !for debugging
-!  status = nf_open('../create_netCDF_from_USGS/MODIS/landfrac_sft_modis.nc', 0, ncid)
-  status = nf_open('../create_netCDF_from_USGS/usgs-rawdata-gtopo30.nc', 0, ncid)
+  status = nf_open(raw_latlon_data_file, 0, ncid)
+  write(*,*) "Opening: ",TRIM(raw_latlon_data_file)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   
   status = NF_INQ_DIMID(ncid, 'lat', dimlatid)
@@ -149,23 +160,14 @@ program convterr
   status = NF_GET_VAR_DOUBLE(ncid, latid,lat)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   
-  print *,"close file topo.nc"
+  print *,"close file"
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)
   
-  WRITE(*,*) 'done reading in USGS gtopo30 data from netCDF file'
+  WRITE(*,*) 'done reading data from netCDF file'
   
-  WRITE(*,*) "Adjustments to land fraction: Extend land fraction for Ross Ice shelf by"
-  WRITE(*,*) "setting all landfractions south of 79S to 1"
-  DO j=1,jm
-    IF (lat(j)<-79.0) THEN
-      DO i=1,im
-        landfrac(i,j) = 1
-      END DO
-    END IF
-  END DO
   
-  WRITE(*,*) "compute volume for USGS raw data"
+  WRITE(*,*) "compute volume for raw data"
   vol = 0.0
   dx = (lon(2)-lon(1))
   dx_rad = dx*deg2rad
@@ -178,10 +180,7 @@ program convterr
   end do
   vol = vol/area_latlon
   WRITE(*,*) "consistency of lat-lon area",area_latlon-4.0*pi
-  WRITE(*,*) "volume of topography about sea-level (raw usgs data)",vol
-
-  
-
+  WRITE(*,*) "mean elevation (raw data)",vol
   !
   !****************************************************
   !
@@ -305,7 +304,7 @@ program convterr
     stop
   end if
   
-  WRITE(*,*) "bin gtopo30 lat-lon data to cubed-sphere"
+  WRITE(*,*) "bin lat-lon data to cubed-sphere"
 
   !
   ! for debugging ONLY
@@ -487,7 +486,7 @@ program convterr
   !
   ! write data to NetCDF file
   !
-  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,.TRUE.)
+  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
   DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
@@ -612,7 +611,7 @@ END SUBROUTINE CubedSphereABPFromRLL
 !
 ! write netCDF file
 ! 
-subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,gmted2010)
+subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
   use shr_kind_mod, only: r8 => shr_kind_r8
   implicit none
 #     include         <netcdf.inc>
@@ -622,7 +621,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,g
   !
   integer, intent(in) :: ncube
   real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,sgh30_cube,landm_coslat_cube
-  logical, intent(in) :: gmted2010
+  character(len=1024) :: raw_latlon_data_file, git_http, tmp_string
   !
   ! Local variables
   !
@@ -652,7 +651,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,g
   integer, dimension(2) :: nc_dims2_id ! netCDF dim id array for 2-d arrays
   integer :: grid_dims
   
-  character(18), parameter :: grid_file_out = 'USGS-topo-cube.nc'
+  character(18), parameter :: grid_file_out = 'topo-cube.nc'
   character(90), parameter :: grid_name = 'equi-angular gnomonic cubed sphere grid'
   
   character (len=32) :: fout       ! NetCDF output file
@@ -700,7 +699,28 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,g
   
   ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
   call handle_err(ncstat)
+
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'raw_topo',len_trim(raw_latlon_data_file), TRIM(raw_latlon_data_file)) 
+  call handle_err(ncstat)
+
+  git_http='https://github.com/NCAR/Topo.git'
   
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'source_code',len_trim(git_http), TRIM(git_http)) 
+  call handle_err(ncstat)
+
+  tmp_string='LANDM_COSLAT is only used in CAM4'  
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'note',len_trim(tmp_string), TRIM(tmp_string)) 
+  call handle_err(ncstat)
+
+  call DATE_AND_TIME(DATE=datestring)
+  tmp_string = 'Written on date: ' // datestring
+  status = nf_put_att_text (nc_grid_id,NF_GLOBAL,'history',len_trim(tmp_string), TRIM(tmp_string))
+  call handle_err(ncstat)
+
+  tmp_string='Peter Hjort Lauritzen (NCAR)'
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'author',len_trim(tmp_string), TRIM(tmp_string)) 
+  call handle_err(ncstat)
+
   WRITE(*,*) "define grid size dimension"
   ncstat = nf_def_dim (nc_grid_id, 'grid_size', 6*ncube*ncube, nc_gridsize_id)
   call handle_err(ncstat)
@@ -749,13 +769,10 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,g
   call handle_err(ncstat)
   ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'units',12, 'm')
   call handle_err(ncstat)
-!  if (gmted2010) then
-!     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',68,&
-!          'variance of elevation from 30s GMTED2010 lat-lon to 3km cubed-sphere')
-!  else
-!     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',66,&
-!          'variance of elevation from 30s gtopo30 lat-lon to 3km cubed-sphere')
-!  end if
+
+  tmp_string ='variance of elevation from high res lat-lon to ~3km cubed-sphere'
+  ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',len_trim(tmp_string),&
+       trim(tmp_string))
   
   WRITE(*,*) "end definition stage"
   ncstat = nf_enddef(nc_grid_id)

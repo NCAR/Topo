@@ -1,3 +1,3 @@
 #!/bin/csh
 rm *.tif
-rm *.nc
+#rm *.nc

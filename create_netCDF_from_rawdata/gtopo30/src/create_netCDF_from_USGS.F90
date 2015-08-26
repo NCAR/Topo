@@ -40,8 +40,8 @@
         integer*2,  allocatable, dimension(:,:) :: terr_tile    ! terrain data for 30-sec tile
         integer*1,  allocatable, dimension(:,:) :: land_fraction_tile
 ! 
-        lat_start=-90.0 + 0.5 * dx
-        lon_start=0.5*dx
+        lat_start=-90.0D0 + 0.5D0 * dx
+        lon_start=0.5D0*dx
         !
         ! Initialize each tile name
         !
@@ -209,7 +209,7 @@
         character (len=13) :: chars      ! dummy character
         
 !phl        flheader=nmtile//'.HDR'
-        flheader='gtopo30/'//nmtile//'.HDR'
+        flheader='../work/'//nmtile//'.HDR'
  
         print*,'flheader = ', flheader
 !
@@ -256,16 +256,16 @@
 !
 ! Local variables
 !
-!phl        character (len=11) :: flterr   ! file name for each terr dataset
-        character (len=19) :: flterr   ! file name for each terr dataset
+!phl        character (len=14) :: flterr   ! file name for each terr dataset
+        character (len=25) :: flterr   ! file name for each terr dataset
         integer :: io_error            ! I/O status
         integer :: i,j                 ! Index
         integer :: length              ! record length
         
 !phl        flterr=nmtile//'.DEM'
-        flterr='gtopo30/'//nmtile//'.DEM'
+        flterr='../work/'//nmtile//'.DEM'
  
-!        print*,'flterr = ', flterr
+        print*,'flterr = ', flterr
 !        print*,'nrows,ncols = ',nrows,ncols
 !
 ! Open GTOPO30 Terrain dataset File
@@ -540,7 +540,7 @@
           end do
         end do
 
-        fout='usgs-rawdata.nc'
+        fout='gtopo30-rawdata.nc'
 !
 !  Create NetCDF file for output
 !

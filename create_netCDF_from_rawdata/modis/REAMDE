@@ -1,0 +1,18 @@
+#
+# this setup requires GDAL and python installed
+#
+# MAC python setup: 
+#
+#     Anaconda Python (installed from dmg file)
+#     /Users/pel/anaconda/bin/conda install netcdf4
+#
+1. Get data from 
+
+       ftp://landsc1.nascom.nasa.gov/pub/outgoing/c6_dem/sin_1km
+
+   and place it in rawdata directory.
+
+   Info on data: ftp://landsc1.nascom.nasa.gov/outgoing/c6_dem/sin_1km/0readme.txt
+
+2. source unpack.sh
+
