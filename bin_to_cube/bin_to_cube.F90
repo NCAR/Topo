@@ -20,16 +20,12 @@ program convterr
   implicit none
 #     include         <netcdf.inc>
   !
-  logical :: gmted2010 = .false.
-
   integer :: im, jm
-  integer :: im_gmted2010, jm_gmted2010
   
-!  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
-  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - form debugging
+  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
+!  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - form debugging
   
   integer*2,  allocatable, dimension(:,:) :: terr               ! global 30-sec terrain data
-  integer*2,  allocatable, dimension(:,:) :: terr_gmted2010     ! global 30-sec terrain data
   integer*1,  allocatable, dimension(:,:) :: landfrac ! global 30-sec land fraction
   
   integer :: alloc_error,dealloc_error  
@@ -39,7 +35,6 @@ program convterr
   integer :: srcid,dstid                                  ! for netCDF weight file
   
   real(r8), allocatable, dimension(:)   :: lon  , lat
-  real(r8), allocatable, dimension(:)   :: lon_gmted2010, lat_gmted2010
   real(r8), allocatable, dimension(:)   :: lon_landm  , lat_landm
   real(r8), allocatable, dimension(:,:) :: landm_coslat
   integer :: im_landm, jm_landm
@@ -52,10 +47,9 @@ program convterr
   REAL    (r8), PARAMETER :: rad2deg   = 180.0/pi
   REAL    (r8), PARAMETER :: deg2rad   = pi/180.0
   
-  real(r8) :: alpha, beta,da,wt,dlat,dlat_gmted2010
+  real(r8) :: alpha, beta,da,wt,dlat
   integer  :: ipanel,icube,jcube
   real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,landfrac_cube,sgh30_cube
-  real(r8), allocatable, dimension(:,:,:)   :: terr_cube_gmted2010, weight_gmted2010
   real(r8), allocatable, dimension(:,:,:)   :: landm_coslat_cube
   integer , allocatable, dimension(:,:)     :: idx,idy,idp
   !
@@ -70,11 +64,6 @@ program convterr
   !
   integer ::  src_grid_dim  ! for netCDF weight file
   !
-  ! this is only used if target grid is a lat-lon grid
-  !
-  integer , parameter :: im_target = 360 , jm_target = 180
-  logical , parameter :: ltarget_rll = .TRUE.
-  !
   ! this is only used if target grid is not a lat-lon grid
   !
   real(r8), allocatable, dimension(:) :: lon_target, lat_target
@@ -88,6 +77,7 @@ program convterr
   ! read in USGS data from netCDF file
   !
   !        status = nf_open('topo-lowres.nc', 0, ncid) !for debugging
+!  status = nf_open('../create_netCDF_from_USGS/MODIS/landfrac_sft_modis.nc', 0, ncid)
   status = nf_open('../create_netCDF_from_USGS/usgs-rawdata-gtopo30.nc', 0, ncid)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   
@@ -191,77 +181,6 @@ program convterr
   WRITE(*,*) "volume of topography about sea-level (raw usgs data)",vol
 
   
-  if (gmted2010) then
-     !
-     ! read in USGS data from netCDF file
-     !
-     !        status = nf_open('topo-lowres.nc', 0, ncid) !for debugging
-     status = nf_open('../create_netCDF_from_USGS/30-GMTED2010/mea.nc', 0, ncid)
-     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-     
-     status = NF_INQ_DIMID(ncid, 'lat', dimlatid)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     status = NF_INQ_DIMLEN(ncid, dimlatid, jm_gmted2010)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     status = NF_INQ_DIMID(ncid, 'lon', dimlonid)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     status = NF_INQ_DIMLEN(ncid, dimlonid, im_gmted2010)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     WRITE(*,*) "lon-lat dimensions og GMTED2010: ",im_gmted2010,jm_gmted2010
-     
-     allocate ( terr_gmted2010(im_gmted2010,jm_gmted2010),stat=alloc_error )
-     if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for terr'
-        stop
-     end if
-     
-     allocate ( lon_gmted2010(im_gmted2010),stat=alloc_error )
-     if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for lon_gmted2010'
-        stop
-     end if
-     
-     allocate ( lat_gmted2010(jm_gmted2010),stat=alloc_error )
-     if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for lat_gmted2010'
-        stop
-     end if
-     
-     terr_gmted2010 = -9999
-     
-     
-     status = NF_INQ_VARID(ncid, 'Band1', topoid)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     WRITE(*,*) "read GMTED2010 terrain data"
-     status = NF_GET_VAR_INT2(ncid, topoid,terr_gmted2010)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-
-     WRITE(*,*) "MIN of terr_gmted2010",MINVAL(terr_gmted2010)
-     WRITE(*,*) "MAX of terr_gmted2010",MAXVAL(terr_gmted2010)
-     
-     status = NF_INQ_VARID(ncid, 'lon', lonid)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     WRITE(*,*) "read lon_gmted2010"
-     status = NF_GET_VAR_DOUBLE(ncid, lonid,lon_gmted2010)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     status = NF_INQ_VARID(ncid, 'lat', latid)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     WRITE(*,*) "read lat_gmted2010"
-     status = NF_GET_VAR_DOUBLE(ncid, latid,lat_gmted2010)
-     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-     
-     print *,"close file mea.nc"
-     status = nf_close (ncid)
-     if (status .ne. NF_NOERR) call handle_err(status)
-     
-     WRITE(*,*) 'done reading in GMTED2010 USGS data from netCDF file'
-  end if
 
   !
   !****************************************************
@@ -425,58 +344,6 @@ program convterr
   END DO
   
 
-  if (gmted2010) then
-     allocate ( weight_gmted2010(ncube,ncube,6),stat=alloc_error )
-     if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for weight'
-        stop
-     end if
-     weight_gmted2010    = 0.0
-
-     write(*,*) "MINVAL lon_gmted2010",MINVAL(lon_gmted2010)
-     write(*,*) "MAXVAL lon_gmted2010",MAXVAL(lon_gmted2010)
-     lon_gmted2010  = deg2rad*lon_gmted2010
-     lat_gmted2010  = deg2rad*lat_gmted2010
-     dlat_gmted2010 = pi/DBLE(jm_gmted2010)
-     allocate ( terr_cube_gmted2010(ncube,ncube,6),stat=alloc_error )
-     if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for terr_cube'
-        stop
-     end if
-     terr_cube_gmted2010 = 0.0D0
-
-     DO j=1,jm_gmted2010
-        DO i=1,im_gmted2010
-           call CubedSphereABPFromRLL(lon_gmted2010(i), lat_gmted2010(j), alpha, beta, ipanel)            
-           icube = CEILING((alpha + piq) / da)
-           jcube = CEILING((beta  + piq) / da)
-           IF (icube<1.OR.icube>ncube.OR.jcube<1.OR.jcube>ncube) THEN
-              WRITE(*,*) "fatal error in search algorithm"
-              WRITE(*,*) "icube or jcube out of range: ",icube,jcube
-              STOP
-           END IF
-           wt    = SIN( lat_gmted2010(j)+0.5D0*dlat_gmted2010) - SIN( lat_gmted2010(j)-0.5D0*dlat_gmted2010)
-           weight_gmted2010(icube,jcube,ipanel) = weight_gmted2010(icube,jcube,ipanel)+wt
-           !
-           terr_cube_gmted2010    (icube,jcube,ipanel)     = terr_cube_gmted2010    (icube,jcube,ipanel)+&
-                wt*DBLE(terr_gmted2010(i,j))
-           !
-           ! save "index-association" for variance computation
-           !
-           idx(i,j) = icube
-           idy(i,j) = jcube
-           idp(i,j) = ipanel
-        END DO
-     END DO
-     DO k=1,6
-        DO j=1,ncube          
-           DO i=1,ncube
-              terr_cube_gmted2010(i,j,k) = terr_cube_gmted2010(i,j,k)/weight_gmted2010(i,j,k)
-           ENDDO
-        END DO
-     END DO
-  end if
-
   dx = deg2rad*(lon_landm(2)-lon_landm(1))
   !
   ! lat_landm is not exactly equally spaced so a search is needed in the loop below
@@ -581,41 +448,47 @@ program convterr
   end if
   sgh30_cube = 0.0
 
-  if (gmted2010) then
-     DO j=1,jm_gmted2010
-        DO i=1,im_gmted2010
-           icube  = idx(i,j)
-           jcube  = idy(i,j)
-           ipanel = idp(i,j)
-           wt    = SIN( lat_gmted2010(j)+0.5D0*dlat_gmted2010) - SIN( lat_gmted2010(j)-0.5D0*dlat_gmted2010)
-           sgh30_cube(icube,jcube,ipanel) = sgh30_cube(icube,jcube,ipanel) + &
-                (wt*(terr_cube_gmted2010(icube,jcube,ipanel)-terr_gmted2010(i,j))**2)/weight_gmted2010(icube,jcube,ipanel) 
-        END DO
-     END DO
-  else
-     DO j=1,jm
-        DO i=1,im
-           icube  = idx(i,j)
-           jcube  = idy(i,j)
-           ipanel = idp(i,j)
-           wt    = SIN( lat(j)+0.5*dlat ) - SIN( lat(j)-0.5*dlat )
-           sgh30_cube(icube,jcube,ipanel) = sgh30_cube(icube,jcube,ipanel) + &
-                (wt*(terr_cube(icube,jcube,ipanel)-terr(i,j))**2)/weight(icube,jcube,ipanel)
-        END DO
-     END DO
-  end if
+  DO j=1,jm
+     DO i=1,im
+        icube  = idx(i,j)
+        jcube  = idy(i,j)
+        ipanel = idp(i,j)
+        wt    = SIN( lat(j)+0.5*dlat ) - SIN( lat(j)-0.5*dlat )
+        sgh30_cube(icube,jcube,ipanel) = sgh30_cube(icube,jcube,ipanel) + &
+             (wt*(terr_cube(icube,jcube,ipanel)-terr(i,j))**2)/weight(icube,jcube,ipanel)
+     end do
+  end do
   !        sgh30_cube=sgh30_cube/weight
   sgh30_cube=SQRT(sgh30_cube)
   WRITE(*,*) "min/max value of sgh30_cube:", MINVAL(sgh30_cube), MAXVAL(sgh30_cube)
+
+  !
+  ! diagnostics
+  !
+!  if (gmted2010) then
+!     DO k=1,6
+!        DO j=1,ncube
+!           DO i=1,ncube
+!              if (ABS(landfrac_cube(i,j,k))<1.0E-12.and.ABS(terr_cube_gmted2010(i,j,k))>1.0E-12) then
+!!                 write(*,*) "WARNING: landfrac=0 where elevation is non-zero"
+!!                 write(*,*) "landfrac_cube(i,j,k)=",landfrac_cube(i,j,k)
+!!                 write(*,*) "terr_cube_gmted2010(i,j,k)=",terr_cube_gmted2010(i,j,k)
+!!                 write(*,*) " "
+!                 terr_cube_gmted2010(i,j,k) = 1.0D0
+!              else 
+!                 terr_cube_gmted2010(i,j,k) = 0.0D0
+!              end if
+!           END DO
+!        END DO
+ !    END DO
+!  end if
+
+
   !
   ! write data to NetCDF file
   !
-  if (gmted2010) then
-     CALL wrt_cube(ncube,terr_cube_gmted2010,landfrac_cube,landm_coslat_cube,sgh30_cube,gmted2010)
-  else
-     CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,gmted2010)
-  end if
-  DEALLOCATE(weight,weight_gmted2010,terr,landfrac,idx,idy,idp,lat,lon,terr_cube_gmted2010)
+  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,.TRUE.)
+  DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
 
@@ -876,13 +749,13 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,g
   call handle_err(ncstat)
   ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'units',12, 'm')
   call handle_err(ncstat)
-  if (gmted2010) then
-     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',68,&
-          'variance of elevation from 30s GMTED2010 lat-lon to 3km cubed-sphere')
-  else
-     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',66,&
-          'variance of elevation from 30s gtopo30 lat-lon to 3km cubed-sphere')
-  end if
+!  if (gmted2010) then
+!     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',68,&
+!          'variance of elevation from 30s GMTED2010 lat-lon to 3km cubed-sphere')
+!  else
+!     ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'long_name',66,&
+!          'variance of elevation from 30s gtopo30 lat-lon to 3km cubed-sphere')
+!  end if
   
   WRITE(*,*) "end definition stage"
   ncstat = nf_enddef(nc_grid_id)
