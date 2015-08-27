@@ -1,7 +1,0 @@
-1. Modify MODIS mask data and merge with GMTED2010 elevation data 
-
-	python modis.py
-
-2. Shift data longitudinally (optional)
-
-   	 python shift.py

@@ -14,7 +14,8 @@ public remapridge2target
 
 
   REAL, allocatable  ::  MXVRX(:,:,:),MXDIS(:,:,:),MNSLP(:,:,:),ANGLX(:,:,:),ANISO(:,:,:),XS(:),YS(:), &
-  XSPK(:,:,:),YSPK(:,:,:),MXDS0(:,:,:),MXDS1(:,:,:),SFT0(:,:,:),SFT1(:,:,:), BSVAR(:,:,:),HWDTH(:,:,:),NPKS(:,:,:),NVLS(:,:,:),MXVRY(:,:,:), &
+  XSPK(:,:,:),YSPK(:,:,:),MXDS0(:,:,:),MXDS1(:,:,:),SFT0(:,:,:),SFT1(:,:,:), BSVAR(:,:,:),HWDTH(:,:,:),&
+  NPKS(:,:,:),NVLS(:,:,:),MXVRY(:,:,:), &
   PKHTS(:,:,:),VLDPS(:,:,:),RWPKS(:,:,:),RWVLS(:,:,:),ANGLL(:,:,:)
 
 

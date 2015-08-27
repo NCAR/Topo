@@ -5,6 +5,7 @@
 # sudo port install gdal +hdf4 +hdf5 +netcdf# 
 #
 #
+#echo $1
 set raw_data_dir = "rawdata"
 set work_dir     = "work"
 mkdir work

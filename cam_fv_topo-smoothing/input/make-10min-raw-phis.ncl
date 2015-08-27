@@ -1,7 +1,14 @@
   fname_out = "10min-phis-raw.nc"
 ;
   ftarget   = addfile ("10min_grid.nc", "r")
-  fsource     = addfile("../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc","r")
+;
+; GMTED2010
+;
+  fsource     = addfile("../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc","r")
+;
+; GTOPO30 data
+;
+;  fsource     = addfile("../../create_netCDF_from_rawdata/gtopo30/usgs-rawdata-gtopo30.nc","r")
 ;
   h = fsource->htopo
   l = fsource->landfract  

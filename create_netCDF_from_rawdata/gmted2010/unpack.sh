@@ -20,4 +20,4 @@ echo "/gdal_merge.py"
 /opt/local/bin/python2.7 /opt/local/share/doc/py27-gdal/examples/scripts/gdal_merge.py $all_tif_files -o $field.tif
 echo "dal_translate -of netCDF 1.tif 1.nc"
 gdal_translate -of netCDF $field.tif $field.nc
-#rm *.tif
+rm *.tif

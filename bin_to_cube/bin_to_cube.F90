@@ -651,7 +651,6 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   integer, dimension(2) :: nc_dims2_id ! netCDF dim id array for 2-d arrays
   integer :: grid_dims
   
-  character(18), parameter :: grid_file_out = 'topo-cube.nc'
   character(90), parameter :: grid_name = 'equi-angular gnomonic cubed sphere grid'
   
   character (len=32) :: fout       ! NetCDF output file
@@ -673,6 +672,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   real(r8), dimension(2,2) :: ang
   real(r8) :: tmp_lon,min_lon,max_lon!,sum,lflag_value
   logical :: lflag
+  character(100), parameter :: grid_file_out = 'gmted2010-modis-ncube3000.nc'
+
   
   grid_dims = 6*ncube*ncube
   
@@ -693,8 +694,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
     end do
   end do
   
-  WRITE(*,*) "Create NetCDF file for output"
-  ncstat = nf_create (grid_file_out, NF_64BIT_OFFSET,nc_grid_id)
+  WRITE(*,*) "Create NetCDF file for output: ", TRIM(grid_file_out)
+  ncstat = nf_create (TRIM(grid_file_out), NF_64BIT_OFFSET,nc_grid_id)
   call handle_err(ncstat)
   
   ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
