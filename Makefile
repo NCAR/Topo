@@ -7,7 +7,8 @@ sm:=cam_fv_topo-smoothing
 
 raw_data: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 cam_fv_smooth: definesurf
-
+bin_to_cube: bin_to_cube/gmted2010-modis-ncube3000.nc
+cube_to_target: cube_to_target/out.nc
 #
 # merge GMTED2010 elevation data and MODIS land fraction data: raw input data used in bin_to_cube
 #
@@ -35,7 +36,12 @@ cam_fv_topo-smoothing/input/10min-phis-raw.nc: create_netCDF_from_rawdata/gmted2
 definesurf: $(sm)/input/10min-phis-raw.nc
 	(cd $(sm); make; source run.sh)
 #
-# 
+# bin ~1km lat-lon data (GMTED2010, MODIS) to ~3km cubed-sphere grid
 #
 bin_to_cube/gmted2010-modis-ncube3000.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 	(cd bin_to_cube; make; ./bin_to_cube)
+#
+#
+#
+cube_to_target/out.nc:  bin_to_cube/gmted2010-modis-ncube3000.nc
+	(cd cube_to_target; make; ./cube_to_target)

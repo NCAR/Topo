@@ -16,10 +16,11 @@ Overview
 
 Make grid-descriptor files for regular lat-lon grids
 
-1. create_netCDF_from_USGS
---------------------------
+1. create_netCDF_from_rawdata
+-----------------------------
 
-Program to make netCDF version of the USGS gtopo30 data in binary format.
+Program to make netCDF version of the GMTED2010 elevation and MODIS land fraction data.
+(also support USGS gtopo30)
 This netCDF file is used as input for bin_to_cube.
 
 2. bin_to_cube:

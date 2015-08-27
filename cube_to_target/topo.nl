@@ -1,6 +1,6 @@
 &topoparams
-  grid_descriptor_fname           = '/project/amp/pel/topo-unstructured/data/se/grid-descriptor-files/ne30np4_091226_pentagons.nc'
-  intermediate_cubed_sphere_fname = '/project/amp/juliob/topo-data-trunk/intermediate-cube-data/USGS-topo-cube540.nc'
+  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/ne30np4_091226_pentagons.nc'
+  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010-modis-ncube3000.nc'
   output_fname                    = 'out.nc'
   lsmooth_terr = .false.
   lexternal_smooth_terr = .false.
