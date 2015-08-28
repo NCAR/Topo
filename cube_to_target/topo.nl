@@ -5,10 +5,10 @@
   lsmooth_terr = .false.
   lexternal_smooth_terr = .false.
   lzero_out_ocean_point_phis = .false.
-  lsmooth_on_cubed_sphere = .false.
+  lsmooth_on_cubed_sphere = .true.
   ncube_sph_smooth_coarse = 20  
   ncube_sph_smooth_fine = 1
-  lfind_ridges = .false.
+  lfind_ridges = .true.
   nwindow_halfwidth = 14
   nridge_subsample = 14
 /

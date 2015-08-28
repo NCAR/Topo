@@ -2,6 +2,7 @@ module ridge_ana
 
 use rotation 
 USE reconstruct
+use shr_kind_mod, only: r8 => shr_kind_r8
 
 IMPLICIT NONE
 private
@@ -13,15 +14,16 @@ public remapridge2target
 
 
 
-  REAL, allocatable  ::  MXVRX(:,:,:),MXDIS(:,:,:),MNSLP(:,:,:),ANGLX(:,:,:),ANISO(:,:,:),XS(:),YS(:), &
-  XSPK(:,:,:),YSPK(:,:,:),MXDS0(:,:,:),MXDS1(:,:,:),SFT0(:,:,:),SFT1(:,:,:), BSVAR(:,:,:),HWDTH(:,:,:),NPKS(:,:,:),NVLS(:,:,:),MXVRY(:,:,:), &
-  PKHTS(:,:,:),VLDPS(:,:,:),RWPKS(:,:,:),RWVLS(:,:,:),ANGLL(:,:,:)
-
+  REAL, allocatable  :: MXVRX(:,:,:),MXDIS(:,:,:),MNSLP(:,:,:),ANGLX(:,:,:),ANISO(:,:,:),XS(:),YS(:)
+  REAL, allocatable  :: XSPK(:,:,:),YSPK(:,:,:),MXDS0(:,:,:),MXDS1(:,:,:),SFT0(:,:,:),SFT1(:,:,:)
+  REAL, allocatable  :: PKHTS(:,:,:),VLDPS(:,:,:),RWPKS(:,:,:),RWVLS(:,:,:),ANGLL(:,:,:)
+  REAL, allocatable  :: BSVAR(:,:,:),HWDTH(:,:,:),NPKS(:,:,:),NVLS(:,:,:),MXVRY(:,:,:)
 
     REAL(KIND=dbl_kind), allocatable ::  ALP0(:,:),BET0(:,:),LAT0(:,:,:),LON0(:,:,:)
     REAL(KIND=dbl_kind), allocatable ::  ALP1(:,:),BET1(:,:),LAT1(:,:,:),LON1(:,:,:)
-    real(KIND=dbl_kind), allocatable, dimension(:) :: mxdis_target
 
+  real(r8), allocatable, dimension(:,:) :: anglx_target,aniso_target,mxdis_target,hwdth_target
+  real(r8), allocatable, dimension(:,:) :: mxvrx_target,mxvry_target,bsvar_target,wghts_target,ang22_target
 
     INTEGER (KIND=int_kind),allocatable :: UQRID(:,:,:) 
 
@@ -31,6 +33,8 @@ public remapridge2target
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
+    integer, parameter             ::   NANG=16
+    integer, parameter             ::   NSUBR = NANG
 
 contains
 
@@ -307,7 +311,6 @@ end subroutine find_ridges
   INTEGER,            intent(IN)  ::  N,NSB,NSW,IP
   REAL,               intent(IN)  ::  AA(N,N),X(N),Y(N),AARAW(N,N)
 
-  integer, parameter             ::   NANG=16
 
   real, allocatable:: SUBA(:,:), SUBARW(:,:),SUBX(:),SUBY(:),RT(:,:),RTX(:),XRT(:),RTXMN(:),RTXSLP(:) &
                      , PKLC(:), RTY(:),RTRW(:,:),RTRWX(:)
@@ -611,10 +614,10 @@ end subroutine ANISO_ANA
       
       integer :: alloc_error
 
-      integer :: i,ix,iy,ip,ii,counti,norx,nory
+      integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tmp
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC
 
 !----------------------------------------------------------------------------------------------------
 
@@ -627,23 +630,114 @@ end subroutine ANISO_ANA
        beta(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo-1)/2.) / ((ncube+2.*nhalo-1)/2.)
     END DO
       
+    write(*,*) "check weights INSIDE ridge ana " 
+    write(*,*) weights_lgr_index_all(781202)
+    write(*,*) weights_eul_index_all(781202,:)
 
-      allocate (mxdis_target(ntarget),stat=alloc_error )
-      if( alloc_error /= 0 ) then
-        print*,'Program could not allocate space for mxdis_target'
-        stop
-      end if
+
+    allocate (wghts_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_target'; stop; endif
+    wghts_target = 0.
+    allocate (mxdis_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxdis_target'; stop; endif
+    mxdis_target = 0.
+    allocate (anglx_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_target'; stop; endif
+    anglx_target = 0.
 
      norx=size(mxdis,1)
      nory=size(mxdis,2)
 
      tmpx6 = mapridge2cube ( mxdis , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
-     tmp = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+       !mxdis_target = remap_field(tmp,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
+       !weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
 
 
-       mxdis_target = remap_field(tmp,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
-       weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
+
+
+
+    i_last = -9999
+!++jtb 
+! 
+!      In the following loop "count" is the index of a piece of 
+!      the "exchange grid" - created by cutting the cubed-sphere topo
+!      and target grid into each other.  
+    do counti=1,jall
+     
+      i    = weights_lgr_index_all(counti)
+      !if( itracker_target(i) == 0 ) then ! If true this is first time target cell i has been visited
+      !   itracker_target(i)=1
+      !end if
+
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+      !
+      ! convert to 1D indexing of cubed-sphere
+      !
+      ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+      wt = weights_all(counti,1)
+
+      isubr = INT( anglxC(ii) * nsubr/180. ) + 1
+
+      if ( (isubr >= 1).and.(isubr <= nsubr) ) then
+      wghts_target( i , isubr ) = wghts_target( i , isubr ) + wt
+      !!hwdth_target( i , isubr ) = hwdth_target( i , isubr ) + wt*hwdth(ii)
+      !!mxvrx_target( i , isubr ) = mxvrx_target( i , isubr ) + wt*mxvrx(ii)
+      !!mxvry_target( i , isubr ) = mxvry_target( i , isubr ) + wt*mxvry(ii)
+      !!bsvar_target( i , isubr ) = bsvar_target( i , isubr ) + wt*bsvar(ii)
+      mxdis_target( i , isubr ) = mxdis_target( i , isubr ) + wt*mxdisC(ii)
+      !!aniso_target( i , isubr ) = aniso_target( i , isubr ) + wt*aniso(ii)
+      anglx_target( i , isubr ) = anglx_target( i , isubr ) + wt*anglxC(ii)
+      endif
+
+      i_last = i
+    end do       
+
+
+
+
+
+    where( wghts_target > 1.e-15 )
+        !aniso_target = aniso_target / wghts_target
+        anglx_target = anglx_target / wghts_target
+        mxdis_target = mxdis_target / wghts_target
+        !hwdth_target = hwdth_target / wghts_target
+        !mxvrx_target = mxvrx_target / wghts_target
+        !mxvry_target = mxvry_target / wghts_target
+        !bsvar_target = bsvar_target / wghts_target
+     elsewhere
+        !aniso_target = 0.
+        anglx_target = -9000.
+        mxdis_target = -999.
+        !hwdth_target = 0.
+        !mxvrx_target = 0.
+        !mxvry_target = 0.
+        !bsvar_target = 0.
+     end where
+
+
+
+
+
+      !real(r8), intent(in) :: weights_all(jall,nreconstruction)
+      !integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+write(911) jall,nreconstruction
+write(911)   weights_eul_index_all, weights_lgr_index_all
+write(911)  weights_all
+
+write(911) ncube
+write(911) mxdisC,anglxC
+
+write(911) ntarget,nsubr
+write(911) mxdis_target
+write(911) anglx_target
+write(911) wghts_target
 
 
       write(*,*) " GOT OUT OF remapridge2target "

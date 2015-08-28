@@ -436,7 +436,14 @@ program convterr
 
 
   if((lsmooth_on_cubed_sphere).and.(lfind_ridges) ) then
-     call remapridge2target(area_target,weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
+
+    write(*,*) "check weights " 
+    write(*,*) weights_lgr_index_all(781202)
+    write(*,*) weights_eul_index_all(781202,:)
+
+
+     call remapridge2target(area_target,weights_eul_index_all(1:jall,:), & 
+         weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
          nreconstruction,ntarget,nhalo,nsb)
   endif
 
