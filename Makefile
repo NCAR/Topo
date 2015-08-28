@@ -7,7 +7,8 @@ sm:=cam_fv_topo-smoothing
 
 raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 raw_netCDF_gtopo30: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
-cam_fv_smooth: definesurf
+cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010-modis-0.9x1.25.nc
+cam_fv_smooth_gtopo30:  cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
 bin_to_cube: bin_to_cube/gmted2010-modis-ncube3000.nc
 cube_to_target: cube_to_target/out.nc
 #
@@ -34,13 +35,18 @@ create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc:
 #
 # calculate data for CAM-FV smoothing
 #
-cam_fv_topo-smoothing/input/10min-phis-raw.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
+cam_fv_topo-smoothing/input/10min-gmted2010-modis-phis-raw.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=True')
+cam_fv_topo-smoothing/input/10min-gtopo30-phis-raw.nc: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
+	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=False')
 #
 # perform CAM-FV smoothing
 #
-definesurf: $(sm)/input/10min-phis-raw.nc
-	(cd $(sm); make; ./definesurf -t input/10min-phis-raw.nc  -g input/outgrid/fv_0.9x1.25.nc -l input/landm_coslat.nc -remap  fv-gmted2010-0.9x1.25.nc)
+cam_fv_topo-smoothing/fv-gmted2010-modis-0.9x1.25.nc: $(sm)/input/10min-gmted2010-modis-phis-raw.nc
+	(cd $(sm); make; ./definesurf -t input/10min-gmted2010-modis-phis-raw.nc  -g input/outgrid/fv_0.9x1.25.nc -l input/landm_coslat.nc -remap  fv-gmted2010-modis-0.9x1.25.nc)
+
+cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc: $(sm)/input/10min-gtopo30-phis-raw.nc
+	(cd $(sm); make; ./definesurf -t input/10min-gtopo30-phis-raw.nc  -g input/outgrid/fv_0.9x1.25.nc -l input/landm_coslat.nc -remap  fv-gtopo30-0.9x1.25.nc)
 #
 # bin ~1km lat-lon data (GMTED2010, MODIS) to ~3km cubed-sphere grid
 #
