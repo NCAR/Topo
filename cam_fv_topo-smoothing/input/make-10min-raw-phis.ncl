@@ -4,7 +4,15 @@
 ;
 ; GMTED2010
 ;
-  fsource     = addfile("../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc","r")
+if (gmted2010_modis)
+  str = "../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc"
+  print("Using GMTED2010/MODIS raw data")
+  fsource     = addfile(str,"r")
+else
+  print("Using GTOP030 raw data")
+  str="../../create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc"
+  fsource     = addfile(str,"r")
+end if
 ;
 ; GTOPO30 data
 ;
@@ -38,4 +46,6 @@
   fout->lat=lat
   fout->htopo=htopo
   fout->ftopo=ftopo
+
+  fout@history = "created from "+str
 

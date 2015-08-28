@@ -2,7 +2,7 @@
 # with PGI compiler "-byteswapio" option is needed to read in the binary USGS files correctly
 #
 EXEDIR = .
-EXENAME = create_netCDF
+EXENAME = create_netCDF_of_gtopo30_raw_data
 RM = rm
 
 .SUFFIXES:
