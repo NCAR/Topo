@@ -1,18 +1,25 @@
 from netCDF4 import Dataset
 import numpy
-from mpl_toolkits.basemap import Basemap, addcyclic, shiftgrid
+#from mpl_toolkits.basemap import Basemap, addcyclic, shiftgrid
+import sys
+#
 #user settings
+#
+debug=False
 print ' '
 print 'Merge GMTED2010 elevation data with MODIS derived land fraction'
 print '==============================================================='
 print ' '
 #input files
-modis     = Dataset("landwater.nc")
-gmted2010 = Dataset("../gmted2010/mea.nc")
+#modis     = Dataset("modis/landwater.nc")
+#gmted2010 = Dataset("gmted2010/mea.nc")
+modis=Dataset(sys.argv[1])
+gmted2010=Dataset(sys.argv[2])
 if debug:
-    gtopo30   = Dataset("../usgs-rawdata-gtopo30.nc")
+    gtopo30   = Dataset("gtopo30/src/gtopo30-rawdata.nc")
 #output file
-dsout = Dataset("../gmted2010_elevation_and_landfrac_modis.nc", "w", format="NETCDF4")
+#dsout = Dataset("gmted2010_elevation_and_landfrac_modis.nc", "w", format="NETCDF4")
+dsout = Dataset(sys.argv[3], "w", format="NETCDF4")
 
 #Copy dimensions
 print 'Copy dimensions'
@@ -20,6 +27,7 @@ for dname, the_dim in gmted2010.dimensions.iteritems():
     if dname=='lon': nlon=len(the_dim)
     if dname=='lat': nlat=len(the_dim)
     dsout.createDimension(dname, len(the_dim) if not the_dim.isunlimited() else None)
+dx=360.0/nlon
 print 'Write dimensions (lat/lon)'
 varin = gmted2010.variables['lat']
 outVar = dsout.createVariable('lat', varin.datatype, varin.dimensions)
@@ -90,6 +98,4 @@ if debug:
  
   h_diff = dsout.createVariable('h_DIFF','int',('lat','lon',))
   h_diff[:] = diff
-
-
 dsout.close()
