@@ -75,10 +75,10 @@ program convterr
 
   INTEGER :: UNIT
 
-  character(len=1024) :: raw_latlon_data_file
+  character(len=1024) :: raw_latlon_data_file,output_file
   
   namelist /binparams/ &
-       raw_latlon_data_file
+       raw_latlon_data_file,output_file
   
   UNIT=221
   OPEN( UNIT=UNIT, FILE="bin_to_cube.nl" ) !, NML =  cntrls )
@@ -486,7 +486,7 @@ program convterr
   !
   ! write data to NetCDF file
   !
-  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
+  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file,output_file)
   DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
@@ -611,7 +611,7 @@ END SUBROUTINE CubedSphereABPFromRLL
 !
 ! write netCDF file
 ! 
-subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
+subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file,output_file)
   use shr_kind_mod, only: r8 => shr_kind_r8
   implicit none
 #     include         <netcdf.inc>
@@ -621,7 +621,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   !
   integer, intent(in) :: ncube
   real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,sgh30_cube,landm_coslat_cube
-  character(len=1024) :: raw_latlon_data_file, git_http, tmp_string
+  character(len=1024) :: raw_latlon_data_file, git_http, tmp_string, output_file
   !
   ! Local variables
   !
@@ -672,7 +672,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   real(r8), dimension(2,2) :: ang
   real(r8) :: tmp_lon,min_lon,max_lon!,sum,lflag_value
   logical :: lflag
-  character(100), parameter :: grid_file_out = 'gmted2010-modis-ncube3000.nc'
+!  character(100), parameter :: grid_file_out = 'gmted2010-modis-ncube3000.nc'
 
   
   grid_dims = 6*ncube*ncube
@@ -694,8 +694,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
     end do
   end do
   
-  WRITE(*,*) "Create NetCDF file for output: ", TRIM(grid_file_out)
-  ncstat = nf_create (TRIM(grid_file_out), NF_64BIT_OFFSET,nc_grid_id)
+  WRITE(*,*) "Create NetCDF file for output: ", TRIM(output_file)
+  ncstat = nf_create (TRIM(output_file), NF_64BIT_OFFSET,nc_grid_id)
   call handle_err(ncstat)
   
   ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
