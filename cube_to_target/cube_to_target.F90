@@ -450,8 +450,9 @@ program convterr
   DO i=1,ntarget
     IF (landfrac_target(i)<.001_r8)  landfrac_target(i) = 0.0D0
     IF (sgh_target(i)     <    0.5)  sgh_target(i)      = 0.0D0
-    IF (sgh30_target(i)<SQRT(0.5D0)) sgh30_target(i)    = 0.0D0
+    IF (sgh30_target(i)<       0.5D0) sgh30_target(i)    = 0.0D0
   END DO
+  sgh30_target = SQRT(sgh30_target)
   sgh_target = SQRT(sgh_target)
 
   WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)

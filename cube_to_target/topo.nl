@@ -1,8 +1,8 @@
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
-  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010-modis-ncube3000.nc'
-  output_fname                    = 'gmted2010-fv-0.9x1.25.nc'
-  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/fv-gmted2010-modis-0.9x1.25.nc'
+  intermediate_cubed_sphere_fname = '../bin_to_cube/gtopo30-ncube3000.nc'
+  output_fname                    = 'gtopo30-fv-0.9x1.25.nc'
+  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
   lzero_out_ocean_point_phis = .false.

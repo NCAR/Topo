@@ -458,8 +458,8 @@ program convterr
      end do
   end do
   !        sgh30_cube=sgh30_cube/weight
-  sgh30_cube=SQRT(sgh30_cube)
-  WRITE(*,*) "min/max value of sgh30_cube:", MINVAL(sgh30_cube), MAXVAL(sgh30_cube)
+  !sgh30_cube=SQRT(sgh30_cube)
+  WRITE(*,*) "min/max value of sgh30_cube:", MINVAL(SQRT(sgh30_cube)), MAXVAL(SQRT(sgh30_cube))
 
   !
   ! diagnostics
