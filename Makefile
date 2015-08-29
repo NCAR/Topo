@@ -27,7 +27,6 @@ cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.2
 cam_fv_smooth_gtopo30:  cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
 bin_to_cube_gmted2010: bin_to_cube/gmted2010_modis-ncube3000.nc
 bin_to_cube_gtopo30: bin_to_cube/gtopo30-ncube3000.nc
-cube_to_target: cube_to_target/out.nc
 #
 # merge GMTED2010 elevation data and MODIS land fraction data: raw input data used in bin_to_cube
 #
