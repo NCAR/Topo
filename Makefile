@@ -23,7 +23,7 @@ init_gtopo30: raw_netCDF_gtopo30 cam_fv_smooth_gtopo30 bin_to_cube_gtopo30
 
 raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 raw_netCDF_gtopo30: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
-cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010-modis-0.9x1.25.nc
+cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
 cam_fv_smooth_gtopo30:  cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
 bin_to_cube_gmted2010: bin_to_cube/gmted2010_modis-ncube3000.nc
 bin_to_cube_gtopo30: bin_to_cube/gtopo30-ncube3000.nc
