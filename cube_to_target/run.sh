@@ -1,6 +1,6 @@
 #!/bin/csh
-echo "arguments are:",$argv[1],$argv[2]
-if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis) then
+echo "arguments are:",$argv[1],$argv[2],$argv[3]
+if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == smooth_cam) then
   cat > topo.nl <<EOF
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
@@ -21,7 +21,7 @@ if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis) then
 EOF
   ./cube_to_target >& output/fv0.9x1.25-gmted2010_modis-smooth_cam.out &
   tail -f output/fv0.9x1.25-gmted2010_modis-smooth_cam.out
-else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30) then
+else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30 && $argv[3] == smooth_cam) then
   echo "Grid is ",$argv[1]
   echo "Raw ~1km data is ",$argv[2]
   echo "Using externally smoothed PHIS; smoothed with cam_fv_topo-smoothing program"

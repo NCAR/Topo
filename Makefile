@@ -1,6 +1,8 @@
 #
 # user settings
 #
+# fv0.9x1.25-gmted2010_modis-smooth_cam.nc
+#
 model=fv0.9x1.25
 raw_data=gmted2010_modis
 #raw_data=gtopo30
@@ -74,5 +76,11 @@ bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gmted2010_elevation
 #
 #
 cube_to_target/fv0.9x1.25-gmted2010_modis-smooth_cam.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
-	echo cube_to_target/$(model)-$(raw_data).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data))
+	echo asdfsadf
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	echo sadfsadfsadf
+	echo ./run.sh $(model) $(raw_data) $(smoothing)
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+cube_to_target/fv0.9x1.25-gtopo30-smooth_cam.nc: bin_to_cube/gtopo30-ncube3000.nc cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
