@@ -13,7 +13,7 @@ cr:=create_netCDF_from_rawdata
 sm:=cam_fv_topo-smoothing
 
 init: init_$(raw_data) 
-cube_to_target: bin_to_cube/gmted2010-modis-ncube3000.nc cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+cube_to_target: bin_to_cube/gmted2010_modis-ncube3000.nc cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
 
 #
 # generate intermediate cubed-sphere data from raw data

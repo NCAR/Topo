@@ -4,7 +4,7 @@ if ($argv[1] == gmted2010) then
   cat > bin_to_cube.nl <<EOF
 &binparams
   raw_latlon_data_file = '../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc'
-  output_file = 'gmted2010-modis-ncube3000.nc'
+  output_file = 'gmted2010_modis-ncube3000.nc'
 /
 
 EOF
