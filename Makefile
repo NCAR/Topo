@@ -4,8 +4,8 @@
 # fv0.9x1.25-gmted2010_modis-smooth_cam.nc
 #
 model=fv0.9x1.25
-raw_data=gmted2010_modis
-#raw_data=gtopo30
+#raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=smooth_cam
 #
 # DO NOT EDIT BELOW THIS LINE
