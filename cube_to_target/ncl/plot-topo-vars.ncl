@@ -12,6 +12,7 @@ begin
 ; date  : July 2014
 ;
 ;******************************************************
+  print(title_str)
 
   f     = addfile(dataFile,"r")
 
@@ -64,10 +65,10 @@ begin
   res@gsnDraw              = False        ; do not draw picture
   res@gsnFrame             = False        ; do not advance frame
 
-  area_string = ""
-  setRegionAttributes(res,area,area_string); for regional plot
+;  area_string = ""
+;  setRegionAttributes(res,area,area_string); for regional plot
 
-  wks = gsn_open_wks(format,outputFile+"_"+area_string)               ; open workstation
+  wks = gsn_open_wks(format,outputFile)               ; open workstation
 ;  gsn_define_colormap(wks,"BlAqGrYeOrReVi200")   ; choose colormap
   gsn_define_colormap(wks,"ncl_default")
 
