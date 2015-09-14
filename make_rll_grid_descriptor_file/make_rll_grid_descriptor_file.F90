@@ -16,9 +16,9 @@
 !        logical, parameter :: lpole=.FALSE.   !10 min
 
 
-!        integer, parameter :: im = 288       !0.9x1.25 CAM-FV
-!        integer, parameter :: jm = 192       !0.9x1.25 CAM-FV 
-!        logical, parameter :: lpole=.TRUE.   !CAM-FV setting is lpole=.TRUE.
+        integer, parameter :: im = 288       !0.9x1.25 CAM-FV
+        integer, parameter :: jm = 192       !0.9x1.25 CAM-FV 
+        logical, parameter :: lpole=.TRUE.   !CAM-FV setting is lpole=.TRUE.
 
 !        integer, parameter :: im = 360       !1x1 CAM-FV
 !        integer, parameter :: jm = 181       !1x1 CAM-FV 
@@ -28,9 +28,9 @@
 !        integer, parameter :: jm = 64       
 !        logical, parameter :: lpole=.TRUE.   
 
-        integer, parameter :: im = 144       !CAM-FV 2 degree
-        integer, parameter :: jm = 96        !CAM-FV 2 degree
-        logical, parameter :: lpole=.TRUE.   !CAM-FV 2 degree
+!        integer, parameter :: im = 144       !CAM-FV 2 degree
+!        integer, parameter :: jm = 96        !CAM-FV 2 degree
+!        logical, parameter :: lpole=.TRUE.   !CAM-FV 2 degree
 
 
 !        integer, parameter :: im = 1152       !0.23x0.31 CAM-FV

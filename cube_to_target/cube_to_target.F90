@@ -289,10 +289,10 @@ program convterr
   write(*,*) "MIN/MAX:", MINVAL(landm_coslat_target), MAXVAL(landm_coslat_target)
 
   write(*,*) "Remapping SGH30"
-  sgh30_target = remap_field(sgh30,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
+  sgh30_target = remap_field(var30,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
        weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
-  write(*,*) "MIN/MAX:", MINVAL(sgh30_target), MAXVAL(sgh30_target)
-  deallocate(sgh30)
+  write(*,*) "MIN/MAX:", MINVAL((sgh30_target)), MAXVAL(sqrt(sgh30_target))
+  deallocate(var30)
   deallocate(landm_coslat)
 
   !deallocate(terr_smooth_internal)
@@ -463,8 +463,9 @@ program convterr
   DO i=1,ntarget
     IF (landfrac_target(i)<.001_r8)  landfrac_target(i) = 0.0D0
     IF (sgh_target(i)     <    0.5)  sgh_target(i)      = 0.0D0
-    IF (sgh30_target(i)<SQRT(0.5D0)) sgh30_target(i)    = 0.0D0
+    IF (sgh30_target(i)<       0.5D0) sgh30_target(i)    = 0.0D0
   END DO
+  sgh30_target = SQRT(sgh30_target)
   sgh_target = SQRT(sgh_target)
 
   WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)

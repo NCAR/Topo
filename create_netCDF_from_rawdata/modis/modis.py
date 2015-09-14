@@ -12,7 +12,7 @@ gmted2010 = Dataset("../gmted2010/mea.nc")
 if debug:
     gtopo30   = Dataset("../usgs-rawdata-gtopo30.nc")
 #output file
-dsout = Dataset("gmted2010_elevation_and_landfrac_modis.nc", "w", format="NETCDF4")
+dsout = Dataset("../gmted2010_elevation_and_landfrac_modis.nc", "w", format="NETCDF4")
 
 #Copy dimensions
 print 'Copy dimensions'

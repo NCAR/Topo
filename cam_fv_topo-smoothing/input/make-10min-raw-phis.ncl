@@ -1,7 +1,24 @@
-  fname_out = "10min-phis-raw.nc"
+
 ;
   ftarget   = addfile ("10min_grid.nc", "r")
-  fsource     = addfile("../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc","r")
+;
+; GMTED2010
+;
+if (gmted2010_modis)
+  str = "../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc"
+  print("Using GMTED2010/MODIS raw data")
+  fsource     = addfile(str,"r")
+  fname_out = "10min-gmted2010-modis-phis-raw.nc"
+else
+  print("Using GTOP030 raw data")
+  str="../../create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc"
+  fsource     = addfile(str,"r")
+  fname_out = "10min-gtopo30-phis-raw.nc"
+end if
+;
+; GTOPO30 data
+;
+;  fsource     = addfile("../../create_netCDF_from_rawdata/gtopo30/usgs-rawdata-gtopo30.nc","r")
 ;
   h = fsource->htopo
   l = fsource->landfract  
@@ -31,4 +48,6 @@
   fout->lat=lat
   fout->htopo=htopo
   fout->ftopo=ftopo
+
+  fout@history = "created from "+str
 

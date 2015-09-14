@@ -49,7 +49,7 @@ program convterr
   
   real(r8) :: alpha, beta,da,wt,dlat
   integer  :: ipanel,icube,jcube
-  real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,landfrac_cube,sgh30_cube
+  real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,landfrac_cube,var30_cube
   real(r8), allocatable, dimension(:,:,:)   :: landm_coslat_cube
   integer , allocatable, dimension(:,:)     :: idx,idy,idp
   !
@@ -75,10 +75,10 @@ program convterr
 
   INTEGER :: UNIT
 
-  character(len=1024) :: raw_latlon_data_file
+  character(len=1024) :: raw_latlon_data_file,output_file
   
   namelist /binparams/ &
-       raw_latlon_data_file
+       raw_latlon_data_file,output_file
   
   UNIT=221
   OPEN( UNIT=UNIT, FILE="bin_to_cube.nl" ) !, NML =  cntrls )
@@ -440,12 +440,12 @@ program convterr
   !
   !*********************************************************
   !
-  allocate ( sgh30_cube(ncube,ncube,6),stat=alloc_error )
+  allocate ( var30_cube(ncube,ncube,6),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for sgh30_cube'
+    print*,'Program could not allocate space for var30_cube'
     stop
   end if
-  sgh30_cube = 0.0
+  var30_cube = 0.0
 
   DO j=1,jm
      DO i=1,im
@@ -453,13 +453,13 @@ program convterr
         jcube  = idy(i,j)
         ipanel = idp(i,j)
         wt    = SIN( lat(j)+0.5*dlat ) - SIN( lat(j)-0.5*dlat )
-        sgh30_cube(icube,jcube,ipanel) = sgh30_cube(icube,jcube,ipanel) + &
+        var30_cube(icube,jcube,ipanel) = var30_cube(icube,jcube,ipanel) + &
              (wt*(terr_cube(icube,jcube,ipanel)-terr(i,j))**2)/weight(icube,jcube,ipanel)
      end do
   end do
-  !        sgh30_cube=sgh30_cube/weight
-  sgh30_cube=SQRT(sgh30_cube)
-  WRITE(*,*) "min/max value of sgh30_cube:", MINVAL(sgh30_cube), MAXVAL(sgh30_cube)
+  !        var30_cube=var30_cube/weight
+  !var30_cube=SQRT(var30_cube)
+  WRITE(*,*) "min/max value of var30_cube:", MINVAL(SQRT(var30_cube)), MAXVAL(SQRT(var30_cube))
 
   !
   ! diagnostics
@@ -486,7 +486,7 @@ program convterr
   !
   ! write data to NetCDF file
   !
-  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
+  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
   DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
@@ -611,7 +611,7 @@ END SUBROUTINE CubedSphereABPFromRLL
 !
 ! write netCDF file
 ! 
-subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,raw_latlon_data_file)
+subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
   use shr_kind_mod, only: r8 => shr_kind_r8
   implicit none
 #     include         <netcdf.inc>
@@ -620,8 +620,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   ! Dummy arguments
   !
   integer, intent(in) :: ncube
-  real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,sgh30_cube,landm_coslat_cube
-  character(len=1024) :: raw_latlon_data_file, git_http, tmp_string
+  real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,var30_cube,landm_coslat_cube
+  character(len=1024) :: raw_latlon_data_file, git_http, tmp_string, output_file
   !
   ! Local variables
   !
@@ -651,7 +651,6 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   integer, dimension(2) :: nc_dims2_id ! netCDF dim id array for 2-d arrays
   integer :: grid_dims
   
-  character(18), parameter :: grid_file_out = 'topo-cube.nc'
   character(90), parameter :: grid_name = 'equi-angular gnomonic cubed sphere grid'
   
   character (len=32) :: fout       ! NetCDF output file
@@ -673,6 +672,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   real(r8), dimension(2,2) :: ang
   real(r8) :: tmp_lon,min_lon,max_lon!,sum,lflag_value
   logical :: lflag
+!  character(100), parameter :: grid_file_out = 'gmted2010-modis-ncube3000.nc'
+
   
   grid_dims = 6*ncube*ncube
   
@@ -693,8 +694,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
     end do
   end do
   
-  WRITE(*,*) "Create NetCDF file for output"
-  ncstat = nf_create (grid_file_out, NF_64BIT_OFFSET,nc_grid_id)
+  WRITE(*,*) "Create NetCDF file for output: ", TRIM(output_file)
+  ncstat = nf_create (TRIM(output_file), NF_64BIT_OFFSET,nc_grid_id)
   call handle_err(ncstat)
   
   ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
@@ -764,8 +765,8 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   ncstat = nf_put_att_text (nc_grid_id, nc_landm_coslat_id, 'long_name',35,'smoothed land ocean transition mask')
   call handle_err(ncstat)
   
-  WRITE(*,*) "define sgh30_cube array"
-  ncstat = nf_def_var (nc_grid_id, 'SGH30', NF_DOUBLE,1, nc_gridsize_id, nc_var_id)
+  WRITE(*,*) "define var30_cube array"
+  ncstat = nf_def_var (nc_grid_id, 'var30', NF_DOUBLE,1, nc_gridsize_id, nc_var_id)
   call handle_err(ncstat)
   ncstat = nf_put_att_text (nc_grid_id, nc_var_id, 'units',12, 'm')
   call handle_err(ncstat)
@@ -804,7 +805,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,sgh30_cube,r
   ncstat = nf_put_var_double(nc_grid_id, nc_landm_coslat_id, landm_coslat_cube)
   call handle_err(ncstat)
   
-  ncstat = nf_put_var_double(nc_grid_id, nc_var_id, sgh30_cube)
+  ncstat = nf_put_var_double(nc_grid_id, nc_var_id, var30_cube)
   call handle_err(ncstat)
 
   WRITE(*,*) "Close output file"

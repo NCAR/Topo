@@ -1,15 +1,13 @@
 from netCDF4 import Dataset
 import numpy
+import sys
 from mpl_toolkits.basemap import Basemap, addcyclic, shiftgrid
 #
+#input file
 #
-#
-#
-#input files
-#
-modis     = Dataset("gmted2010_elevation_and_landfrac_modis.nc", "r", format="NETCDF4")
+modis     = Dataset(sys.argv[1], "r", format="NETCDF4")
 #output file
-dsout = Dataset("gmted2010_elevation_and_landfrac_modis_sft.nc", "w", format="NETCDF4")
+dsout = Dataset(sys.argv[2], "w", format="NETCDF4")
 
 #Copy dimensions
 for dname, the_dim in modis.dimensions.iteritems():

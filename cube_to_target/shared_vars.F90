@@ -3,7 +3,7 @@ MODULE shared_vars
 
   real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat
   real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area
-  real(r8),  allocatable, dimension(:) :: landm_coslat, landfrac, terr, sgh30
+  real(r8),  allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30
 
   real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
   real(r8), allocatable, dimension(:) :: landm_coslat_target, area_target
@@ -241,21 +241,21 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   WRITE(*,*) "min/max of terr",MINVAL(terr),MAXVAL(terr)
 
   !
-  ! read SGH30 - SQRT(variance) of 1km topography in each
+  ! read var30 (variance) of 1km topography in each
   ! cubed sphere cell (in meters) 
   !
-  allocate ( sgh30(n),stat=alloc_error )
+  allocate ( var30(n),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for sgh30'
+    print*,'Program could not allocate space for var30'
     stop
   end if
   
-  status = NF_INQ_VARID(ncid, 'SGH30', landid)
+  status = NF_INQ_VARID(ncid, 'var30', landid)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   
-  status = NF_GET_VAR_DOUBLE(ncid, landid,sgh30)
+  status = NF_GET_VAR_DOUBLE(ncid, landid,var30)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  WRITE(*,*) "min/max of sgh30",MINVAL(sgh30),MAXVAL(sgh30)
+  WRITE(*,*) "min/max of sgh30",MINVAL(SQRT(var30)),MAXVAL(SQRT(var30))
   print *,"close file"
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)
