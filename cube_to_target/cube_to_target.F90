@@ -116,6 +116,7 @@ program convterr
   !                             NSB apart
   integer :: nridge_subsample = -1
   !
+  logical :: lridgetiles = .FALSE.
   !
   !
   ! For internal smoothing (experimental at this point)
@@ -136,7 +137,8 @@ program convterr
   
   namelist /topoparams/ &
        grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname, externally_smoothed_topo_file,&
-       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis,lsmooth_on_cubed_sphere,lfind_ridges, &
+       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis, & 
+       lsmooth_on_cubed_sphere,lfind_ridges,lridgetiles, &
        !
        ! variables for interal smoothing of topography
        !
@@ -437,14 +439,18 @@ program convterr
 
   if((lsmooth_on_cubed_sphere).and.(lfind_ridges) ) then
 
-    write(*,*) "check weights " 
-    write(*,*) weights_lgr_index_all(781202)
-    write(*,*) weights_eul_index_all(781202,:)
-
-
-     call remapridge2target(area_target,weights_eul_index_all(1:jall,:), & 
+     call remapridge2target(area_target,target_center_lon,target_center_lat, & 
+         weights_eul_index_all(1:jall,:), & 
          weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
          nreconstruction,ntarget,nhalo,nsb)
+
+        if (lridgetiles) then 
+           call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
+                weights_eul_index_all(1:jall,:), & 
+                weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+                nreconstruction,ntarget,nhalo,nsb)
+        endif
+
   endif
 
   write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)

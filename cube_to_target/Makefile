@@ -6,8 +6,8 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 #FC = nagfor
-FC = gfortran
-#FC = pgf95
+#FC = gfortran
+FC = pgf95
 
 #DEBUG = TRUE
 DEBUG = FALSE

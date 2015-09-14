@@ -9,6 +9,7 @@
   ncube_sph_smooth_coarse = 20  
   ncube_sph_smooth_fine = 1
   lfind_ridges = .true.
+  lridgetiles  = .true.
   nwindow_halfwidth = 14
   nridge_subsample = 14
 /
@@ -17,4 +18,6 @@
 #
 # ./definesurf -t input/make_raw_phis_from_usgs/10min-phis-raw.nc -g input/initial_data.cam.fv.0181x0360L30.410.bw.nc -l input/landm_coslat.nc -remap output/smooth-phis.nc
 #
-
+#
+# Ridge analysis takes place on squares of 2*nwindow_halfwidth+1
+# Centers of squares are placed nridge_subsample apart

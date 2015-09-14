@@ -10,31 +10,45 @@ private
 
 public find_ridges
 public remapridge2target
+public remapridge2tiles
 
-
-
+public anglx_target,aniso_target,mxdis_target,hwdth_target
+public mxvrx_target,mxvry_target,bsvar_target,wghts_target 
+public ang22_target
 
   REAL, allocatable  :: MXVRX(:,:,:),MXDIS(:,:,:),MNSLP(:,:,:),ANGLX(:,:,:),ANISO(:,:,:),XS(:),YS(:)
   REAL, allocatable  :: XSPK(:,:,:),YSPK(:,:,:),MXDS0(:,:,:),MXDS1(:,:,:),SFT0(:,:,:),SFT1(:,:,:)
   REAL, allocatable  :: PKHTS(:,:,:),VLDPS(:,:,:),RWPKS(:,:,:),RWVLS(:,:,:),ANGLL(:,:,:)
   REAL, allocatable  :: BSVAR(:,:,:),HWDTH(:,:,:),NPKS(:,:,:),NVLS(:,:,:),MXVRY(:,:,:)
+  REAL, allocatable  :: RISEQ(:,:,:),FALLQ(:,:,:)
 
     REAL(KIND=dbl_kind), allocatable ::  ALP0(:,:),BET0(:,:),LAT0(:,:,:),LON0(:,:,:)
     REAL(KIND=dbl_kind), allocatable ::  ALP1(:,:),BET1(:,:),LAT1(:,:,:),LON1(:,:,:)
 
   real(r8), allocatable, dimension(:,:) :: anglx_target,aniso_target,mxdis_target,hwdth_target
-  real(r8), allocatable, dimension(:,:) :: mxvrx_target,mxvry_target,bsvar_target,wghts_target,ang22_target
+  real(r8), allocatable, dimension(:,:) :: mxvrx_target,mxvry_target,bsvar_target,wghts_target 
+  real(r8), allocatable, dimension(:,:) :: ang22_target
 
     INTEGER (KIND=int_kind),allocatable :: UQRID(:,:,:) 
+
+  real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
+  real(r8), allocatable, dimension(:,:) :: mxvrx_tiles,mxvry_tiles,bsvar_tiles,wghts_tiles 
+  real(r8), allocatable, dimension(:,:) :: ang22_tiles,agnpk_tiles,bgnpk_tiles
+  integer,  allocatable, dimension(:,:) :: uqrid_tiles
+  integer,  allocatable, dimension(:)   :: numbr_tiles,error_tiles
 
 
 
     REAL, allocatable ::  wt1p(:,:)
 
+    REAL, allocatable :: agnom(:),bgnom(:)
+
+
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
     integer, parameter             ::   NANG=16
     integer, parameter             ::   NSUBR = NANG
+    integer, parameter             ::   NTILES = 250
 
 contains
 
@@ -89,17 +103,25 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw )
 
    
     DO i=1-nhalo,ncube+nhalo
-       xv(i)=1.*i
-       yv(i)=1.*i
+       xv(i)=1.*i   !  xv,yv are 'SW' corners
+       yv(i)=1.*i   
+       !xv(i)=1.*i - 0.5   !  xv,yv are cell centers
+       !yv(i)=1.*i - 0.5
     END DO
     DO i=1-nhalo,ncube+nhalo
-       alph(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo-1)/2.) / ((ncube+2.*nhalo-1)/2.)
-       beta(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo-1)/2.) / ((ncube+2.*nhalo-1)/2.)
+       alph(i) =  ( xv(i) - 0.5 - ncube/2 )*(pi/2.)/ncube
+       beta(i) =  ( yv(i) - 0.5 - ncube/2 )*(pi/2.)/ncube
+       !alph(i) =  ( xv(i) - ncube/2 )*(pi/2.)/ncube
+       !beta(i) =  ( yv(i) - ncube/2 )*(pi/2.)/ncube
     END DO
 
-      write(811) size(terr_halo,1), size(terr_halo,2) ,size(terr_halo,3)
-      write(811) xv,yv,alph,beta
-      write(811) terr_halo,terr_dev_halo
+
+    write(*,*) "ALPHA(1:NCUBE) ",alph(1)*180./pi,alph(ncube)*180./pi
+
+    allocate( agnom(ncube) )
+    allocate( bgnom(ncube) )
+    agnom(1:ncube) = alph(1:ncube)
+    bgnom(1:ncube) = beta(1:ncube)
 
       terr_dev_halo_r4 = terr_dev_halo
       terr_halo_r4     = terr_halo
@@ -164,6 +186,10 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw )
    rwpks=0.
   allocate( uqrid( N/nsb , N/nsb , 6) )
    uqrid=-1
+  allocate( riseq( N/nsb , N/nsb , 6) )
+   riseq=-1.
+  allocate( fallq( N/nsb , N/nsb , 6) )
+   fallq=1.
 
        norx= N/nsb !size(anglx,1)
        nory= N/nsb !size(anglx,1)
@@ -290,16 +316,14 @@ write(31) lat0
 write(31) lat1
 
 write(31) uqrid
+write(31) riseq
+write(31) fallq
 
    CLOSE(31)
 !!!STOP
 #endif
 
  
-
-
-
-
 
 end subroutine find_ridges
 !----------------------------------------------------------
@@ -312,8 +336,8 @@ end subroutine find_ridges
   REAL,               intent(IN)  ::  AA(N,N),X(N),Y(N),AARAW(N,N)
 
 
-  real, allocatable:: SUBA(:,:), SUBARW(:,:),SUBX(:),SUBY(:),RT(:,:),RTX(:),XRT(:),RTXMN(:),RTXSLP(:) &
-                     , PKLC(:), RTY(:),RTRW(:,:),RTRWX(:)
+  real, allocatable :: SUBA(:,:), SUBARW(:,:),SUBX(:),SUBY(:),RT(:,:),RTX(:),XRT(:),RTXMN(:),RTXSLP(:) 
+  real, allocatable :: PKLC(:), RTY(:),RTRW(:,:),RTRWX(:),DERTX(:),DERTY(:),CUSP(:),face(:)
 
   logical,allocatable :: lhgts(:)
   logical :: Keep_Cuestas=.true.
@@ -322,10 +346,9 @@ end subroutine find_ridges
   real :: THETRAD,PI,swt,ang,rotmn,rotvar,mnt,var,xmn,xvr,basmn,basvar,mn2,var2
   integer :: i,j,l,m,n2,mini,maxi,minj,maxj,ns0,ns1,iorn(1),jj,ipkh(1),ift0(1),ift1(1),i2
 
-  real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00,dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),HWDX(NANG) &
-         , NPKX(NANG),NVLX(NANG),vva2(NANG),pkht(NANG),vldp(NANG),rwpk(NANG),rwvl(NANG)
-
-  
+  real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00,dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),HWDX(NANG)
+        
+  real :: NPKX(NANG),NVLX(NANG),vva2(NANG),pkht(NANG),vldp(NANG),rwpk(NANG),rwvl(NANG),RISEX(NANG),FALLX(NANG)
 
   ns0=nsw/2+1
   ns1=ns0+nsw
@@ -344,12 +367,16 @@ end subroutine find_ridges
   allocate( suby( 2*nsw  ) )
   allocate( rtx( nsw  ) )
   allocate( rty( nsw  ) )
+  allocate( cusp( nsw  ) )
+  allocate( dertx( nsw-1  ) )
+  allocate( derty( nsw-1  ) )
   allocate( rtrwx( nsw  ) )
   allocate( lhgts( nsw  ) )
   allocate( rtxslp( nsw-1  ) )
   allocate( pklc( 2:nsw-1  ) )
   allocate( rtxmn( nsw  ) )
   allocate( xrt( nsw  ) )
+  allocate( face( nsw  ) )
 
 
 
@@ -430,8 +457,8 @@ end subroutine find_ridges
         do l=1,nang
                                            ! Rotate 2D topography by ANG
            ang = (L-1)*(180./nang)
-           rt  = rotby2( suba, 2*nsw , ang )
-           rtrw  = rotby2( subarw, 2*nsw , ang )  ! Raw topo rotation
+           rt  = rotby3( suba, 2*nsw , ang )
+           rtrw  = rotby3( subarw, 2*nsw , ang )  ! Raw topo rotation
 
                                            ! Take "Y" (and "X")-average of rotated topography.
                                            ! Yields topo profile in X ==> RTX
@@ -458,6 +485,19 @@ end subroutine find_ridges
               if ( ( rtx(i2-1)>rtx(i2) ).and.( rtx(i2+1)>rtx(i2) ) ) pklc(i2)=1.
            end do
            nvlx(L)=sum(pklc)
+
+
+                ! Accumulate rising and falling segments
+           risex(L)=0.
+           fallx(L)=0.
+           do i2=2,nsw
+              if ( rtx(i2-1)<=rtx(i2) ) risex(L) = risex(L) + ( rtx(i2) - rtx(i2-1) )
+              if ( rtx(i2-1)>=rtx(i2) ) fallx(L) = fallx(L) + ( rtx(i2) - rtx(i2-1) )
+           end do
+           do i2=2,nsw
+              dertx(i2-1) = rtx(i2) - rtx(i2-1)
+              derty(i2-1) = rty(i2) - rty(i2-1)
+           end do
 
 
                 ! Record actual max and min elevations in RTX and Raw topo profile (RTRWX)
@@ -508,6 +548,8 @@ end subroutine find_ridges
            xft0(L)  =  XRT( ift0(1) ) -XRT( ipkh(1) )
            xft1(L)  =  XRT( ift1(1) ) -XRT( ipkh(1) )
 
+ !!        basmn  =  sum( sum( suba(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
+ !!        basvar =  sum( sum( (suba(ns0:ns1-1,ns0:ns1-1)-basmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            rotmn  =  sum( sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            rotvar =  sum( sum( (rt(ns0:ns1-1,ns0:ns1-1)-rotmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            if (rotvar>0.) qual(L) = var/rotvar
@@ -515,16 +557,30 @@ end subroutine find_ridges
            if (rotvar>0.) vva2(L) = vva2(L)*(basvar/rotvar)
 
 
-          ! rtdx2(ns0:ns1-1,ns0:ns1-1)  =  4*rt(ns0:ns1-1,ns0:ns1-1) - ( rt(ns0-1:ns1-2,ns0:ns1-1)+  rt(ns0+1:ns1,ns0:ns1-1) ) &
-          !           - ( rt(ns0:ns1-1,ns0-1:ns1-2) + rt(ns0:ns1-1,ns0+1:ns1) )
+        !++++ Analysis using triangular profiles in X and Y
+           do i2=1,ipkh(1)
+              cusp(i2) = rtx(ipkh(1)) + (rtx(1)-rtx(ipkh(1)))*(i2-ipkh(1))/(1-ipkh(1)) 
+           end do
+           do i2=ipkh(1),nsw 
+              cusp(i2) = rtx(ipkh(1)) + (rtx(nsw)-rtx(ipkh(1)))*(i2-ipkh(1))/(nsw-ipkh(1)) 
+           end do
+ 
+           ipkh    = MAXLOC( RTY ) ! index of ridge "FACE"
+           do i2=1,ipkh(1)
+              face(i2) = rty(ipkh(1)) + (rty(1)-rty(ipkh(1)))*(i2-ipkh(1))/(1-ipkh(1)) 
+           end do
+           do i2=ipkh(1),nsw 
+              face(i2) = rty(ipkh(1)) + (rty(nsw)-rty(ipkh(1)))*(i2-ipkh(1))/(nsw-ipkh(1)) 
+           end do
 
-#if 1
-           if ( dex(L)>500.  )  then
-                
-                rotvar = rotvar * 1.00
-                
-           end if
-#endif
+
+
+           if ( (ip == 1) .and. ( i >= 29 ).and.( i <= 29) .and. ( j>=8 ) .and. (j<=13) ) then
+               write(32) i,j,ip,nsw
+               write(32) ang, rt,rtx,subx,suby,rtrw,rtrwx,rty,dertx,derty,cusp,face,suba
+               write(32) vvaa(L),dex(L),risex(L),fallx(L),hwdx(L),vva2(L),qual(L),basvar,rotvar,npkx(L),nvlx(L)
+           endif 
+
 
 
 
@@ -560,6 +616,8 @@ end subroutine find_ridges
         sft0(i,j,ip)  = xft0( iorn(1) )
         sft1(i,j,ip)  = xft1( iorn(1) )
 
+        riseq(i,j,ip) = risex( iorn(1) )
+        fallq(i,j,ip) = fallx( iorn(1) )
 
 
 
@@ -581,24 +639,48 @@ endif
 
 
 
-
+#if 0
   deallocate( suba )
   deallocate( rt )
   deallocate( subx )
   deallocate( suby )
   deallocate( rtx )
   deallocate( rty )
-
+  deallocate( dertx )
+  deallocate( derty )
 #endif
 
-aniso(:,:,ip)=ip*1.0
+
+
+  deallocate( suba)
+  deallocate( subarw)
+  deallocate( rt)
+  deallocate( rtrw)
+  deallocate( subx)
+  deallocate( suby)
+  deallocate( rtx)
+  deallocate( rty)
+  deallocate( cusp)
+  deallocate( dertx)
+  deallocate( derty)
+  deallocate( rtrwx)
+  deallocate( lhgts)
+  deallocate( rtxslp)
+  deallocate( pklc)
+  deallocate( rtxmn)
+  deallocate( xrt)
+  deallocate( face)
+
+
+#endif
 
 write(*,*) "Got though ANISO ANA"
 
 end subroutine ANISO_ANA
 
 !====================================
-   subroutine remapridge2target(area_target,weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
+   subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
+         weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
          nreconstruction,ntarget,nhalo,nsb)
       use shr_kind_mod, only: r8 => shr_kind_r8
       use remap
@@ -606,7 +688,7 @@ end subroutine ANISO_ANA
       real(r8), intent(in) :: weights_all(jall,nreconstruction)
       integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
       integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsb
-      real(r8), intent(in) :: area_target(ntarget)
+      real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
       real(r8):: f(ntarget)
   
       REAL  ,                                                          &
@@ -617,7 +699,8 @@ end subroutine ANISO_ANA
       integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC
 
 !----------------------------------------------------------------------------------------------------
 
@@ -625,16 +708,7 @@ end subroutine ANISO_ANA
        xv(i)=1.*i
        yv(i)=1.*i
     END DO
-    DO i=1-nhalo,ncube+nhalo
-       alph(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo-1)/2.) / ((ncube+2.*nhalo-1)/2.)
-       beta(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo-1)/2.) / ((ncube+2.*nhalo-1)/2.)
-    END DO
-      
-    write(*,*) "check weights INSIDE ridge ana " 
-    write(*,*) weights_lgr_index_all(781202)
-    write(*,*) weights_eul_index_all(781202,:)
-
-
+ 
     allocate (wghts_target(ntarget,nsubr),stat=alloc_error )
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_target'; stop; endif
     wghts_target = 0.
@@ -644,6 +718,21 @@ end subroutine ANISO_ANA
     allocate (anglx_target(ntarget,nsubr),stat=alloc_error )
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_target'; stop; endif
     anglx_target = 0.
+    allocate (aniso_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for aniso_target'; stop; endif
+    aniso_target = 0.
+    allocate (mxvrx_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvrx_target'; stop; endif
+    mxvrx_target = 0.
+    allocate (mxvry_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvry_target'; stop; endif
+    mxvry_target = 0.
+    allocate (bsvar_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_target'; stop; endif
+    bsvar_target = 0.
+    allocate (hwdth_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for hwdth_target'; stop; endif
+    hwdth_target = 0.
 
      norx=size(mxdis,1)
      nory=size(mxdis,2)
@@ -652,6 +741,16 @@ end subroutine ANISO_ANA
      mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
      tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
      anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( aniso , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     anisoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( mxvrx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxvrxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( mxvry , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxvryC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( bsvar , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     bsvarC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( hwdth , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     hwdthC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
 
        !mxdis_target = remap_field(tmp,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
@@ -687,12 +786,12 @@ end subroutine ANISO_ANA
 
       if ( (isubr >= 1).and.(isubr <= nsubr) ) then
       wghts_target( i , isubr ) = wghts_target( i , isubr ) + wt
-      !!hwdth_target( i , isubr ) = hwdth_target( i , isubr ) + wt*hwdth(ii)
-      !!mxvrx_target( i , isubr ) = mxvrx_target( i , isubr ) + wt*mxvrx(ii)
-      !!mxvry_target( i , isubr ) = mxvry_target( i , isubr ) + wt*mxvry(ii)
-      !!bsvar_target( i , isubr ) = bsvar_target( i , isubr ) + wt*bsvar(ii)
+      hwdth_target( i , isubr ) = hwdth_target( i , isubr ) + wt*hwdthC(ii)
+      mxvrx_target( i , isubr ) = mxvrx_target( i , isubr ) + wt*mxvrxC(ii)
+      mxvry_target( i , isubr ) = mxvry_target( i , isubr ) + wt*mxvryC(ii)
+      bsvar_target( i , isubr ) = bsvar_target( i , isubr ) + wt*bsvarC(ii)
       mxdis_target( i , isubr ) = mxdis_target( i , isubr ) + wt*mxdisC(ii)
-      !!aniso_target( i , isubr ) = aniso_target( i , isubr ) + wt*aniso(ii)
+      aniso_target( i , isubr ) = aniso_target( i , isubr ) + wt*anisoC(ii)
       anglx_target( i , isubr ) = anglx_target( i , isubr ) + wt*anglxC(ii)
       endif
 
@@ -704,39 +803,47 @@ end subroutine ANISO_ANA
 
 
     where( wghts_target > 1.e-15 )
-        !aniso_target = aniso_target / wghts_target
+        aniso_target = aniso_target / wghts_target
         anglx_target = anglx_target / wghts_target
         mxdis_target = mxdis_target / wghts_target
-        !hwdth_target = hwdth_target / wghts_target
-        !mxvrx_target = mxvrx_target / wghts_target
-        !mxvry_target = mxvry_target / wghts_target
-        !bsvar_target = bsvar_target / wghts_target
+        hwdth_target = hwdth_target / wghts_target
+        mxvrx_target = mxvrx_target / wghts_target
+        mxvry_target = mxvry_target / wghts_target
+        bsvar_target = bsvar_target / wghts_target
      elsewhere
-        !aniso_target = 0.
+        aniso_target = 0.
         anglx_target = -9000.
         mxdis_target = -999.
-        !hwdth_target = 0.
-        !mxvrx_target = 0.
-        !mxvry_target = 0.
-        !bsvar_target = 0.
+        hwdth_target = 0.
+        mxvrx_target = 0.
+        mxvry_target = 0.
+        bsvar_target = 0.
      end where
 
 
+     
+
+     call importancesort (ntarget)
+
+     call latlonangles (target_center_lon,target_center_lat,ntarget)
 
 
 
       !real(r8), intent(in) :: weights_all(jall,nreconstruction)
       !integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-write(911) jall,nreconstruction
-write(911)   weights_eul_index_all, weights_lgr_index_all
-write(911)  weights_all
 
 write(911) ncube
 write(911) mxdisC,anglxC
 
 write(911) ntarget,nsubr
+write(911) bsvar_target
 write(911) mxdis_target
+write(911) mxvrx_target
+write(911) mxvry_target
 write(911) anglx_target
+write(911) ang22_target
+write(911) aniso_target
+write(911) hwdth_target
 write(911) wghts_target
 
 
@@ -744,6 +851,168 @@ write(911) wghts_target
 
  
    end subroutine remapridge2target
+
+
+!================================================================
+  subroutine latlonangles (target_center_lon,target_center_lat,ntarget)
+!-----------------------------------
+
+      real(r8), intent(in) :: target_center_lon(ntarget),target_center_lat(ntarget)
+      integer,  intent(in) :: ntarget
+
+  real(r8) :: lat22,lon22,a22,b22,dx2,dy2,cosll
+  real(r8) :: lat22s,lon22s,a22s,b22s
+
+  integer  :: i,j,isubr,ipanel22
+  integer  :: alloc_error
+
+
+    allocate (ang22_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for ang22_target'; stop; endif
+    ang22_target = 0.
+
+
+! Calculate angles in lat-lon system
+
+  do i=1,ntarget
+     lon22 = target_center_lon(i) * PI/180.
+     lat22 = target_center_lat(i) * PI/180.
+     call CubedSphereABPFromRLL(lon22, lat22, a22, b22, ipanel22 , .true. )
+
+     do isubr=1,nsubr
+        if ( ANGLX_TARGET(i,isubr) > -9000. ) then
+          a22s = a22 + 0.01*SIN( ANGLX_TARGET(i,isubr)*PI/180. )   
+          b22s = b22 + 0.01*COS( ANGLX_TARGET(i,isubr)*PI/180. )
+          call CubedSphereRLLFromABP(a22s, b22s , ipanel22, lon22s, lat22s )
+          dx2 = COS( lat22 )*(lon22s-lon22 )
+          dy2 = ( lat22s-lat22 )
+          if ( dx2 < 0.0 ) dy2  = -1.*dy2  ! 
+          COSLL  = dy2 /sqrt( dx2**2 + dy2**2 )
+          ANG22_TARGET(i,isubr) = ACOS( COSLL )*180./PI
+        else
+          ANG22_TARGET(i,isubr) = -9000.
+        end if   
+     end do
+  end do
+
+ end subroutine latlonangles
+
+
+
+
+
+
+!================================================================
+  subroutine importancesort (ntarget)
+!-----------------------------------
+
+     integer,  intent(in) :: ntarget
+
+
+  real(r8), allocatable, dimension(:) :: imprtnc,tmp2
+  integer,  allocatable, dimension(:) :: insrt
+
+  
+  real(r8) :: tmp
+  integer  :: i,ii,jj,kk,itmp
+  integer  :: alloc_error
+
+ 
+    allocate( insrt(nsubr) , stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for INSRT '; stop; endif
+    allocate( imprtnc(nsubr) , stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for IMPRTNC '; stop; endif
+    allocate( tmp2(nsubr) , stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for TMP2 '; stop; endif
+
+
+
+  do i=1,ntarget
+
+     do JJ = 1,nsubr
+        insrt(JJ)   = JJ
+        imprtnc(JJ) = mxvrx_target(i,JJ) * wghts_target(i,JJ) * aniso_target(i,JJ)
+     end do
+
+     do JJ = 1,nsubr-1
+        do KK = JJ+1,nsubr
+           if ( imprtnc(JJ) < imprtnc(KK) ) then
+              tmp = imprtnc(KK)
+              imprtnc(KK) = imprtnc(JJ)
+              imprtnc(JJ) = tmp
+              itmp = insrt(KK)
+              insrt(KK)   = insrt(JJ)
+              insrt(JJ)   = itmp
+           end if
+        end do
+     end do
+
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  mxvrx_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        mxvrx_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  mxvry_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        mxvry_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  mxdis_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        mxdis_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  bsvar_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        bsvar_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  aniso_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        aniso_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  anglx_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        anglx_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  hwdth_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        hwdth_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+     do JJ = 1,nsubr
+        tmp2(JJ) =  wghts_target(i,JJ)
+     end do
+     do JJ = 1,nsubr
+        wghts_target(i,JJ) = tmp2( insrt(JJ) )
+     end do
+
+  end do
+
+
+end subroutine importancesort
+
+
+
+
+
 !======================================
 
 function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb ) result( axc )
@@ -774,6 +1043,220 @@ function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb ) result( axc
 
 end function mapridge2cube
 
+
+
+
+
+!====================================
+   subroutine remapridge2tiles(area_target,target_center_lon,target_center_lat,  &
+         weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
+         nreconstruction,ntarget,nhalo,nsb)
+
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      use remap
+      implicit none
+      real(r8), intent(in) :: weights_all(jall,nreconstruction)
+      integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsb
+      real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      real(r8):: f(ntarget)
+  
+      REAL  ,                                                          &
+         DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
+      
+      integer :: alloc_error
+
+      integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,itile,itili,current_uqrid
+      real(r8):: wt
+      real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, xspkC, yspkC
+      integer, dimension(ncube*ncube*6)  :: uqridC 
+
+!----------------------------------------------------------------------------------------------------
+
+        write(*,*) " YOU ASKED FOR TILES !!!!!!!!!!!! "
+
+
+    DO i=1-nhalo,ncube+nhalo
+       xv(i)=1.*i
+       yv(i)=1.*i
+    END DO
+
+    allocate (uqrid_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for uqrid_tiles'; stop; endif
+    uqrid_tiles = -1
+
+    allocate (numbr_tiles(ntarget),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for numbr_tiles'; stop; endif
+    numbr_tiles = 0
+    allocate (error_tiles(ntarget),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for error_tiles'; stop; endif
+    error_tiles = 0
+
+    allocate (wghts_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_tiles'; stop; endif
+    wghts_tiles = 0.
+    allocate (mxdis_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxdis_tiles'; stop; endif
+    mxdis_tiles = 0.
+    allocate (anglx_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_tiles'; stop; endif
+    anglx_tiles = 0.
+    allocate (aniso_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for aniso_tiles'; stop; endif
+    aniso_tiles = 0.
+    allocate (mxvrx_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvrx_tiles'; stop; endif
+    mxvrx_tiles = 0.
+    allocate (mxvry_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvry_tiles'; stop; endif
+    mxvry_tiles = 0.
+    allocate (bsvar_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_tiles'; stop; endif
+    bsvar_tiles = 0.
+    allocate (hwdth_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for hwdth_tiles'; stop; endif
+    hwdth_tiles = 0.
+    allocate (agnpk_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for agnpk_tiles'; stop; endif
+    agnpk_tiles = 0.
+    allocate (bgnpk_tiles(ntarget,ntiles),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bgnpk_tiles'; stop; endif
+    bgnpk_tiles = 0.
+
+     norx=size(mxdis,1)
+     nory=size(mxdis,2)
+
+     tmpx6 = mapridge2cube ( mxdis , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( aniso , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     anisoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( mxvrx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxvrxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( mxvry , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     mxvryC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( bsvar , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     bsvarC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( hwdth , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     hwdthC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( xspk , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     xspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     tmpx6 = mapridge2cube ( yspk , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     yspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+
+     tmpx6 = mapridge2cube ( 1.*uqrid , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     uqridC = INT(reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) ) )
+
+
+       !mxdis_target = remap_field(tmp,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
+       !weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
+
+
+
+    do counti=1,jall
+      i   = weights_lgr_index_all(counti)
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+      !
+      ! convert to 1D indexing of cubed-sphere
+      !
+      ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+      wt = weights_all(counti,1)
+
+      current_uqrid = INT( uqridC( ii ) )
+      ! find tile index for current ridge 
+      itile=-1
+      do itili = 1,ntiles
+         if (uqrid_tiles(i,itili) == current_uqrid ) then 
+            itile=itili
+            numbr_tiles(i)=itili
+         endif
+      end do   
+      ! if itile is still -1 then this is a new ridge for this target
+      ! cell
+      if (itile == -1 ) then 
+      do itili = 1,ntiles
+         if (uqrid_tiles(i,itili) == -1) then 
+            itile=itili
+            uqrid_tiles(i,itili) = current_uqrid
+            numbr_tiles(i)=itili
+            go to 611
+         end if
+      end do
+      end if
+ 611  continue
+      ! if itile is still -1 then we have more ridges 
+      ! than allocated tiles - punt, stuff into last tile
+      ! set error=1
+      if (itile == -1 ) then
+         itile=ntiles 
+         error_tiles(i)=1
+         numbr_tiles(i)=numbr_tiles(i)+1
+      endif
+      
+      wghts_tiles( i , itile ) = wghts_tiles( i , itile ) + wt
+      agnpk_tiles( i , itile ) = xspkC(ii)   
+      bgnpk_tiles( i , itile ) = yspkC(ii)   
+      !agnxg_tiles( i , itile ) = agnxg_tiles( i , itile ) + wt*agnom(ix)
+      !bgnxg_tiles( i , itile ) = bgnxg_tiles( i , itile ) + wt*bgnom(iy)
+      bsvar_tiles( i , itile ) = bsvarC(ii)
+      mxdis_tiles( i , itile ) = mxdisC(ii)
+      mxvrx_tiles( i , itile ) = mxvrxC(ii)
+      mxvry_tiles( i , itile ) = mxvryC(ii)
+      aniso_tiles( i , itile ) = anisoC(ii)
+      hwdth_tiles( i , itile ) = hwdthC(ii)
+      anglx_tiles( i , itile ) = anglxC(ii)
+      !rwpks_tiles( i , itile ) = rwpks(ii)
+      !rwvls_tiles( i , itile ) = rwvls(ii)
+      !npks_tiles( i , itile )  = npks(ii)
+      !nvls_tiles( i , itile )  = nvls(ii)
+
+    enddo
+
+
+       write(*,*) " Max Tiles Needed ",maxval( numbr_tiles ) 
+
+    where( wghts_tiles > 0.)
+     !agnxg_tiles = agnxg_tiles/wghts_tiles
+     !bgnxg_tiles = bgnxg_tiles/wghts_tiles
+    elsewhere
+                                 !where( wghts_tiles <= 0.)
+     agnpk_tiles = -9999._r8
+     bgnpk_tiles = -9999._r8
+     !agnxg_tiles = -9999._r8
+     !bgnxg_tiles = -9999._r8
+    end where
+
+    !OPEN (unit = 611, file= trim(tfile$) ,form="UNFORMATTED" )
+    OPEN (unit = 611, file= 'RidgeTile.dat' ,form="UNFORMATTED" )
+    write( 611 ) ntarget,ntiles
+    write( 611 ) error_tiles
+    write( 611 ) uqrid_tiles
+    write( 611 ) wghts_tiles
+    write( 611 ) mxdis_tiles
+    write( 611 ) anglx_tiles
+    write( 611 ) agnpk_tiles
+    write( 611 ) bgnpk_tiles
+    !write( 611 ) agnxg_tiles
+    !write( 611 ) bgnxg_tiles
+    write( 611 ) mxvrx_tiles
+    write( 611 ) mxvry_tiles
+    write( 611 ) aniso_tiles
+    write( 611 ) hwdth_tiles
+
+
+
+      write(*,*) " GOT OUT OF remapridge2tiles OK "
+
+ 
+   end subroutine remapridge2tiles
+
+!==================================================================
 
 
 end module ridge_ana
