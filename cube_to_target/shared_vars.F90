@@ -282,71 +282,172 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
   !
   !*********************************************************
   !
-  write(*,*) "Opening grid descriptor file :  ",TRIM(grid_descriptor_fname)
-  status = nf_open(TRIM(grid_descriptor_fname), 0, ncid)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  
-  status = NF_INQ_DIMID(ncid, 'grid_size', ntarget_id)
-  status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget)
-  WRITE(*,*) "dimension of target grid: ntarget=",ntarget
-  
-  status = NF_INQ_DIMID(ncid, 'grid_corners', ncorner_id)
-  status = NF_INQ_DIMLEN(ncid, ncorner_id, ncorner)
-  WRITE(*,*) "maximum number of corners: ncorner=",ncorner
-  
-  status = NF_INQ_DIMID(ncid, 'grid_rank', nrank_id);status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
-  WRITE(*,*) "grid rank: nrank=",nrank
-  IF (nrank==2) THEN
-    WRITE(*,*) "target grid is a lat-lon grid"
-    ltarget_latlon = .TRUE.
-    status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
-    status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
-    status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-!    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
-    WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-    IF (lpole) THEN
-      WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
-    ELSE
-      WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
-    END IF
-  ELSE IF (nrank==1) THEN
-    ltarget_latlon = .FALSE.
-  ELSE
-    WRITE(*,*) "nrank out of range",nrank
-    STOP
-  ENDIF
-  
-  allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
-  allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
-  
-  status = NF_INQ_VARID(ncid, 'grid_corner_lon', lonid)
-  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
-  IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
-  
-  status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
-  IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
-  !
-  ! for writing remapped data on file at the end of the program
-  !
-  allocate ( target_center_lon(ntarget),stat=alloc_error)
-  allocate ( target_center_lat(ntarget),stat=alloc_error)
-  allocate ( target_area      (ntarget),stat=alloc_error)
-  
-  status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
-  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
-  
-  status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
-  
-  status = NF_INQ_VARID(ncid, 'grid_area', latid)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
-
-  status = nf_close (ncid)
-  if (status .ne. NF_NOERR) call handle_err(status)          
+  if (.true.) then
+     write(*,*) "Opening grid descriptor file :  ",TRIM(grid_descriptor_fname)
+     status = nf_open(TRIM(grid_descriptor_fname), 0, ncid)
+     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+     
+     status = NF_INQ_DIMID(ncid, 'grid_size', ntarget_id)
+     status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget)
+     WRITE(*,*) "dimension of target grid: ntarget=",ntarget
+     
+     status = NF_INQ_DIMID(ncid, 'grid_corners', ncorner_id)
+     status = NF_INQ_DIMLEN(ncid, ncorner_id, ncorner)
+     WRITE(*,*) "maximum number of corners: ncorner=",ncorner
+     
+     status = NF_INQ_DIMID(ncid, 'grid_rank', nrank_id);status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
+     WRITE(*,*) "grid rank: nrank=",nrank
+     IF (nrank==2) THEN
+        WRITE(*,*) "target grid is a lat-lon grid"
+        ltarget_latlon = .TRUE.
+        status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
+        status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
+        status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
+        status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
+        status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
+        status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
+        !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
+        WRITE(*,*) "nlon=",nlon,"nlat=",nlat
+        IF (lpole) THEN
+           WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
+        ELSE
+           WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
+        END IF
+     ELSE IF (nrank==1) THEN
+        ltarget_latlon = .FALSE.
+     ELSE
+        WRITE(*,*) "nrank out of range",nrank
+        STOP
+     ENDIF
+     
+     allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
+     allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
+     
+     status = NF_INQ_VARID(ncid, 'grid_corner_lon', lonid)
+     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
+     IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
+     
+     status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
+     status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
+     IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
+     !
+     ! for writing remapped data on file at the end of the program
+     !
+     allocate ( target_center_lon(ntarget),stat=alloc_error)
+     allocate ( target_center_lat(ntarget),stat=alloc_error)
+     allocate ( target_area      (ntarget),stat=alloc_error)
+     
+     status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
+     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
+     
+     status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
+     status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
+     
+     status = NF_INQ_VARID(ncid, 'grid_area', latid)
+     status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
+     
+     status = nf_close (ncid)
+     if (status .ne. NF_NOERR) call handle_err(status)          
+  else
+     !
+     ! define lat-lon grid without grid descriptor file
+     !
+     write(*,*) "lat-lon grid is being defined by cubed_to_target and using not the grid_descriptor_file"
+     ltarget_latlon = .true.
+     nrank = 2
+     ncorner=4
+     nlon=43200
+     nlat=21600
+     lpole=.false.
+     ntarget=nlon*nlat
+     WRITE(*,*) "nlon=",nlon,"nlat=",nlat
+     allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
+     allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
+     allocate ( target_center_lon(ntarget),stat=alloc_error)
+     allocate ( target_center_lat(ntarget),stat=alloc_error)
+     allocate ( target_area      (ntarget),stat=alloc_error)
+     call get_latlon_grid(nlon,nlat,lpole)
+  end if
 end subroutine read_target_grid
+
+subroutine get_latlon_grid(im,jm,lpole)
+        use shr_kind_mod, only: r8 => shr_kind_r8
+        implicit none
+        !
+        ! Dummy arguments
+        !
+        integer      , intent(in) :: im,jm 
+        logical      , intent(in) :: lpole
+        !
+        ! Local variables
+        !
+        real(r8) :: dx, dy
+        real(r8),dimension(im) :: lonar       ! longitude array
+        real(r8),dimension(im) :: latar       ! latitude array
+        !
+        !-----------------------------------------------------------------------
+        !
+        integer            :: i,j, atm_add
+        real(r8) :: centerlon,centerlat,minlat,minlon,maxlat,maxlon
+
+        dx = 2.0D0*pi/dble(im)
+        if (lpole) then
+          dy = pi/dble(jm-1)
+        else
+          dy = pi/dble(jm)
+        end if
+        !
+        ! Fill lat and lon arrays
+        !  
+        do i = 1,im
+          lonar(i)=  dx * DBLE((i-1)) !CAM-FV grid
+        enddo
+        if (lpole) THEN
+          do j = 1,jm
+            latar(j)= -pih + dy * DBLE(j-1)
+          enddo
+        else
+          do j = 1,jm
+            latar(j)= -pih + dy * (DBLE(j)-0.5D0)
+          enddo          
+        end if
+        
+        
+        do j=1,jm
+          centerlat = latar(j)
+          IF (lpole.AND.j==1) THEN
+            minlat = centerlat
+          ELSE
+            minlat = centerlat - 0.5D0*dy
+          END IF
+          IF (lpole.AND.j==jm) THEN
+            maxlat = centerlat 
+          ELSE
+            maxlat = centerlat + 0.5D0*dy
+          END IF
+          
+          do i=1,im
+            centerlon = lonar(i)
+            minlon = centerlon - 0.5D0*dx
+            maxlon = centerlon + 0.5D0*dx
+            
+            atm_add = (j-1)*im + i
+            
+            target_center_lat(atm_add  ) = centerlat
+            target_corner_lat(1,atm_add) = minlat
+            target_corner_lat(2,atm_add) = minlat
+            target_corner_lat(3,atm_add) = maxlat
+            target_corner_lat(4,atm_add) = maxlat
+            
+            target_center_lon(atm_add  ) = centerlon
+            target_corner_lon(1,atm_add) = minlon
+            target_corner_lon(2,atm_add) = maxlon
+            target_corner_lon(3,atm_add) = maxlon
+            target_corner_lon(4,atm_add) = minlon
+          end do
+        end do
+
+      end subroutine get_latlon_grid
+
 
 END MODULE shared_vars
