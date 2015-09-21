@@ -1,11 +1,11 @@
 #!/bin/csh
-echo "arguments are:",$argv[1],$argv[2]
-if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis) then
+echo "arguments are:",$argv[1],$argv[2],$argv[3]
+if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == smooth_cam) then
   cat > topo.nl <<EOF
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
-  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010-modis-ncube3000.nc'
-  output_fname                    = 'output/fv09x1.25-gmted2010_modis.nc'
+  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010_modis-ncube3000.nc'
+  output_fname                    = 'output/fv0.9x1.25-gmted2010_modis-smooth_cam.nc'
   externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
@@ -19,8 +19,9 @@ if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis) then
 /
 
 EOF
-  ./cube_to_target >& output/gmted2010-fv-0.9x1.25.out &
-else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30) then
+  ./cube_to_target >& output/fv0.9x1.25-gmted2010_modis-smooth_cam.out &
+  tail -f output/fv0.9x1.25-gmted2010_modis-smooth_cam.out
+else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30 && $argv[3] == smooth_cam) then
   echo "Grid is ",$argv[1]
   echo "Raw ~1km data is ",$argv[2]
   echo "Using externally smoothed PHIS; smoothed with cam_fv_topo-smoothing program"
@@ -29,7 +30,7 @@ else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30) then
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
   intermediate_cubed_sphere_fname = '../bin_to_cube/gtopo30-ncube3000.nc'
-  output_fname                    = 'gtopo30-fv-0.9x1.25.nc'
+  output_fname                    = 'output/fv0.9x1.25-gtopo30-smooth_cam.nc'
   externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
@@ -43,8 +44,8 @@ else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30) then
 /
 
 EOF
-  ./cube_to_target >& output/gtopo30-fv-0.9x1.25.out &
-
+  ./cube_to_target >& output/fv0.9x1.25-gtopo30-smooth_cam.out &
+  tail -f output/fv0.9x1.25-gtopo30-smooth_cam.out
 else
   echo "ERROR: no valid argument for run.sh"
   echo "valid options are gmted2010 and gtopo30"

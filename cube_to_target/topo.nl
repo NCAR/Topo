@@ -1,16 +1,23 @@
 &topoparams
-  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
-  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010-modis-ncube3000.nc'
-  output_fname                    = 'output/fv09x1.25-gmted2010_modis.nc'
-  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc'
-  lsmooth_terr = .true.
-  lexternal_smooth_terr = .true.
+  grid_descriptor_fname           = '/project/amp/pel/topo-unstructured/data/se/grid-descriptor-files/ne30np4_091226_pentagons.nc'
+  intermediate_cubed_sphere_fname = '/project/amp/juliob/topo-data-trunk/intermediate-cube-data/USGS-topo-cube540.nc'
+  output_fname                    = 'out.nc'
+  lsmooth_terr = .false.
+  lexternal_smooth_terr = .false.
   lzero_out_ocean_point_phis = .false.
-  lsmooth_on_cubed_sphere = .false.
+  lsmooth_on_cubed_sphere = .true.
   ncube_sph_smooth_coarse = 20  
   ncube_sph_smooth_fine = 1
-  lfind_ridges = .false.
+  lfind_ridges = .true.
+  lridgetiles  = .true.
   nwindow_halfwidth = 14
   nridge_subsample = 14
 /
-
+#
+# the externally smoothed fv topography has been created with definesurf:
+#
+# ./definesurf -t input/make_raw_phis_from_usgs/10min-phis-raw.nc -g input/initial_data.cam.fv.0181x0360L30.410.bw.nc -l input/landm_coslat.nc -remap output/smooth-phis.nc
+#
+#
+# Ridge analysis takes place on squares of 2*nwindow_halfwidth+1
+# Centers of squares are placed nridge_subsample apart

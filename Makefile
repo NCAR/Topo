@@ -1,9 +1,11 @@
 #
 # user settings
 #
+# fv0.9x1.25-gmted2010_modis-smooth_cam.nc
+#
 model=fv0.9x1.25
-raw_data=gmted2010_modis
-#raw_data=gtopo30
+#raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=smooth_cam
 #
 # DO NOT EDIT BELOW THIS LINE
@@ -13,8 +15,10 @@ cr:=create_netCDF_from_rawdata
 sm:=cam_fv_topo-smoothing
 
 init: init_$(raw_data) 
-cube_to_target: bin_to_cube/gmted2010_modis-ncube3000.nc cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-
+cube_to_target: bin_to_cube/gmted2010_modis-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
+plot:
+	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) pdf;\
+	gv topo-vars-$(model)-$(raw_data)-$(smoothing).pdf)
 #
 # generate intermediate cubed-sphere data from raw data
 #
@@ -27,7 +31,6 @@ cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.2
 cam_fv_smooth_gtopo30:  cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
 bin_to_cube_gmted2010: bin_to_cube/gmted2010_modis-ncube3000.nc
 bin_to_cube_gtopo30: bin_to_cube/gtopo30-ncube3000.nc
-cube_to_target: cube_to_target/out.nc
 #
 # merge GMTED2010 elevation data and MODIS land fraction data: raw input data used in bin_to_cube
 #
@@ -74,6 +77,12 @@ bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gmted2010_elevation
 #
 #
 #
-cube_to_target/fv0.9x1.25-gmted2010_modis-smooth_cam.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
-	echo cube_to_target/$(model)-$(raw_data).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data))
+cube_to_target/output/fv0.9x1.25-gmted2010_modis-smooth_cam.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
+	echo asdfsadf
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	echo sadfsadfsadf
+	echo ./run.sh $(model) $(raw_data) $(smoothing)
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+cube_to_target/output/fv0.9x1.25-gtopo30-smooth_cam.nc: bin_to_cube/gtopo30-ncube3000.nc cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
