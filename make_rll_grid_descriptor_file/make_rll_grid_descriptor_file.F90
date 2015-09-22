@@ -16,9 +16,9 @@
 !        logical, parameter :: lpole=.FALSE.   !10 min
 
 
-        integer, parameter :: im = 288       !0.9x1.25 CAM-FV
-        integer, parameter :: jm = 192       !0.9x1.25 CAM-FV 
-        logical, parameter :: lpole=.TRUE.   !CAM-FV setting is lpole=.TRUE.
+!        integer, parameter :: im = 288       !0.9x1.25 CAM-FV
+!        integer, parameter :: jm = 192       !0.9x1.25 CAM-FV 
+!        logical, parameter :: lpole=.TRUE.   !CAM-FV setting is lpole=.TRUE.
 
 !        integer, parameter :: im = 360       !1x1 CAM-FV
 !        integer, parameter :: jm = 181       !1x1 CAM-FV 
@@ -36,6 +36,10 @@
 !        integer, parameter :: im = 1152       !0.23x0.31 CAM-FV
 !        integer, parameter :: jm =768         !0.23x0.31 CAM-FV 
 !        logical, parameter :: lpole=.TRUE.    !CAM-FV setting is
+
+        integer, parameter :: im = 1440    
+        integer, parameter :: jm =720     
+        logical, parameter :: lpole=.FALSE.
 
 !        integer, parameter :: im = 1440       !0.23x0.31 CAM-FV
 !        integer, parameter :: jm =720         !0.23x0.31 CAM-FV 
@@ -222,14 +226,6 @@
           end do
         end do
 
-        fout='rll.nc'
-        !
-        !  Create NetCDF file for output
-        !
-        status = nf_create (fout, NF_WRITE, foutid)
-        if (status .ne. NF_NOERR) call handle_err(status)
-
-        
         !-----------------------------------------------------------------------
         !
         !     set up attributes for netCDF file
