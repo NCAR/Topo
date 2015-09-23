@@ -908,7 +908,7 @@ SUBROUTINE CubedSphereRLLFromABP(alpha, beta, ipanel, lon, lat)
   REAL    (r8), PARAMETER :: pi   = 3.14159265358979323846264338327
   REAL    (r8), PARAMETER :: piq  = 0.25*pi
   
-  rotate_cube = 0.0
+  rotate_cube = 0.0D0
   ! Convert to cartesian coordinates
   CALL CubedSphereXYZFromABP(alpha, beta, ipanel, xx, yy, zz)        
   ! Convert back to lat lon

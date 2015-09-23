@@ -70,7 +70,12 @@ begin
 
   wks = gsn_open_wks(format,outputFile)               ; open workstation
 ;  gsn_define_colormap(wks,"BlAqGrYeOrReVi200")   ; choose colormap
-  gsn_define_colormap(wks,"ncl_default")
+
+  if (ldiff) then  
+    gsn_define_colormap(wks,"testcmap")
+  else
+    gsn_define_colormap(wks,"ncl_default")
+  end if
 
   plot = new(4,graphic)
   res@gsnLeftString   = "PHIS"
@@ -104,7 +109,7 @@ begin
     res@cnLevelSelectionMode = "ManualLevels"
     res@cnMinLevelValF  = -1.
     res@cnMaxLevelValF  = 1.
-    res@cnLevelSpacingF = 0.1
+    res@cnLevelSpacingF = 0.08
   end if
   plot(3) = gsn_csm_contour_map_ce(wks,var4,res)
 

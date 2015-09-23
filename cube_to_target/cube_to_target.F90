@@ -226,7 +226,12 @@ program convterr
    if (nrank == 1) then
      da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
      da_min_target = MAXVAL(target_area)
-     jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
+     if (da_min_target==0) then !bug with MPAS files
+        jmax_segments = 100000
+     else
+        jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
+     end if
+     write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
      write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
    else
      jmax_segments = 100000   !can be tweaked
@@ -1479,23 +1484,19 @@ END SUBROUTINE overlap_weights_cube_to_cube
 !------------------------------------------------------------------------------
 SUBROUTINE CubedSphereABPFromRLL(lon, lat, alpha, beta, ipanel, ldetermine_panel)
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shared_vars, only: rotate_cube, pi, piq
   IMPLICIT NONE
   
   REAL    (R8), INTENT(IN)  :: lon, lat
   REAL    (R8), INTENT(OUT) :: alpha, beta
   INTEGER :: ipanel
   LOGICAL, INTENT(IN) :: ldetermine_panel
-  REAL    (r8) :: pi, piq
-  REAL    (r8), PARAMETER :: rotate_cube = 0.D0
   
   ! Local variables
   REAL    (R8) :: xx, yy, zz, pm
   REAL    (R8) :: sx, sy, sz
   INTEGER  :: ix, iy, iz
 
-  pi = 4.D0*DATAN(1.D0)
-  piq = pi/4.D0
-  
   ! Translate to (x,y,z) space
   xx = COS(lon-rotate_cube) * COS(lat)
   yy = SIN(lon-rotate_cube) * COS(lat)
@@ -1660,18 +1661,15 @@ END SUBROUTINE EquiangularAllAreas
 !------------------------------------------------------------------------------
 SUBROUTINE CubedSphereRLLFromABP(alpha, beta, ipanel, lon, lat)
   use shr_kind_mod, only: r8 => shr_kind_r8        
+  use shared_vars, only: rotate_cube, pi, piq
   IMPLICIT NONE        
   REAL    (r8), INTENT(IN)  :: alpha, beta
   INTEGER     , INTENT(IN)  :: ipanel
   REAL    (r8), INTENT(OUT) :: lon, lat        
   ! Local variables
-  REAL    (r8) :: xx, yy, zz, rotate_cube
-  REAL    (r8):: pi, piq
+  REAL    (r8) :: xx, yy, zz
 
-  pi = 4.D0*DATAN(1.D0)
-  piq = pi/4.D0
   
-  rotate_cube = 0.0
   ! Convert to cartesian coordinates
   CALL CubedSphereXYZFromABP(alpha, beta, ipanel, xx, yy, zz)        
   ! Convert back to lat lon
