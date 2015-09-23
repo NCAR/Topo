@@ -10,15 +10,16 @@ MODULE shared_vars
 
   real(r8) , allocatable, dimension(:,:,:) :: terr_sm, terr_dev
 
-  REAL    (r8):: pi, piq, pih, deg2rad
+  REAL    (r8):: pi, piq, pih, deg2rad, rotate_cube
 
   contains 
     subroutine set_constants
       implicit none
-      pi        = 4.D0*DATAN(1.D0)
-      piq       = 0.25*pi
-      pih       = 0.50*pi
-      deg2rad   = pi/180.0
+      pi          = 4.D0*DATAN(1.D0)
+      piq         = 0.25*pi
+      pih         = 0.50*pi
+      deg2rad     = pi/180.0
+      rotate_cube = 0.0D0 !default is 0
     end subroutine set_constants
 
   
