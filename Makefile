@@ -4,8 +4,8 @@
 # fv0.9x1.25-gmted2010_modis-smooth_cam.nc
 #
 model=fv0.9x1.25
-#raw_data=gmted2010_modis
-raw_data=gtopo30
+raw_data=gmted2010_modis
+#raw_data=gtopo30
 smoothing=smooth_cam
 #
 # DO NOT EDIT BELOW THIS LINE
@@ -37,6 +37,7 @@ bin_to_cube_gtopo30: bin_to_cube/gtopo30-ncube3000.nc
 create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc: $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc
 	$(python_command) $(cr)/create_gmted2010_modis.py $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc $(cr)/gmted2010_elevation_and_landfrac_modis.nc
 	$(python_command) $(cr)/shift.py $(cr)/gmted2010_elevation_and_landfrac_modis.nc $(cr)/gmted2010_elevation_and_landfrac_modis_sft.nc
+	rm create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc
 #
 # generate ~1km land fraction data from MODIS source data
 #

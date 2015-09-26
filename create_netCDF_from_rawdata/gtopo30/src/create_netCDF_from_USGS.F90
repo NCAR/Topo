@@ -508,7 +508,7 @@
 ! Local variables
 !
         real(r8),dimension(im) :: lonar       ! longitude array
-        real(r8),dimension(im) :: latar       ! latitude array
+        real(r8),dimension(jm) :: latar       ! latitude array
         character (len=32) :: fout       ! NetCDF output file
         integer            :: foutid     ! Output file id
         integer            :: lonid, lonvid

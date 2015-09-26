@@ -54,14 +54,19 @@ landfrac.long_name='30-second land fraction from MODIS'
 #landfrac.setncatts({k: varin.getncattr(k) for k in varin.ncattrs()})
 print 'Modification of MODIS data:'
 print 'shallow ocean (0) points remain 0'
+print 'land (1) remains 1'
 print 'set shoreline (2) points to 1'
 a=numpy.where(a==2,1,a)
-print 'set shallow inland water (3) to 0'
-a=numpy.where(a==3,0,a)
+##print 'set shallow inland water (3) to 0'
+##a=numpy.where(a==3,0,a)
+print 'set shallow inland water (3) to 3 for fixing GMTED2010 elevation over inland water'
+a=numpy.where(a==3,3,a)
 print 'set ephemeral water (4) to 1'
 a=numpy.where(a==4,1,a)
-print 'set deep inland water (5), moderate ocean (6), deep ocean (7), fill (237) points to 0'
-a=numpy.where(a>4,0,a)
+print 'set deep inland water (5) to 3 for fixing GMTED2010 elevation over inland water'
+a=numpy.where(a==5,3,a)
+print 'set moderate ocean (6), deep ocean (7), fill (237) points to 0'
+a=numpy.where(a>5,0,a)
 landfrac[:] = a
 #
 # ELEVATION data from GMTED2010
