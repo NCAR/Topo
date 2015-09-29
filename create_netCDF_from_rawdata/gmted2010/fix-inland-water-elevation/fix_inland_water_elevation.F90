@@ -13,7 +13,9 @@ program convterr
   integer*1,  allocatable, dimension(:,:) :: landfrac ! global 30-sec land fraction
   
   integer :: alloc_error,dealloc_error  
-  integer :: i,j,ii                             ! index
+  integer :: i,j,num_patch,itmp,jtmp                       ! index
+  integer, parameter :: incr=120
+  integer :: lf(incr,incr),lf1(incr)
   integer ncid,status, dimlatid,dimlonid, landid, topoid  ! for netCDF USGS data file
   integer :: srcid,dstid                                  ! for netCDF weight file
   
@@ -30,7 +32,7 @@ program convterr
   INTEGER :: UNIT
 
   character(len=1024) :: raw_latlon_data_file,output_file
-  logical :: lcontinue
+  logical :: lcontinue,lpatch
   
   namelist /params/ &
        raw_latlon_data_file,output_file
@@ -98,6 +100,7 @@ program convterr
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   
   WRITE(*,*) "read terrain data"
+!  status = NF_GET_VAR_INT(ncid, topoid,terr)
   status = NF_GET_VAR_INT2(ncid, topoid,terr)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   
@@ -121,37 +124,35 @@ program convterr
   
   WRITE(*,*) 'done reading data from netCDF file'
   
-  
+  !
+  ! identify patches
+  !
   elev=-99999
-  DO j=1,jm
-     write(*,*) j
-     i=1
-     do while (i<im+1)
-        !
-        ! detect start of inland water along latitude
-        !     
-        if (SUM(landfrac(i:i+9,j))==30) then
-           elev = terr(i+9,j) 
-           landfrac(i,j)=0
-           ii=i+1
-           lcontinue=.TRUE.
-           do while (lcontinue)
-              if (landfrac(ii,j)==3) then
-                 terr(ii,j)    =elev
-                 landfrac(ii,j)=0
-                 ii=ii+1
-              else
-                 i=ii-1
-                 lcontinue=.FALSE.
-              end if
-           end do
-        else if (landfrac(i,j)==3) then
-           landfrac(i,j)=0
+  num_patch = 0
+  DO j=1,jm,incr!15240,15500!,jm
+     write(*,*) j,lat(j)
+     DO i=1,im,incr!6000,6480
+        itmp=i+incr-1
+        jtmp=j+incr-1
+        lf = landfrac(i:itmp,j:jtmp)
+        lf1= landfrac(i-1,j:jtmp)
+        if (SUM(lf )==3*incr*incr.and.SUM(ABS(terr(i:itmp,j:jtmp)))==0               .and.&
+            SUM(lf1)==3*incr     .and.SUM(    terr(i-1   ,j:jtmp)) ==incr*terr(i-1,j).and.&
+                                              terr(i-1   ,j     )  .NE.0.0) then
+           elev = terr(i-1,j)
+           write(*,*) "***********************************"
+           write(*,*) "found patch",i,j
+           write(*,*) "lower left lon,lat",lon(i),lat(j)
+           terr(i:itmp,j:jtmp)=elev
+!           landfrac(i:itmp,j:jtmp)=0
+           num_patch=num_patch+1
         end if
-        i=i+1
      END DO
   END DO
-  
+  where (landfrac==3) landfrac=0
+  write(*,*) "number of patches found ",num_patch
+
+ 
   !
   ! write data to NetCDF file
   !
@@ -310,6 +311,7 @@ end subroutine handle_err
 ! Write variable for output
 !
         print*,"writing terrain data"
+!        status = nf_put_var_int (foutid, htopoid, h)
         status = nf_put_var_int2 (foutid, htopoid, h)
         if (status .ne. NF_NOERR) call handle_err(status)
         print*,"done writing terrain data"
