@@ -4,8 +4,8 @@
 # fv0.9x1.25-gmted2010_modis-smooth_cam.nc
 #
 model=fv0.9x1.25
-raw_data=gmted2010_modis
-#raw_data=gtopo30
+#raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=smooth_cam
 #
 # DO NOT EDIT BELOW THIS LINE
@@ -78,7 +78,7 @@ cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc: $(sm)/input/10min-gtopo30-phis-raw
 #
 bin_to_cube/gmted2010_modis-ncube3000.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
 	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh gmted2010)
-bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
+bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
 	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh gtopo30)
 #
 #
