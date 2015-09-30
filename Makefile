@@ -4,8 +4,8 @@
 # fv0.9x1.25-gmted2010_modis-smooth_cam.nc
 #
 model=fv0.9x1.25
-raw_data=gmted2010_modis
-#raw_data=gtopo30
+#raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=smooth_cam
 #
 # DO NOT EDIT BELOW THIS LINE
@@ -15,7 +15,9 @@ cr:=create_netCDF_from_rawdata
 sm:=cam_fv_topo-smoothing
 
 init: init_$(raw_data) 
-cube_to_target: bin_to_cube/gmted2010_modis-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
+cube_to_target: cube_to_target_$(raw_data)
+cube_to_target_gmted2010: bin_to_cube/gmted2010_modis-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
+cube_to_target_gtopo30: bin_to_cube/gtopo30-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
 plot:
 	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) pdf;\
 	gv topo-vars-$(model)-$(raw_data)-$(smoothing).pdf)
@@ -24,7 +26,6 @@ plot:
 #
 init_gmted2010_modis: raw_netCDF_gmted2010_modis cam_fv_smooth_gmted2010_modis bin_to_cube_gmted2010
 init_gtopo30: raw_netCDF_gtopo30 cam_fv_smooth_gtopo30 bin_to_cube_gtopo30
-
 raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft_fix_inland_water_elevation.nc
 raw_netCDF_gtopo30: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
 cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
