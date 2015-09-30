@@ -25,7 +25,7 @@ plot:
 init_gmted2010_modis: raw_netCDF_gmted2010_modis cam_fv_smooth_gmted2010_modis bin_to_cube_gmted2010
 init_gtopo30: raw_netCDF_gtopo30 cam_fv_smooth_gtopo30 bin_to_cube_gtopo30
 
-raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
+raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft_fix_inland_water_elevation.nc
 raw_netCDF_gtopo30: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
 cam_fv_smooth_gmted2010_modis:  cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
 cam_fv_smooth_gtopo30:  cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
@@ -38,6 +38,11 @@ create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc: $(cr)/
 	$(python_command) $(cr)/create_gmted2010_modis.py $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc $(cr)/gmted2010_elevation_and_landfrac_modis.nc
 	$(python_command) $(cr)/shift.py $(cr)/gmted2010_elevation_and_landfrac_modis.nc $(cr)/gmted2010_elevation_and_landfrac_modis_sft.nc
 	rm create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc
+
+create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft_fix_inland_water_elevation.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
+	(cd create_netCDF_from_rawdata/gmted2010/fix-inland-water-elevation; make; ./fix_inland_water_elevation)
+	rm create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
+
 #
 # generate ~1km land fraction data from MODIS source data
 #
