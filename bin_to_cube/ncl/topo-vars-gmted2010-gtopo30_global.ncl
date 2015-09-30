@@ -47,6 +47,7 @@ begin
 
   res@gsnDraw              = False        ; do not draw picture
   res@gsnFrame             = False        ; do not advance frame
+  res@mpOutlineOn = False
 
   area_string = "global"
 ;  setRegionAttributes(res,area,area_string); for regional plot
@@ -57,18 +58,18 @@ begin
   plot = new(2,graphic)
   res@gsnLeftString   = "height"
   res@gsnRightString   = "GMTED2010-GTOPO30"
-  res@cnLevelSelectionMode = "ManualLevels"; manually set the contour levels with the following 3 resources
-  res@cnMinLevelValF  = -500.; set the minimum contour level
-  res@cnMaxLevelValF  = 500.; set the maximum contour level
-  res@cnLevelSpacingF = 50.; set the interval between contours
+;  res@cnLevelSelectionMode = "ManualLevels"; manually set the contour levels with the following 3 resources
+;  res@cnMinLevelValF  = -500.; set the minimum contour level
+;  res@cnMaxLevelValF  = 500.; set the maximum contour level
+;  res@cnLevelSpacingF = 50.; set the interval between contours
   plot(0) = gsn_csm_contour_map_ce(wks,h_gmted2010-h_gtopo30,res)
   res@gsnLeftString   = "SGH30"
 ;  res@gsnRightString   = "GTOPO30"
   res@gsnRightString   = "GMTED2010-GTOPO30"
   res@cnLevelSelectionMode = "ManualLevels"; manually set the contour levels with the following 3 resources
-  res@cnMinLevelValF  = -150.; set the minimum contour level
-  res@cnMaxLevelValF  = 150.; set the maximum contour level
-  res@cnLevelSpacingF = 20.; set the interval between contours
+;  res@cnMinLevelValF  = -150.; set the minimum contour level
+;  res@cnMaxLevelValF  = 150.; set the maximum contour level
+;  res@cnLevelSpacingF = 20.; set the interval between contours
   plot(1) = gsn_csm_contour_map_ce(wks,sgh30_gmted2010-sgh30_gtopo30  ,res)
 
 
