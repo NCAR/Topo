@@ -540,7 +540,7 @@
           end do
         end do
 
-        fout='../gtopo30-rawdata.nc'
+        fout='../../gtopo30-rawdata.nc'
 !
 !  Create NetCDF file for output
 !
