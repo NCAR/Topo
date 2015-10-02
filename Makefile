@@ -1,19 +1,29 @@
 #
-# fv0.9x1.25-gmted2010_modis-smooth_cam.nc
+# Format for data files: model-raw_data-smoothing
 #
+#
+# STANDARD CONGIGURATION
+#
+# fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc
+#
+model=fv0.9x1.25
+raw_data=gmted2010_modis
+smoothing=cam_fv_smooth
+
 model=fv0.9x1.25
 #model=ne30np4
 raw_data=gmted2010_modis
 #raw_data=gtopo30
 smoothing=cam_fv_smooth
+
+
+
 #
 # DO NOT EDIT BELOW THIS LINE
 #
 python_command:=~pel/anaconda/bin/python
 cr:=create_netCDF_from_rawdata
 sm:=cam_fv_topo-smoothing
-
-#cam_fv_smooth_$(raw_data) 
 
 all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 

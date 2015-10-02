@@ -3,6 +3,7 @@ echo "argument is:" $argv[1]
 if ($argv[1] == gmted2010_modis) then
   echo "Using "$argv[1]
 else if ($argv[1] == gtopo30) then
+  echo "Using "$argv[1]
 else
  echo "ERROR: no valid argument for run.sh"
  echo "valid options are gmted2010_modis and gtopo30"
