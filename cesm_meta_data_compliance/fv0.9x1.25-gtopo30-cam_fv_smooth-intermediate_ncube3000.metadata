@@ -1,0 +1,16 @@
+Global attribute	|	Text (WARNING: ATTRIBUTE NAMES  HARDCODED IN PHYTHON SCRIPT)
+
+-data_summary		|	Topography data based on GTOPO30 data
+-data_creator 		| 	Peter Hjort Lauritzen, pel@ucar.edu
+-cesm_contact    	|     	Cecile Hannay
+-creation_date    	|     	October 2, 2015
+-update_date    	|     	N/A
+-history    		|     	N/A
+-data_script    	|     	make cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc
+-data_description_url 	|     	http://www.cgd.ucar.edu/cms/pel/topo.html
+-data_source_url    	|     	https://github.com/NCAR/Topo.git,
+-data_reference    	|     	Lauritzen, P. H., Bacmeister, J. T., Callaghan, P. F., and Taylor, M. A.: NCAR global model topography generation software for unstructured grids, Geosci. Model Dev. Discuss., 8, 4623-4651, doi:10.5194/gmdd-8-4623-2015, 2015.
+-data_doi    		|     	N/A
+-climo_years    	|     	N/A
+-data_mods    		|     	N/A
+
