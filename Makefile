@@ -4,17 +4,19 @@
 #
 # STANDARD CONGIGURATION
 #
-# fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc
+# fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc
 #
 model=fv0.9x1.25
 raw_data=gmted2010_modis
 smoothing=cam_fv_smooth
+ncube=3000
 
-model=fv0.9x1.25
+
+#model=fv0.9x1.25
 #model=ne30np4
-raw_data=gmted2010_modis
+#raw_data=gmted2010_modis
 #raw_data=gtopo30
-smoothing=cam_fv_smooth
+#smoothing=cam_fv_smooth
 
 
 
@@ -27,11 +29,11 @@ sm:=cam_fv_topo-smoothing
 
 all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 
-bin_to_cube: bin_to_cube/$(raw_data)-ncube3000.nc
-cube_to_target: bin_to_cube/$(raw_data)-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
+bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc
+cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
 plot:
 	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) pdf;\
-	gv topo-vars-$(model)-$(raw_data)-$(smoothing).pdf)
+	gv topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf)
 
 #
 #********************************
@@ -40,19 +42,19 @@ plot:
 #
 #********************************
 #
-cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
-cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	echo ./run.sh $(model) $(raw_data) $(smoothing)
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
-	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc fv0.9x1.25-gmted2010_modis-cam_fv_smooth.metadata)
+cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
+cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc: bin_to_cube/gmted2010_modis-ncube$(ncube).nc cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
+	echo ./run.sh $(model) $(raw_data) $(smoothing) $(ncube)
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
+	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).metadata)
 
-cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc: bin_to_cube/gtopo30-ncube3000.nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
+cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc: bin_to_cube/gtopo30-ncube$(ncube).nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
 	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
 	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
-	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc fv0.9x1.25-gtopo30-cam_fv_smooth.metadata)
-cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube3000.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).metadata)
+cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube$(ncube).nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
 	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
 
 #********************************
@@ -109,10 +111,8 @@ create_netCDF_from_rawdata/gtopo30-rawdata.nc:
 #
 #********************************
 #
-bin_to_cube/$(raw_data)-ncube3000.nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
-	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data))
-bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
-	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh gtopo30)
+bin_to_cube/$(raw_data)-ncube$(ncube).nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
+	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
 
 #
 #=====================================================================================================================

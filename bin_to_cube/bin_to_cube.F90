@@ -22,7 +22,8 @@ program convterr
   !
   integer :: im, jm
   
-  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
+!  integer,  parameter :: ncube = 3000 !dimension of cubed-sphere grid
+  integer :: ncube !dimension of cubed-sphere grid
 !  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - for debugging
   
   integer*2,  allocatable, dimension(:,:) :: terr               ! global 30-sec terrain data
@@ -78,12 +79,13 @@ program convterr
   character(len=1024) :: raw_latlon_data_file,output_file
   
   namelist /binparams/ &
-       raw_latlon_data_file,output_file
+       raw_latlon_data_file,output_file,ncube
   
   UNIT=221
   OPEN( UNIT=UNIT, FILE="bin_to_cube.nl" ) !, NML =  cntrls )
   READ( UNIT=UNIT, NML=binparams)
   CLOSE(UNIT=UNIT)
+  write(*,*) "Intermediate cubed-sphere resolution ",ncube
 
   !
   ! read in data from netCDF file

@@ -1,12 +1,12 @@
 #!/bin/csh
-echo "arguments are:" $argv[1],$argv[2],$argv[3]
+echo "arguments are:" $argv[1],$argv[2],$argv[3],$argv[4]
 if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == cam_fv_smooth) then
-  cat > topo.nl <<EOF
+  cat > cube_to_target.nl <<EOF
 &topoparams
-  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
-  intermediate_cubed_sphere_fname = '../bin_to_cube/gmted2010_modis-ncube3000.nc'
-  output_fname                    = 'output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc'
-  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc'
+  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/$argv[1].nc'
+  intermediate_cubed_sphere_fname = '../bin_to_cube/$argv[2]-ncube$argv[4].nc'
+  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].nc'
+  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/$argv[2]-$argv[1]-$argv[3].nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
   lzero_out_ocean_point_phis = .false.
@@ -19,19 +19,19 @@ if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == cam_fv_
 /
 
 EOF
-  ./cube_to_target >& output/fv0.9x1.25-gmted2010_modis-smooth_cam.out &
-  tail -f output/fv0.9x1.25-gmted2010_modis-smooth_cam.out
+  ./cube_to_target #>& output/argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].out 
+#  tail -f output/argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].out
 else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30 && $argv[3] == cam_fv_smooth) then
   echo "Grid is ",$argv[1]
   echo "Raw ~1km data is ",$argv[2]
   echo "Using externally smoothed PHIS; smoothed with cam_fv_topo-smoothing program"
   echo "Intermediate cubed-sphere is ../bin_to_cube/gtopo30-ncube3000.nc"
-  cat > topo.nl <<EOF
+  cat > cube_to_target.nl <<EOF
 &topoparams
-  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/fv-0.9x1.25.nc'
-  intermediate_cubed_sphere_fname = '../bin_to_cube/gtopo30-ncube3000.nc'
-  output_fname                    = 'output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc'
-  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc'
+  grid_descriptor_fname           = 'inputdata/grid-descriptor-file/$argv[1].nc'
+  intermediate_cubed_sphere_fname = '../bin_to_cube/$argv[2]-ncube$argv[4].nc'
+  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].nc'
+  externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/$argv[2]-$argv[1]-$argv[3].nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
   lzero_out_ocean_point_phis = .false.
@@ -44,14 +44,15 @@ else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30 && $argv[3] == cam_fv_smo
 /
 
 EOF
-  ./cube_to_target >& output/fv0.9x1.25-gtopo30-smooth_cam.out &
-  tail -f output/fv0.9x1.25-gtopo30-smooth_cam.out
+  ./cube_to_target >& output/argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].out
+#  ./cube_to_target >& output/fv0.9x1.25-gtopo30-smooth_cam.out &
+#  tail -f output/fv0.9x1.25-gtopo30-smooth_cam.out
 else if ($argv[1] == ne30np4 && $argv[2] == gtopo30 && $argv[3] == smooth_se) then
   echo "Grid is ",$argv[1]
   echo "Raw ~1km data is ",$argv[2]
   echo "Using externally smoothed PHIS; smoothed with CAM-SE ",$argv[3]
   echo "Intermediate cubed-sphere is ../bin_to_cube/gtopo30-ncube3000.nc"
-  cat > topo.nl <<EOF
+  cat > cube_to_target.nl <<EOF
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/ne30np4_091226_pentagons.nc'
   intermediate_cubed_sphere_fname = '../bin_to_cube/gtopo30-ncube3000.nc'
@@ -69,7 +70,7 @@ else if ($argv[1] == ne30np4 && $argv[2] == gtopo30 && $argv[3] == smooth_se) th
 /
 
 EOF
-  ./cube_to_target >& output/ne30np4-gtopo30-smooth_se.out &
+  ./cube_to_target >& output/ne30np4-gtopo30-se_smooth-intermediate_ncube$argv[4].out &
   tail -f output/ne30np4-gtopo30-smooth_se.out
 
 else if ($argv[1] == ne30np4 && $argv[2] == gtopo30 && $argv[3] == no_smooth) then
