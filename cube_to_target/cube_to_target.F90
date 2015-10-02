@@ -146,7 +146,7 @@ program convterr
        nwindow_halfwidth,nridge_subsample
   
   UNIT=221
-  OPEN( UNIT=UNIT, FILE="topo.nl" ) !, NML =  cntrls )
+  OPEN( UNIT=UNIT, FILE="cube_to_target.nl" ) !, NML =  cntrls )
   READ( UNIT=UNIT, NML=topoparams)
   CLOSE(UNIT=UNIT)
   
@@ -636,46 +636,6 @@ subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,a
   call DATE_AND_TIME(DATE=datestring)
   status = nf_put_att_text (foutid,NF_GLOBAL,'history',25, 'Written on date: ' // datestring )
   if (status .ne. NF_NOERR) call handle_err(status)
-
-
-  !
-  ! CESM required attributed
-  !
-  str='GMTED2010-MODIS tropography data'
-  status = nf_put_att_text (foutid,NF_GLOBAL,'data_title',len_trim(trim(str)),trim(str))
-  if (status .ne. NF_NOERR) call handle_err(status)
-
-!-data_title: Short title of the data
-!-data_summary: Short paragraph about the data.
-!
-!-data_creator: Name and email of the person who created the dataset
-!
-!-cesm_contact: The liaison of the relevant WG
-!
-!-creation_date: Full date of dataset creation
-!
-!-update_date: Full date of most recent modification
-!
-!-history: Updates to changes made to the data.
-!
-!-data_script: script to generate data (will be available in the SVN repository ?)
-!
-!
-!Strongly recommended:
-!
-!-data_description_url: A web-page with a description if available: This could be the climatedataguide webpage.
-!
-!-data_source_url: The web page where the raw data can be downloaded
-!
-!-data_reference: Full reference for the dataset if available
-!
-!-data_doi: If doi of data exists
-!
-!-climo_years: Year 1-year N of the climatological averaging period.
-!
-!-data_mods: Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CE
-!
-  
   !
   ! End define mode for output file
   !
@@ -994,7 +954,7 @@ subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,lan
   status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
   status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
   status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
-  status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
+!  status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
   
   
   status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
@@ -1011,10 +971,10 @@ subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,lan
   !        status = nf_put_att_text (foutid,lonvid,'units' , 21, 'cell center locations')
   !        if (status .ne. NF_NOERR) call handle_err(status)
   
-  status = nf_put_att_text (foutid,NF_GLOBAL,'source', 27, 'USGS 30-sec dataset GTOPO30')
-  if (status .ne. NF_NOERR) call handle_err(status)
-  status = nf_put_att_text (foutid,NF_GLOBAL,'title',  24, '30-second USGS topo data')
-  if (status .ne. NF_NOERR) call handle_err(status)
+!  status = nf_put_att_text (foutid,NF_GLOBAL,'source', 27, 'USGS 30-sec dataset GTOPO30')
+!  if (status .ne. NF_NOERR) call handle_err(status)
+!  status = nf_put_att_text (foutid,NF_GLOBAL,'title',  24, '30-second USGS topo data')
+!  if (status .ne. NF_NOERR) call handle_err(status)
   call DATE_AND_TIME(DATE=datestring)
   status = nf_put_att_text (foutid,NF_GLOBAL,'history',25, 'Written on date: ' // datestring )
   if (status .ne. NF_NOERR) call handle_err(status)

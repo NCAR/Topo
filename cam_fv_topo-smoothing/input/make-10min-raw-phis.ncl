@@ -5,7 +5,7 @@
 ; GMTED2010
 ;
 if (gmted2010_modis)
-  str = "../../create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft_fix_inland_water_elevation.nc"
+  str = "../../create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc"
   print("Using GMTED2010/MODIS raw data")
   fsource     = addfile(str,"r")
   fname_out = "10min-gmted2010_modis-phis-raw.nc"

@@ -34,4 +34,7 @@ Creates intermediate cubed-sphere data for cube_to_target.
 
 Remap elevation data to target grid and compute associated variables.
 
+4. cesm_meta_data_compliance:
+-----------------------------
 
+Python script to add CESM meta data to topography data file

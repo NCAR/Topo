@@ -1,14 +1,10 @@
 #
-# streamline resolution and names (cam-Fv smoothing first)
-#
-#
 # fv0.9x1.25-gmted2010_modis-smooth_cam.nc
 #
 model=fv0.9x1.25
 #model=ne30np4
 raw_data=gmted2010_modis
 #raw_data=gtopo30
-#smoothing=smooth_cam
 smoothing=cam_fv_smooth
 #
 # DO NOT EDIT BELOW THIS LINE
@@ -19,23 +15,46 @@ sm:=cam_fv_topo-smoothing
 
 #cam_fv_smooth_$(raw_data) 
 
+all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 
 bin_to_cube: bin_to_cube/$(raw_data)-ncube3000.nc
 cube_to_target: bin_to_cube/$(raw_data)-ncube3000.nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
 plot:
 	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) pdf;\
 	gv topo-vars-$(model)-$(raw_data)-$(smoothing).pdf)
-#
-# generate intermediate cubed-sphere data from raw data
-#
 
 #
+#********************************
+# 
+# cube_to_target make commands
+#
+#********************************
+#
+cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing).nc
+cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	echo ./run.sh $(model) $(raw_data) $(smoothing)
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth.nc fv0.9x1.25-gmted2010_modis-cam_fv_smooth.metadata)
+
+cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc: bin_to_cube/gtopo30-ncube3000.nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth.nc fv0.9x1.25-gtopo30-cam_fv_smooth.metadata)
+cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube3000.nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+
+#********************************
+#
 # smooth PHIS the CAM-FV way
+#
+#********************************
 #
 cam_fv_smooth:  cam_fv_topo-smoothing/$(raw_data)-$(model)-$(smoothing).nc
 cam_fv_topo-smoothing/$(raw_data)-$(model)-$(smoothing).nc: $(sm)/input/10min-$(raw_data)-phis-raw.nc
 	(cd $(sm)/definesurf; make; ./definesurf -t ../input/10min-$(raw_data)-phis-raw.nc  -g ../input/outgrid/$(model).nc -l ../input/landm_coslat.nc -remap ../$(raw_data)-$(model)-$(smoothing).nc)
-cam_fv_topo-smoothing/input/10min-gmted2010_modis-phis-raw.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft_fix_inland_water_elevation.nc
+cam_fv_topo-smoothing/input/10min-gmted2010_modis-phis-raw.nc: create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc
 	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=True')
 cam_fv_topo-smoothing/input/10min-gtopo30-phis-raw.nc: create_netCDF_from_rawdata/gtopo30-rawdata.nc
 	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=False')
@@ -74,29 +93,16 @@ create_netCDF_from_rawdata/gtopo30-rawdata.nc:
 # calculate data for CAM-FV smoothing
 #
 
-
+#********************************
 #
 # bin ~1km lat-lon data (GMTED2010, MODIS) to ~3km cubed-sphere grid
+#
+#********************************
 #
 bin_to_cube/$(raw_data)-ncube3000.nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
 	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data))
 bin_to_cube/gtopo30-ncube3000.nc: create_netCDF_from_rawdata/gtopo30/gtopo30-rawdata.nc
 	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh gtopo30)
-#
-#
-#
-cube_to_target/output/fv0.9x1.25-gmted2010_modis-smooth_cam.nc: bin_to_cube/gmted2010_modis-ncube3000.nc cam_fv_topo-smoothing/fv-gmted2010_modis-0.9x1.25.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	echo ./run.sh $(model) $(raw_data) $(smoothing)
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
-cube_to_target/output/fv0.9x1.25-gtopo30-smooth_cam.nc: bin_to_cube/gtopo30-ncube3000.nc cam_fv_topo-smoothing/fv-gtopo30-0.9x1.25.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
-
-cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube3000.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
-
 
 #
 #=====================================================================================================================
