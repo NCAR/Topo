@@ -7,14 +7,12 @@
 echo "arguments are:",$argv[1],$argv[2],$argv[3],$argv[4]
 #fv0.9x1.25
 set model=$argv[1]
-#raw_data=gmted2010_modis
 set raw_data=$argv[2]
-#smoothing=smooth_cam
 set smoothing=$argv[3]
-#if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == smooth_cam) then
-set format=$argv[4]
-set dataFile='"'../output/$model-$raw_data-$smoothing.nc'"'
-set outputFile='"'topo-vars-$model-$raw_data-$smoothing'"'
+set ncube=$argv[4]
+set format=$argv[5]
+set dataFile='"'../output/$model-$raw_data-$smoothing-intermediate_ncube$ncube.nc'"'
+set outputFile='"'topo-vars-$model-$raw_data-$smoothing-intermediate_ncube$ncube'"'
 set out_format='"'$format'"'
 
 echo $dataFile

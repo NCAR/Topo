@@ -31,8 +31,10 @@ all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 
 bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc
 cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-plot:
-	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) pdf;\
+plot: cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf
+
+cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf:
+	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) $(ncube) pdf;\
 	gv topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf)
 
 #
