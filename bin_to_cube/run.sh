@@ -13,7 +13,7 @@ endif
 cat > bin_to_cube.nl <<EOF
 &binparams
   raw_latlon_data_file = '../create_netCDF_from_rawdata/$argv[1]-rawdata.nc'
-  output_file = '$argv[1]-ncube3000.nc'
+  output_file = '$argv[1]-ncube$argv[2].nc'
   ncube=$argv[2]
 /
 

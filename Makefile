@@ -9,7 +9,7 @@
 model=fv0.9x1.25
 raw_data=gmted2010_modis
 smoothing=cam_fv_smooth
-ncube=3000
+ncube=540
 
 
 #model=fv0.9x1.25
