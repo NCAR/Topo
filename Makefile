@@ -2,7 +2,7 @@
 # Format for data files: model-raw_data-smoothing
 #
 #
-# STANDARD CONGIGURATION
+# STANDARD CONGIGURATION - what about aniso?
 #
 # fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc
 #
