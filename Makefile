@@ -9,9 +9,9 @@
 # fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso)_anisoSGH.nc
 #
 model=fv0.9x1.25
-raw_data=gtopo30
+raw_data=gmted2010_modis
 smoothing=cam_fv_smooth
-ncube=540
+ncube=3000
 aniso=no_anisoSGH
 
 #model=fv0.9x1.25
@@ -46,7 +46,7 @@ cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncub
 #
 #********************************
 #
-cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
+cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc cam_fv_topo-smoothing/$(raw_data)-$(model)-$(smoothing).nc
 	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 	echo ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso)
