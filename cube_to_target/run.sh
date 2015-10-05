@@ -1,11 +1,11 @@
 #!/bin/csh
-echo "arguments are:" $argv[1],$argv[2],$argv[3],$argv[4]
+echo "arguments are:" $argv[1],$argv[2],$argv[3],$argv[4],$argv[5]
 if ($argv[1] == fv0.9x1.25 && $argv[2] == gmted2010_modis && $argv[3] == cam_fv_smooth) then
   cat > cube_to_target.nl <<EOF
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/$argv[1].nc'
   intermediate_cubed_sphere_fname = '../bin_to_cube/$argv[2]-ncube$argv[4].nc'
-  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].nc'
+  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4]-$argv[5].nc'
   externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/$argv[2]-$argv[1]-$argv[3].nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.
@@ -30,7 +30,7 @@ else if ($argv[1] == fv0.9x1.25 && $argv[2] == gtopo30 && $argv[3] == cam_fv_smo
 &topoparams
   grid_descriptor_fname           = 'inputdata/grid-descriptor-file/$argv[1].nc'
   intermediate_cubed_sphere_fname = '../bin_to_cube/$argv[2]-ncube$argv[4].nc'
-  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].nc'
+  output_fname                    = 'output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4]-$argv[5].nc'
   externally_smoothed_topo_file   = '../cam_fv_topo-smoothing/$argv[2]-$argv[1]-$argv[3].nc'
   lsmooth_terr = .true.
   lexternal_smooth_terr = .true.

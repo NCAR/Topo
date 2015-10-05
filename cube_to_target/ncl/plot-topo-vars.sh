@@ -4,15 +4,16 @@
 #
 #     ./plot-topo-vars.sh fv0.9x1.25 gtopo30 smooth_cam pdf
 #
-echo "arguments are:",$argv[1],$argv[2],$argv[3],$argv[4]
+echo "arguments are:",$argv[1],$argv[2],$argv[3],$argv[4],$argv[5],$argv[6]
 #fv0.9x1.25
 set model=$argv[1]
 set raw_data=$argv[2]
 set smoothing=$argv[3]
 set ncube=$argv[4]
-set format=$argv[5]
+set aniso=$argv[5]
+set format=$argv[6]
 set dataFile='"'../output/$model-$raw_data-$smoothing-intermediate_ncube$ncube.nc'"'
-set outputFile='"'topo-vars-$model-$raw_data-$smoothing-intermediate_ncube$ncube'"'
+set outputFile='"'topo-vars-$model-$raw_data-$smoothing-intermediate_ncube$ncube-$aniso'"'
 set out_format='"'$format'"'
 
 echo $dataFile

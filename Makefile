@@ -6,13 +6,13 @@
 #
 # STANDARD CONGIGURATION - what about aniso?
 #
-# fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc
+# fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso)_anisoSGH.nc
 #
 model=fv0.9x1.25
 raw_data=gtopo30
 smoothing=cam_fv_smooth
 ncube=540
-aniso=no
+aniso=no_anisoSGH
 
 #model=fv0.9x1.25
 #model=ne30np4
@@ -32,12 +32,12 @@ sm:=cam_fv_topo-smoothing
 all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 
 bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc
-cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-plot: cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf
+cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
+plot: cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf
 
-cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf:
-	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) $(ncube) pdf;\
-	gv topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).pdf)
+cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf:
+	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso) pdf;\
+	gv topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf)
 
 #
 #********************************
@@ -47,19 +47,27 @@ cube_to_target/ncl/topo-vars-$(model)-$(raw_data)-$(smoothing)-intermediate_ncub
 #********************************
 #
 cube_to_target: cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc: bin_to_cube/gmted2010_modis-ncube$(ncube).nc cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-	echo ./run.sh $(model) $(raw_data) $(smoothing) $(ncube)
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
-	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).metadata)
+cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc cam_fv_topo-smoothing/$(raw_data)-$(model)-$(smoothing).nc
+	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
+	echo ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso)
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso))
+	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc $(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).metadata)
 
-cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc: bin_to_cube/gtopo30-ncube$(ncube).nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
-	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).metadata)
-cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube$(ncube).nc
-	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
+
+#cube_to_target/output/f-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/gmted2010_modis-ncube$(ncube).nc cam_fv_topo-smoothing/gmted2010_modis-fv0.9x1.25-cam_fv_smooth.nc
+#	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
+#	echo ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso)
+#	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso))
+#	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).nc fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).metadata)
+#
+
+#cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/gtopo30-ncube$(ncube).nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
+#	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-$(aniso).nc
+#	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso))
+#	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).nc fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube)-$(aniso).metadata)
+#cube_to_target/output/ne30np40-gtopo30-no_smooth-$(aniso).nc: bin_to_cube/gtopo30-ncube$(ncube).nc
+#	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
+#	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube) $(aniso))
 
 #********************************
 #
