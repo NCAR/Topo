@@ -12,7 +12,7 @@ set smoothing=$argv[3]
 set ncube=$argv[4]
 set aniso=$argv[5]
 set format=$argv[6]
-set dataFile='"'../output/$model-$raw_data-$smoothing-intermediate_ncube$ncube.nc'"'
+set dataFile='"'../output/$model-$raw_data-$smoothing-intermediate_ncube$ncube-$aniso.nc'"'
 set outputFile='"'topo-vars-$model-$raw_data-$smoothing-intermediate_ncube$ncube-$aniso'"'
 set out_format='"'$format'"'
 
