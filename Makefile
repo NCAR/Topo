@@ -1,16 +1,18 @@
 #
 # Format for data files: model-raw_data-smoothing
 #
+# Note: NO white spaces after variable assignment
+#
 #
 # STANDARD CONGIGURATION - what about aniso?
 #
 # fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube$(ncube).nc
 #
 model=fv0.9x1.25
-raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=cam_fv_smooth
 ncube=540
-
+aniso=no
 
 #model=fv0.9x1.25
 #model=ne30np4
@@ -53,11 +55,11 @@ cube_to_target/output/fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncub
 
 cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc: bin_to_cube/gtopo30-ncube$(ncube).nc cam_fv_topo-smoothing/gtopo30-fv0.9x1.25-cam_fv_smooth.nc
 	echo cube_to_target/$(model)-$(raw_data)-$(smoothing).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
 	(cd cesm_meta_data_compliance; $(python_command) meta.py ../cube_to_target/output/fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).nc fv0.9x1.25-gtopo30-cam_fv_smooth-intermediate_ncube$(ncube).metadata)
 cube_to_target/output/ne30np40-gtopo30-no_smooth.nc: bin_to_cube/gtopo30-ncube$(ncube).nc
 	echo cube_to_target/$(model)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube).nc
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing))
+	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model) $(raw_data) $(smoothing) $(ncube))
 
 #********************************
 #
@@ -72,7 +74,6 @@ cam_fv_topo-smoothing/input/10min-gmted2010_modis-phis-raw.nc: create_netCDF_fro
 	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=True')
 cam_fv_topo-smoothing/input/10min-gtopo30-phis-raw.nc: create_netCDF_from_rawdata/gtopo30-rawdata.nc
 	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=False')
-
 #
 #********************************
 #
@@ -115,7 +116,8 @@ create_netCDF_from_rawdata/gtopo30-rawdata.nc:
 #
 bin_to_cube/$(raw_data)-ncube$(ncube).nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
 	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
-
+test:
+	echo bin_to_cube/$(raw_data)-ncube$(ncube).nc
 #
 #=====================================================================================================================
 #
