@@ -38,7 +38,7 @@ DEBUG=FALSE
 #
 model=se
 res=ne30np4
-raw_data=gtopo30
+raw_data=gmted2010_modis
 smoothing=julio_smooth
 ncube=3000
 aniso=julio_anisoSGH
@@ -58,7 +58,7 @@ sm:=cam_fv_topo-smoothing
 
 all: cube_to_target plot
 rawdata: raw_netCDF_$(raw_data) 
-bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc
+bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc raw_netCDF_$(raw_data)
 cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 plot: cube_to_target/ncl/topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf
 
@@ -111,22 +111,33 @@ cam_fv_topo-smoothing/input/10min-gtopo30-phis-raw.nc: create_netCDF_from_rawdat
 #********************************
 #
 raw_netCDF_gmted2010_modis: create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc
+
+#
+# the "test -f" commands is to make sure Make does not try to execute when the final rawdata file already exists
+#
 create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc: $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc
-	$(python_command) $(cr)/create_gmted2010_modis.py $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc $(cr)/gmted2010_elevation_and_landfrac_modis.nc
-	$(python_command) $(cr)/shift.py $(cr)/gmted2010_elevation_and_landfrac_modis.nc $(cr)/gmted2010_elevation_and_landfrac_modis_sft.nc
-	rm create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010/fix-inland-water-elevation; make; ./fix_inland_water_elevation)
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || $(python_command) $(cr)/create_gmted2010_modis.py $(cr)/modis/landwater.nc $(cr)/gmted2010/mea.nc $(cr)/gmted2010_elevation_and_landfrac_modis.nc
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || $(python_command) $(cr)/shift.py $(cr)/gmted2010_elevation_and_landfrac_modis.nc $(cr)/gmted2010_elevation_and_landfrac_modis_sft.nc
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || rm create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis.nc
+
 create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc: create_netCDF_from_rawdata/gmted2010_elevation_and_landfrac_modis_sft.nc
-	(cd create_netCDF_from_rawdata/gmted2010/fix-inland-water-elevation; make; ./fix_inland_water_elevation)
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010/fix-inland-water-elevation; make; ./fix_inland_water_elevation)
 #
 # generate ~1km land fraction data from MODIS source data
 #
-create_netCDF_from_rawdata/modis/landwater.nc:
-	(cd $(cr)/modis; chmod +x unpack.sh; ./unpack.sh)
+create_netCDF_from_rawdata/modis/landwater.nc:   
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd $(cr)/modis; chmod +x unpack.sh; ./unpack.sh)
+#	if [ -a create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc ];
+#	then
+#	  echo "file exists"
+#	fi
+#	(cd $(cr)/modis; chmod +x unpack.sh; ./unpack.sh)
 #
 # generate ~1km GMTED2010 data from source
-#
+##
 create_netCDF_from_rawdata/gmted2010/mea.nc:
-	(cd $(cr)/gmted2010; chmod +x unpack.sh; ./unpack.sh)
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd $(cr)/gmted2010; chmod +x unpack.sh; ./unpack.sh)
 #
 # GTOPO30
 #
