@@ -9,53 +9,6 @@ RM = rm
 .SUFFIXES:
 .SUFFIXES: .f90 .o
 
-FC = gfortran
-
-#DEBUG = TRUE
-DEBUG = FALSE
-
-# Check for the NetCDF library and include directories 
-ifeq ($(LIB_NETCDF),$(null))
-LIB_NETCDF := /opt/local/lib
-endif
-
-ifeq ($(INC_NETCDF),$(null))
-INC_NETCDF := /opt/local/include
-endif
-
-# Determine platform 
-UNAMES := $(shell uname -s)
-UNAMEM := $(findstring CRAY,$(shell uname -m))
-
-#------------------------------------------------------------------------
-# GFORTRAN
-#------------------------------------------------------------------------
-#
-ifeq ($(FC),gfortran)
-#
-# Tramhill
-#
-#  INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
-#  LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
-
-  INC_NETCDF := /opt/local/include
-  LIB_NETCDF := /opt/local/lib
-
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff 
-  FFLAGS   := -c   -I$(INC_NETCDF)
-
-
-  ifeq ($(DEBUG),TRUE)
-#   FFLAGS += --chk aesu  -Cpp --trace
-    FFLAGS += -Wall -fbacktrace -fbounds-check
-  else
-    FFLAGS += -O
-  endif
-
-endif
-
-
-
 .f90.o:
 	$(FC) $(FFLAGS) $<
 
