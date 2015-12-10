@@ -1,0 +1,16 @@
+Global attribute	|	Text (WARNING: ATTRIBUTE NAMES  HARDCODED IN PHYTHON SCRIPT)
+
+-data_summary		|	Topography data (PHIS, SGH, SGH30, LANDFRAC) based on GMTED2010 elevation data and MODIS land-water mask
+-data_creator 		| 	Peter Hjort Lauritzen, pel@ucar.edu
+-cesm_contact    	|     	Cecile Hannay
+-creation_date    	|     	December 10, 2015
+-update_date    	|     	N/A
+-history    		|     	N/A
+-data_script    	|     	Makefile in https://github.com/NCAR/Topo.git
+-data_description 	|     	CAM-FV 0.9x1.25 resolution topo data smoothed with CAM-FV smoother and sub-grid-scale scale-separation using ~3km cubed-sphere intermediate grid and no anisotropic SGH/SGH30. Raw data is GMTED2010 and MODIS at ~1km resolution.
+-data_source    	|     	https://github.com/NCAR/Topo.git
+-data_reference    	|     	Lauritzen, P. H., Bacmeister, J. T., Callaghan, P. F., and Taylor, M. A.: NCAR global model topography generation software for unstructured grids, Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.
+-data_doi    		|     	N/A
+-climo_years    	|     	N/A
+-data_mods    		|     	N/A
+

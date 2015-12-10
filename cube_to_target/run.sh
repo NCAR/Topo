@@ -5,7 +5,11 @@ echo "Smoothing  : "$argv[3]
 echo "Intermediate cubed-sphere resolution - ncube:" $argv[4]
 echo "Anisotropic sub-grid vars                   :" $argv[5]
 
-if ($argv[1] == fv_0.9x1.25 && $argv[3] == cam_fv_smooth) then
+if ($argv[1] == fv_0.9x1.25 || $argv[1] == fv_1.9x2.5) then
+  set model = fv
+endif
+#if ($argv[1] == fv_0.9x1.25 && $argv[3] == cam_fv_smooth) then
+if ($model == fv && $argv[3] == cam_fv_smooth) then
 #
 # fv0.9x1.25-$(raw_data)-cam_fv_smooth-intermediate_ncube$(ncube)-no_anisoSGH.nc
 #
@@ -27,8 +31,7 @@ if ($argv[1] == fv_0.9x1.25 && $argv[3] == cam_fv_smooth) then
 /
 
 EOF
-  ./cube_to_target 
-#>& output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4].out
+  ./cube_to_target >& output/$argv[1]-$argv[2]-$argv[3]-intermediate_ncube$argv[4]-$argv[5].out
 #
 #
 #
@@ -51,8 +54,7 @@ else if ($argv[1] == se_ne30np4 && $argv[3] == julio_smooth) then
 /
 
 EOF
-./cube_to_target 
-#>& output/ne30np4-gtopo30-se_smooth-intermediate_ncube$argv[4].out
+./cube_to_target >& output/ne30np4-gtopo30-se_smooth-intermediate_ncube$argv[4].out
 #  tail -f output/ne30np4-gtopo30-smooth_se.out
 else 
   echo "ERROR: no valid argument for run.sh"
