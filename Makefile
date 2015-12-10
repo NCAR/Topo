@@ -23,12 +23,12 @@ aniso=no_anisoSGH
 #
 # fv1.9x2.5-gmted2010_modis-cam_fv_smooth-intermediate_ncube3000-no_anisoSGH.nc
 #
-model=fv
-res=1.9x2.5
-raw_data=gmted2010_modis
-smoothing=cam_fv_smooth
-ncube=3000
-aniso=no_anisoSGH
+#model=fv
+#res=1.9x2.5
+#raw_data=gmted2010_modis
+#smoothing=cam_fv_smooth
+#ncube=3000
+#aniso=no_anisoSGH
 #
 # fv0.9x1.25-gmted2010_modis-cam_fv_smooth-intermediate_ncube3000-no_anisoSGH.nc
 #
