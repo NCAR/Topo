@@ -19,6 +19,12 @@ Program to make netCDF version of the GMTED2010 elevation and MODIS land fractio
 (also support USGS gtopo30)
 This netCDF file is used as input for bin_to_cube.
 
+PLEASE NOTE THAT THIS STEP REQUIRES PYTHON AND GDAL LIBRARY. TO BYPASS THIS STEP
+CONTACT PEL@UCAR.EDU TO OBTAIN 
+
+	create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc
+	create_netCDF_from_rawdata/gtopo30-rawdata.nc
+
 2. bin_to_cube:
 ---------------
 

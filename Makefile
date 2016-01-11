@@ -3,9 +3,9 @@
 #
 machine=harmon
 machine=my_mac
-machine=yellowstone
-FC = ifort
-#FC = gfortran
+#machine=yellowstone
+#FC = ifort
+FC = gfortran
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
@@ -46,10 +46,21 @@ aniso=no_anisoSGH
 #
 #model=se
 #res=ne30np4
-#raw_data=gmted2010
+#raw_data=gmted2010_modis
 #smoothing=cam_se_smooth
 #ncube=3000
 #aniso=no_anisoSGH
+
+#
+# SE variable resolution: 1 degree globally with 0.25 degree nest over US
+#
+#model=se
+#res=cordex_ne120np4_ne30np4
+#raw_data=gtopo30
+#smoothing=cam_se_smooth
+#ncube=3000
+#aniso=no_anisoSGH
+
 
 #
 # Julio developmental setup
@@ -97,13 +108,13 @@ cube_to_target: cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-i
 cube_to_target/output/fv_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc cam_fv_topo-smoothing/$(raw_data)-$(model)_$(res)-$(smoothing).nc
 	echo cube_to_target/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 	echo ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso)
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
+	(cd cube_to_target; make; chmod +x run.sh; cube_to_target.nl; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
 
 
 cube_to_target/output/se_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc
 	echo cube_to_target/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 	echo ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso)
-	(cd cube_to_target; make; chmod +x run.sh; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
+	(cd cube_to_target; make; chmod +x run.sh; rm cube_to_target.nl; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
 
 
 cesm_compliance:
@@ -175,7 +186,7 @@ create_netCDF_from_rawdata/gtopo30-rawdata.nc:
 #********************************
 #
 bin_to_cube/$(raw_data)-ncube$(ncube).nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
-	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
+	(cd bin_to_cube; make; chmod +x run.sh; rm bin_to_cube.nl; ./run.sh $(raw_data) $(ncube))
 test:
 	echo bin_to_cube/$(raw_data)-ncube$(ncube).nc
 #

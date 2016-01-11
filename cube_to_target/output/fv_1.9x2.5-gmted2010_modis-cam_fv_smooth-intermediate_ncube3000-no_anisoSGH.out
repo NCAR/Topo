@@ -1,504 +1,0 @@
- Opening grid descriptor file :  inputdata/grid-descriptor-file/fv_1.9x2.5.nc
- dimension of target grid: ntarget=       13824
- maximum number of corners: ncorner=           4
- grid rank: nrank=           2
- target grid is a lat-lon grid
- nlon=         144 nlat=          96
- center of most Northern grid cell is NOT lat=90; similarly for South pole
- Opening intermediate cubed-sphere file : ../bin_to_cube/gmted2010_modis-ncube3000.nc
- cubed-sphere dimension: ncube =         3000
- average grid-spacing at the Equator (degrees):   2.99999993E-02
- cubed-sphere dimension, ncube:         3000
- min/max of landm_coslat   0.0000000000000000        1.0000000000000002     
- min/max of landfrac   0.0000000000000000        1.0000000000000000     
- min/max of terr  -412.00000000000000        8267.4088528344146     
- min/max of sgh30   0.0000000000000000        1341.7472169800958     
- close file
- done reading in data from netCDF file
- DAcube consistency:   -2.9354296771089139E-013
-  No smoothing of intermediate topography 
- Compute overlap weights: 
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         10      0.07 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         20      0.14 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         30      0.22 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         40      0.29 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         50      0.36 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         60      0.43 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         70      0.51 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         80      0.58 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#         90      0.65 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        100      0.72 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        110      0.80 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        120      0.87 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        130      0.94 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        140      1.01 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#        150      1.09 percent  done   #        160      1.16 percent  done   #        170      1.23 percent  done   #        180      1.30 percent  done   #        190      1.37 percent  done   #        200      1.45 percent  done   #        210      1.52 percent  done   #        220      1.59 percent  done   #        230      1.66 percent  done   #        240      1.74 percent  done   #        250      1.81 percent  done   #        260      1.88 percent  done   #        270      1.95 percent  done   #        280      2.03 percent  done   #        290      2.10 percent  done   #        300      2.17 percent  done   #        310      2.24 percent  done   #        320      2.31 percent  done   #        330      2.39 percent  done   #        340      2.46 percent  done   #        350      2.53 percent  done   #        360      2.60 percent  done   #        370      2.68 percent  done   #        380      2.75 percent  done   #        390      2.82 percent  done   #        400      2.89 percent  done   #        410      2.97 percent  done   #        420      3.04 percent  done   #        430      3.11 percent  done   #        440      3.18 percent  done   #        450      3.26 percent  done   #        460      3.33 percent  done   #        470      3.40 percent  done   #        480      3.47 percent  done   #        490      3.54 percent  done   #        500      3.62 percent  done   #        510      3.69 percent  done   #        520      3.76 percent  done   #        530      3.83 percent  done   #        540      3.91 percent  done   #        550      3.98 percent  done   #        560      4.05 percent  done   #        570      4.12 percent  done   #        580      4.20 percent  done   #        590      4.27 percent  done   #        600      4.34 percent  done   #        610      4.41 percent  done   #        620      4.48 percent  done   #        630      4.56 percent  done   #        640      4.63 percent  done   #        650      4.70 percent  done   #        660      4.77 percent  done   #        670      4.85 percent  done   #        680      4.92 percent  done   #        690      4.99 percent  done   #        700      5.06 percent  done   #        710      5.14 percent  done   #        720      5.21 percent  done   #        730      5.28 percent  done   #        740      5.35 percent  done   #        750      5.43 percent  done   #        760      5.50 percent  done   #        770      5.57 percent  done   #        780      5.64 percent  done   #        790      5.71 percent  done   #        800      5.79 percent  done   #        810      5.86 percent  done   #        820      5.93 percent  done   #        830      6.00 percent  done   #        840      6.08 percent  done   #        850      6.15 percent  done   #        860      6.22 percent  done   #        870      6.29 percent  done   #        880      6.37 percent  done   #        890      6.44 percent  done   #        900      6.51 percent  done   #        910      6.58 percent  done   #        920      6.66 percent  done   #        930      6.73 percent  done   #        940      6.80 percent  done   #        950      6.87 percent  done   #        960      6.94 percent  done   #        970      7.02 percent  done   #        980      7.09 percent  done   #        990      7.16 percent  done   #       1000      7.23 percent  done   #       1010      7.31 percent  done   #       1020      7.38 percent  done   #       1030      7.45 percent  done   #       1040      7.52 percent  done   #       1050      7.60 percent  done   #       1060      7.67 percent  done   #       1070      7.74 percent  done   #       1080      7.81 percent  done   #       1090      7.88 percent  done   #       1100      7.96 percent  done   #       1110      8.03 percent  done   #       1120      8.10 percent  done   #       1130      8.17 percent  done   #       1140      8.25 percent  done   #       1150      8.32 percent  done   #       1160      8.39 percent  done   #       1170      8.46 percent  done   #       1180      8.54 percent  done   #       1190      8.61 percent  done   #       1200      8.68 percent  done   #       1210      8.75 percent  done   #       1220      8.83 percent  done   #       1230      8.90 percent  done   #       1240      8.97 percent  done   #       1250      9.04 percent  done   #       1260      9.11 percent  done   #       1270      9.19 percent  done   #       1280      9.26 percent  done   #       1290      9.33 percent  done   #       1300      9.40 percent  done   #       1310      9.48 percent  done   #       1320      9.55 percent  done   #       1330      9.62 percent  done   #       1340      9.69 percent  done   #       1350      9.77 percent  done   #       1360      9.84 percent  done   #       1370      9.91 percent  done   #       1380      9.98 percent  done   #       1390     10.05 percent  done   #       1400     10.13 percent  done   #       1410     10.20 percent  done   #       1420     10.27 percent  done   #       1430     10.34 percent  done   #       1440     10.42 percent  done   #       1450     10.49 percent  done   #       1460     10.56 percent  done   #       1470     10.63 percent  done   #       1480     10.71 percent  done   #       1490     10.78 percent  done   #       1500     10.85 percent  done   #       1510     10.92 percent  done   #       1520     11.00 percent  done   #       1530     11.07 percent  done   #       1540     11.14 percent  done   #       1550     11.21 percent  done   #       1560     11.28 percent  done   #       1570     11.36 percent  done   #       1580     11.43 percent  done   #       1590     11.50 percent  done   #       1600     11.57 percent  done   #       1610     11.65 percent  done   #       1620     11.72 percent  done   #       1630     11.79 percent  done   #       1640     11.86 percent  done   #       1650     11.94 percent  done   #       1660     12.01 percent  done   #       1670     12.08 percent  done   #       1680     12.15 percent  done   #       1690     12.23 percent  done   #       1700     12.30 percent  done   #       1710     12.37 percent  done   #       1720     12.44 percent  done   #       1730     12.51 percent  done   #       1740     12.59 percent  done   #       1750     12.66 percent  done   #       1760     12.73 percent  done   #       1770     12.80 percent  done   #       1780     12.88 percent  done   #       1790     12.95 percent  done   #       1800     13.02 percent  done   #       1810     13.09 percent  done   #       1820     13.17 percent  done   #       1830     13.24 percent  done   #       1840     13.31 percent  done   #       1850     13.38 percent  done   #       1860     13.45 percent  done   #       1870     13.53 percent  done   #       1880     13.60 percent  done   #       1890     13.67 percent  done   #       1900     13.74 percent  done   #       1910     13.82 percent  done   #       1920     13.89 percent  done   #       1930     13.96 percent  done   #       1940     14.03 percent  done   #       1950     14.11 percent  done   #       1960     14.18 percent  done   #       1970     14.25 percent  done   #       1980     14.32 percent  done   #       1990     14.40 percent  done   #       2000     14.47 percent  done   #       2010     14.54 percent  done   #       2020     14.61 percent  done   #       2030     14.68 percent  done   #       2040     14.76 percent  done   #       2050     14.83 percent  done   #       2060     14.90 percent  done   #       2070     14.97 percent  done   #       2080     15.05 percent  done   #       2090     15.12 percent  done   #       2100     15.19 percent  done   #       2110     15.26 percent  done   #       2120     15.34 percent  done   #       2130     15.41 percent  done   #       2140     15.48 percent  done   #       2150     15.55 percent  done   #       2160     15.62 percent  done   #       2170     15.70 percent  done   #       2180     15.77 percent  done   #       2190     15.84 percent  done   #       2200     15.91 percent  done   #       2210     15.99 percent  done   #       2220     16.06 percent  done   #       2230     16.13 percent  done   #       2240     16.20 percent  done   #       2250     16.28 percent  done   #       2260     16.35 percent  done   #       2270     16.42 percent  done   #       2280     16.49 percent  done   #       2290     16.57 percent  done   #       2300     16.64 percent  done   #       2310     16.71 percent  done   #       2320     16.78 percent  done   #       2330     16.85 percent  done   #       2340     16.93 percent  done   #       2350     17.00 percent  done   #       2360     17.07 percent  done   #       2370     17.14 percent  done   #       2380     17.22 percent  done   #       2390     17.29 percent  done   #       2400     17.36 percent  done   #       2410     17.43 percent  done   #       2420     17.51 percent  done   #       2430     17.58 percent  done   #       2440     17.65 percent  done   #       2450     17.72 percent  done   #       2460     17.80 percent  done   #       2470     17.87 percent  done   #       2480     17.94 percent  done   #       2490     18.01 percent  done   #       2500     18.08 percent  done   #       2510     18.16 percent  done   #       2520     18.23 percent  done   #       2530     18.30 percent  done   #       2540     18.37 percent  done   #       2550     18.45 percent  done   #       2560     18.52 percent  done   #       2570     18.59 percent  done   #       2580     18.66 percent  done   #       2590     18.74 percent  done   #       2600     18.81 percent  done   #       2610     18.88 percent  done   #       2620     18.95 percent  done   #       2630     19.02 percent  done   #       2640     19.10 percent  done   #       2650     19.17 percent  done   #       2660     19.24 percent  done   #       2670     19.31 percent  done   #       2680     19.39 percent  done   #       2690     19.46 percent  done   #       2700     19.53 percent  done   #       2710     19.60 percent  done   #       2720     19.68 percent  done   #       2730     19.75 percent  done   #       2740     19.82 percent  done   #       2750     19.89 percent  done   #       2760     19.97 percent  done   #       2770     20.04 percent  done   #       2780     20.11 percent  done   #       2790     20.18 percent  done   #       2800     20.25 percent  done   #       2810     20.33 percent  done   #       2820     20.40 percent  done   #       2830     20.47 percent  done   #       2840     20.54 percent  done   #       2850     20.62 percent  done   #       2860     20.69 percent  done   #       2870     20.76 percent  done   #       2880     20.83 percent  done   #       2890     20.91 percent  done   #       2900     20.98 percent  done   #       2910     21.05 percent  done   #       2920     21.12 percent  done   #       2930     21.20 percent  done   #       2940     21.27 percent  done   #       2950     21.34 percent  done   #       2960     21.41 percent  done   #       2970     21.48 percent  done   #       2980     21.56 percent  done   #       2990     21.63 percent  done   #       3000     21.70 percent  done   #       3010     21.77 percent  done   #       3020     21.85 percent  done   #       3030     21.92 percent  done   #       3040     21.99 percent  done   #       3050     22.06 percent  done   #       3060     22.14 percent  done   #       3070     22.21 percent  done   #       3080     22.28 percent  done   #       3090     22.35 percent  done   #       3100     22.42 percent  done   #       3110     22.50 percent  done   #       3120     22.57 percent  done   #       3130     22.64 percent  done   #       3140     22.71 percent  done   #       3150     22.79 percent  done   #       3160     22.86 percent  done   #       3170     22.93 percent  done   #       3180     23.00 percent  done   #       3190     23.08 percent  done   #       3200     23.15 percent  done   #       3210     23.22 percent  done   #       3220     23.29 percent  done   #       3230     23.37 percent  done   #       3240     23.44 percent  done   #       3250     23.51 percent  done   #       3260     23.58 percent  done   #       3270     23.65 percent  done   #       3280     23.73 percent  done   #       3290     23.80 percent  done   #       3300     23.87 percent  done   #       3310     23.94 percent  done   #       3320     24.02 percent  done   #       3330     24.09 percent  done   #       3340     24.16 percent  done   #       3350     24.23 percent  done   #       3360     24.31 percent  done   #       3370     24.38 percent  done   #       3380     24.45 percent  done   #       3390     24.52 percent  done   #       3400     24.59 percent  done   #       3410     24.67 percent  done   #       3420     24.74 percent  done   #       3430     24.81 percent  done   #       3440     24.88 percent  done   #       3450     24.96 percent  done   #       3460     25.03 percent  done   #       3470     25.10 percent  done   #       3480     25.17 percent  done   #       3490     25.25 percent  done   #       3500     25.32 percent  done   #       3510     25.39 percent  done   #       3520     25.46 percent  done   #       3530     25.54 percent  done   #       3540     25.61 percent  done   #       3550     25.68 percent  done   #       3560     25.75 percent  done   #       3570     25.82 percent  done   #       3580     25.90 percent  done   #       3590     25.97 percent  done   #       3600     26.04 percent  done   #       3610     26.11 percent  done   #       3620     26.19 percent  done   #       3630     26.26 percent  done   #       3640     26.33 percent  done   #       3650     26.40 percent  done   #       3660     26.48 percent  done   #       3670     26.55 percent  done   #       3680     26.62 percent  done   #       3690     26.69 percent  done   #       3700     26.77 percent  done   #       3710     26.84 percent  done   #       3720     26.91 percent  done   #       3730     26.98 percent  done   #       3740     27.05 percent  done   #       3750     27.13 percent  done   #       3760     27.20 percent  done   #       3770     27.27 percent  done   #       3780     27.34 percent  done   #       3790     27.42 percent  done   #       3800     27.49 percent  done   #       3810     27.56 percent  done   #       3820     27.63 percent  done   #       3830     27.71 percent  done   #       3840     27.78 percent  done   #       3850     27.85 percent  done   #       3860     27.92 percent  done   #       3870     27.99 percent  done   #       3880     28.07 percent  done   #       3890     28.14 percent  done   #       3900     28.21 percent  done   #       3910     28.28 percent  done   #       3920     28.36 percent  done   #       3930     28.43 percent  done   #       3940     28.50 percent  done   #       3950     28.57 percent  done   #       3960     28.65 percent  done   #       3970     28.72 percent  done   #       3980     28.79 percent  done   #       3990     28.86 percent  done   #       4000     28.94 percent  done   #       4010     29.01 percent  done   #       4020     29.08 percent  done   #       4030     29.15 percent  done   #       4040     29.22 percent  done   #       4050     29.30 percent  done   #       4060     29.37 percent  done   #       4070     29.44 percent  done   #       4080     29.51 percent  done   #       4090     29.59 percent  done   #       4100     29.66 percent  done   #       4110     29.73 percent  done   #       4120     29.80 percent  done   #       4130     29.88 percent  done   #       4140     29.95 percent  done   #       4150     30.02 percent  done   #       4160     30.09 percent  done   #       4170     30.16 percent  done   #       4180     30.24 percent  done   #       4190     30.31 percent  done   #       4200     30.38 percent  done   #       4210     30.45 percent  done   #       4220     30.53 percent  done   #       4230     30.60 percent  done   #       4240     30.67 percent  done   #       4250     30.74 percent  done   #       4260     30.82 percent  done   #       4270     30.89 percent  done   #       4280     30.96 percent  done   #       4290     31.03 percent  done   #       4300     31.11 percent  done   #       4310     31.18 percent  done   #       4320     31.25 percent  done   #       4330     31.32 percent  done   #       4340     31.39 percent  done   #       4350     31.47 percent  done   #       4360     31.54 percent  done   #       4370     31.61 percent  done   #       4380     31.68 percent  done   #       4390     31.76 percent  done   #       4400     31.83 percent  done   #       4410     31.90 percent  done   #       4420     31.97 percent  done   #       4430     32.05 percent  done   #       4440     32.12 percent  done   #       4450     32.19 percent  done   #       4460     32.26 percent  done   #       4470     32.34 percent  done   #       4480     32.41 percent  done   #       4490     32.48 percent  done   #       4500     32.55 percent  done   #       4510     32.62 percent  done   #       4520     32.70 percent  done   #       4530     32.77 percent  done   #       4540     32.84 percent  done   #       4550     32.91 percent  done   #       4560     32.99 percent  done   #       4570     33.06 percent  done   #       4580     33.13 percent  done   #       4590     33.20 percent  done   #       4600     33.28 percent  done   #       4610     33.35 percent  done   #       4620     33.42 percent  done   #       4630     33.49 percent  done   #       4640     33.56 percent  done   #       4650     33.64 percent  done   #       4660     33.71 percent  done   #       4670     33.78 percent  done   #       4680     33.85 percent  done   #       4690     33.93 percent  done   #       4700     34.00 percent  done   #       4710     34.07 percent  done   #       4720     34.14 percent  done   #       4730     34.22 percent  done   #       4740     34.29 percent  done   #       4750     34.36 percent  done   #       4760     34.43 percent  done   #       4770     34.51 percent  done   #       4780     34.58 percent  done   #       4790     34.65 percent  done   #       4800     34.72 percent  done   #       4810     34.79 percent  done   #       4820     34.87 percent  done   #       4830     34.94 percent  done   #       4840     35.01 percent  done   #       4850     35.08 percent  done   #       4860     35.16 percent  done   #       4870     35.23 percent  done   #       4880     35.30 percent  done   #       4890     35.37 percent  done   #       4900     35.45 percent  done   #       4910     35.52 percent  done   #       4920     35.59 percent  done   #       4930     35.66 percent  done   #       4940     35.73 percent  done   #       4950     35.81 percent  done   #       4960     35.88 percent  done   #       4970     35.95 percent  done   #       4980     36.02 percent  done   #       4990     36.10 percent  done   #       5000     36.17 percent  done   #       5010     36.24 percent  done   #       5020     36.31 percent  done   #       5030     36.39 percent  done   #       5040     36.46 percent  done   #       5050     36.53 percent  done   #       5060     36.60 percent  done   #       5070     36.68 percent  done   #       5080     36.75 percent  done   #       5090     36.82 percent  done   #       5100     36.89 percent  done   #       5110     36.96 percent  done   #       5120     37.04 percent  done   #       5130     37.11 percent  done   #       5140     37.18 percent  done   #       5150     37.25 percent  done   #       5160     37.33 percent  done   #       5170     37.40 percent  done   #       5180     37.47 percent  done   #       5190     37.54 percent  done   #       5200     37.62 percent  done   #       5210     37.69 percent  done   #       5220     37.76 percent  done   #       5230     37.83 percent  done   #       5240     37.91 percent  done   #       5250     37.98 percent  done   #       5260     38.05 percent  done   #       5270     38.12 percent  done   #       5280     38.19 percent  done   #       5290     38.27 percent  done   #       5300     38.34 percent  done   #       5310     38.41 percent  done   #       5320     38.48 percent  done   #       5330     38.56 percent  done   #       5340     38.63 percent  done   #       5350     38.70 percent  done   #       5360     38.77 percent  done   #       5370     38.85 percent  done   #       5380     38.92 percent  done   #       5390     38.99 percent  done   #       5400     39.06 percent  done   #       5410     39.13 percent  done   #       5420     39.21 percent  done   #       5430     39.28 percent  done   #       5440     39.35 percent  done   #       5450     39.42 percent  done   #       5460     39.50 percent  done   #       5470     39.57 percent  done   #       5480     39.64 percent  done   #       5490     39.71 percent  done   #       5500     39.79 percent  done   #       5510     39.86 percent  done   #       5520     39.93 percent  done   #       5530     40.00 percent  done   #       5540     40.08 percent  done   #       5550     40.15 percent  done   #       5560     40.22 percent  done   #       5570     40.29 percent  done   #       5580     40.36 percent  done   #       5590     40.44 percent  done   #       5600     40.51 percent  done   #       5610     40.58 percent  done   #       5620     40.65 percent  done   #       5630     40.73 percent  done   #       5640     40.80 percent  done   #       5650     40.87 percent  done   #       5660     40.94 percent  done   #       5670     41.02 percent  done   #       5680     41.09 percent  done   #       5690     41.16 percent  done   #       5700     41.23 percent  done   #       5710     41.30 percent  done   #       5720     41.38 percent  done   #       5730     41.45 percent  done   #       5740     41.52 percent  done   #       5750     41.59 percent  done   #       5760     41.67 percent  done   #       5770     41.74 percent  done   #       5780     41.81 percent  done   #       5790     41.88 percent  done   #       5800     41.96 percent  done   #       5810     42.03 percent  done   #       5820     42.10 percent  done   #       5830     42.17 percent  done   #       5840     42.25 percent  done   #       5850     42.32 percent  done   #       5860     42.39 percent  done   #       5870     42.46 percent  done   #       5880     42.53 percent  done   #       5890     42.61 percent  done   #       5900     42.68 percent  done   #       5910     42.75 percent  done   #       5920     42.82 percent  done   #       5930     42.90 percent  done   #       5940     42.97 percent  done   #       5950     43.04 percent  done   #       5960     43.11 percent  done   #       5970     43.19 percent  done   #       5980     43.26 percent  done   #       5990     43.33 percent  done   #       6000     43.40 percent  done   #       6010     43.48 percent  done   #       6020     43.55 percent  done   #       6030     43.62 percent  done   #       6040     43.69 percent  done   #       6050     43.76 percent  done   #       6060     43.84 percent  done   #       6070     43.91 percent  done   #       6080     43.98 percent  done   #       6090     44.05 percent  done   #       6100     44.13 percent  done   #       6110     44.20 percent  done   #       6120     44.27 percent  done   #       6130     44.34 percent  done   #       6140     44.42 percent  done   #       6150     44.49 percent  done   #       6160     44.56 percent  done   #       6170     44.63 percent  done   #       6180     44.70 percent  done   #       6190     44.78 percent  done   #       6200     44.85 percent  done   #       6210     44.92 percent  done   #       6220     44.99 percent  done   #       6230     45.07 percent  done   #       6240     45.14 percent  done   #       6250     45.21 percent  done   #       6260     45.28 percent  done   #       6270     45.36 percent  done   #       6280     45.43 percent  done   #       6290     45.50 percent  done   #       6300     45.57 percent  done   #       6310     45.65 percent  done   #       6320     45.72 percent  done   #       6330     45.79 percent  done   #       6340     45.86 percent  done   #       6350     45.93 percent  done   #       6360     46.01 percent  done   #       6370     46.08 percent  done   #       6380     46.15 percent  done   #       6390     46.22 percent  done   #       6400     46.30 percent  done   #       6410     46.37 percent  done   #       6420     46.44 percent  done   #       6430     46.51 percent  done   #       6440     46.59 percent  done   #       6450     46.66 percent  done   #       6460     46.73 percent  done   #       6470     46.80 percent  done   #       6480     46.88 percent  done   #       6490     46.95 percent  done   #       6500     47.02 percent  done   #       6510     47.09 percent  done   #       6520     47.16 percent  done   #       6530     47.24 percent  done   #       6540     47.31 percent  done   #       6550     47.38 percent  done   #       6560     47.45 percent  done   #       6570     47.53 percent  done   #       6580     47.60 percent  done   #       6590     47.67 percent  done   #       6600     47.74 percent  done   #       6610     47.82 percent  done   #       6620     47.89 percent  done   #       6630     47.96 percent  done   #       6640     48.03 percent  done   #       6650     48.10 percent  done   #       6660     48.18 percent  done   #       6670     48.25 percent  done   #       6680     48.32 percent  done   #       6690     48.39 percent  done   #       6700     48.47 percent  done   #       6710     48.54 percent  done   #       6720     48.61 percent  done   #       6730     48.68 percent  done   #       6740     48.76 percent  done   #       6750     48.83 percent  done   #       6760     48.90 percent  done   #       6770     48.97 percent  done   #       6780     49.05 percent  done   #       6790     49.12 percent  done   #       6800     49.19 percent  done   #       6810     49.26 percent  done   #       6820     49.33 percent  done   #       6830     49.41 percent  done   #       6840     49.48 percent  done   #       6850     49.55 percent  done   #       6860     49.62 percent  done   #       6870     49.70 percent  done   #       6880     49.77 percent  done   #       6890     49.84 percent  done   #       6900     49.91 percent  done   #       6910     49.99 percent  done   #       6920     50.06 percent  done   #       6930     50.13 percent  done   #       6940     50.20 percent  done   #       6950     50.27 percent  done   #       6960     50.35 percent  done   #       6970     50.42 percent  done   #       6980     50.49 percent  done   #       6990     50.56 percent  done   #       7000     50.64 percent  done   #       7010     50.71 percent  done   #       7020     50.78 percent  done   #       7030     50.85 percent  done   #       7040     50.93 percent  done   #       7050     51.00 percent  done   #       7060     51.07 percent  done   #       7070     51.14 percent  done   #       7080     51.22 percent  done   #       7090     51.29 percent  done   #       7100     51.36 percent  done   #       7110     51.43 percent  done   #       7120     51.50 percent  done   #       7130     51.58 percent  done   #       7140     51.65 percent  done   #       7150     51.72 percent  done   #       7160     51.79 percent  done   #       7170     51.87 percent  done   #       7180     51.94 percent  done   #       7190     52.01 percent  done   #       7200     52.08 percent  done   #       7210     52.16 percent  done   #       7220     52.23 percent  done   #       7230     52.30 percent  done   #       7240     52.37 percent  done   #       7250     52.45 percent  done   #       7260     52.52 percent  done   #       7270     52.59 percent  done   #       7280     52.66 percent  done   #       7290     52.73 percent  done   #       7300     52.81 percent  done   #       7310     52.88 percent  done   #       7320     52.95 percent  done   #       7330     53.02 percent  done   #       7340     53.10 percent  done   #       7350     53.17 percent  done   #       7360     53.24 percent  done   #       7370     53.31 percent  done   #       7380     53.39 percent  done   #       7390     53.46 percent  done   #       7400     53.53 percent  done   #       7410     53.60 percent  done   #       7420     53.67 percent  done   #       7430     53.75 percent  done   #       7440     53.82 percent  done   #       7450     53.89 percent  done   #       7460     53.96 percent  done   #       7470     54.04 percent  done   #       7480     54.11 percent  done   #       7490     54.18 percent  done   #       7500     54.25 percent  done   #       7510     54.33 percent  done   #       7520     54.40 percent  done   #       7530     54.47 percent  done   #       7540     54.54 percent  done   #       7550     54.62 percent  done   #       7560     54.69 percent  done   #       7570     54.76 percent  done   #       7580     54.83 percent  done   #       7590     54.90 percent  done   #       7600     54.98 percent  done   #       7610     55.05 percent  done   #       7620     55.12 percent  done   #       7630     55.19 percent  done   #       7640     55.27 percent  done   #       7650     55.34 percent  done   #       7660     55.41 percent  done   #       7670     55.48 percent  done   #       7680     55.56 percent  done   #       7690     55.63 percent  done   #       7700     55.70 percent  done   #       7710     55.77 percent  done   #       7720     55.84 percent  done   #       7730     55.92 percent  done   #       7740     55.99 percent  done   #       7750     56.06 percent  done   #       7760     56.13 percent  done   #       7770     56.21 percent  done   #       7780     56.28 percent  done   #       7790     56.35 percent  done   #       7800     56.42 percent  done   #       7810     56.50 percent  done   #       7820     56.57 percent  done   #       7830     56.64 percent  done   #       7840     56.71 percent  done   #       7850     56.79 percent  done   #       7860     56.86 percent  done   #       7870     56.93 percent  done   #       7880     57.00 percent  done   #       7890     57.07 percent  done   #       7900     57.15 percent  done   #       7910     57.22 percent  done   #       7920     57.29 percent  done   #       7930     57.36 percent  done   #       7940     57.44 percent  done   #       7950     57.51 percent  done   #       7960     57.58 percent  done   #       7970     57.65 percent  done   #       7980     57.73 percent  done   #       7990     57.80 percent  done   #       8000     57.87 percent  done   #       8010     57.94 percent  done   #       8020     58.02 percent  done   #       8030     58.09 percent  done   #       8040     58.16 percent  done   #       8050     58.23 percent  done   #       8060     58.30 percent  done   #       8070     58.38 percent  done   #       8080     58.45 percent  done   #       8090     58.52 percent  done   #       8100     58.59 percent  done   #       8110     58.67 percent  done   #       8120     58.74 percent  done   #       8130     58.81 percent  done   #       8140     58.88 percent  done   #       8150     58.96 percent  done   #       8160     59.03 percent  done   #       8170     59.10 percent  done   #       8180     59.17 percent  done   #       8190     59.24 percent  done   #       8200     59.32 percent  done   #       8210     59.39 percent  done   #       8220     59.46 percent  done   #       8230     59.53 percent  done   #       8240     59.61 percent  done   #       8250     59.68 percent  done   #       8260     59.75 percent  done   #       8270     59.82 percent  done   #       8280     59.90 percent  done   #       8290     59.97 percent  done   #       8300     60.04 percent  done   #       8310     60.11 percent  done   #       8320     60.19 percent  done   #       8330     60.26 percent  done   #       8340     60.33 percent  done   #       8350     60.40 percent  done   #       8360     60.47 percent  done   #       8370     60.55 percent  done   #       8380     60.62 percent  done   #       8390     60.69 percent  done   #       8400     60.76 percent  done   #       8410     60.84 percent  done   #       8420     60.91 percent  done   #       8430     60.98 percent  done   #       8440     61.05 percent  done   #       8450     61.13 percent  done   #       8460     61.20 percent  done   #       8470     61.27 percent  done   #       8480     61.34 percent  done   #       8490     61.41 percent  done   #       8500     61.49 percent  done   #       8510     61.56 percent  done   #       8520     61.63 percent  done   #       8530     61.70 percent  done   #       8540     61.78 percent  done   #       8550     61.85 percent  done   #       8560     61.92 percent  done   #       8570     61.99 percent  done   #       8580     62.07 percent  done   #       8590     62.14 percent  done   #       8600     62.21 percent  done   #       8610     62.28 percent  done   #       8620     62.36 percent  done   #       8630     62.43 percent  done   #       8640     62.50 percent  done   #       8650     62.57 percent  done   #       8660     62.64 percent  done   #       8670     62.72 percent  done   #       8680     62.79 percent  done   #       8690     62.86 percent  done   #       8700     62.93 percent  done   #       8710     63.01 percent  done   #       8720     63.08 percent  done   #       8730     63.15 percent  done   #       8740     63.22 percent  done   #       8750     63.30 percent  done   #       8760     63.37 percent  done   #       8770     63.44 percent  done   #       8780     63.51 percent  done   #       8790     63.59 percent  done   #       8800     63.66 percent  done   #       8810     63.73 percent  done   #       8820     63.80 percent  done   #       8830     63.87 percent  done   #       8840     63.95 percent  done   #       8850     64.02 percent  done   #       8860     64.09 percent  done   #       8870     64.16 percent  done   #       8880     64.24 percent  done   #       8890     64.31 percent  done   #       8900     64.38 percent  done   #       8910     64.45 percent  done   #       8920     64.53 percent  done   #       8930     64.60 percent  done   #       8940     64.67 percent  done   #       8950     64.74 percent  done   #       8960     64.81 percent  done   #       8970     64.89 percent  done   #       8980     64.96 percent  done   #       8990     65.03 percent  done   #       9000     65.10 percent  done   #       9010     65.18 percent  done   #       9020     65.25 percent  done   #       9030     65.32 percent  done   #       9040     65.39 percent  done   #       9050     65.47 percent  done   #       9060     65.54 percent  done   #       9070     65.61 percent  done   #       9080     65.68 percent  done   #       9090     65.76 percent  done   #       9100     65.83 percent  done   #       9110     65.90 percent  done   #       9120     65.97 percent  done   #       9130     66.04 percent  done   #       9140     66.12 percent  done   #       9150     66.19 percent  done   #       9160     66.26 percent  done   #       9170     66.33 percent  done   #       9180     66.41 percent  done   #       9190     66.48 percent  done   #       9200     66.55 percent  done   #       9210     66.62 percent  done   #       9220     66.70 percent  done   #       9230     66.77 percent  done   #       9240     66.84 percent  done   #       9250     66.91 percent  done   #       9260     66.98 percent  done   #       9270     67.06 percent  done   #       9280     67.13 percent  done   #       9290     67.20 percent  done   #       9300     67.27 percent  done   #       9310     67.35 percent  done   #       9320     67.42 percent  done   #       9330     67.49 percent  done   #       9340     67.56 percent  done   #       9350     67.64 percent  done   #       9360     67.71 percent  done   #       9370     67.78 percent  done   #       9380     67.85 percent  done   #       9390     67.93 percent  done   #       9400     68.00 percent  done   #       9410     68.07 percent  done   #       9420     68.14 percent  done   #       9430     68.21 percent  done   #       9440     68.29 percent  done   #       9450     68.36 percent  done   #       9460     68.43 percent  done   #       9470     68.50 percent  done   #       9480     68.58 percent  done   #       9490     68.65 percent  done   #       9500     68.72 percent  done   #       9510     68.79 percent  done   #       9520     68.87 percent  done   #       9530     68.94 percent  done   #       9540     69.01 percent  done   #       9550     69.08 percent  done   #       9560     69.16 percent  done   #       9570     69.23 percent  done   #       9580     69.30 percent  done   #       9590     69.37 percent  done   #       9600     69.44 percent  done   #       9610     69.52 percent  done   #       9620     69.59 percent  done   #       9630     69.66 percent  done   #       9640     69.73 percent  done   #       9650     69.81 percent  done   #       9660     69.88 percent  done   #       9670     69.95 percent  done   #       9680     70.02 percent  done   #       9690     70.10 percent  done   #       9700     70.17 percent  done   #       9710     70.24 percent  done   #       9720     70.31 percent  done   #       9730     70.38 percent  done   #       9740     70.46 percent  done   #       9750     70.53 percent  done   #       9760     70.60 percent  done   #       9770     70.67 percent  done   #       9780     70.75 percent  done   #       9790     70.82 percent  done   #       9800     70.89 percent  done   #       9810     70.96 percent  done   #       9820     71.04 percent  done   #       9830     71.11 percent  done   #       9840     71.18 percent  done   #       9850     71.25 percent  done   #       9860     71.33 percent  done   #       9870     71.40 percent  done   #       9880     71.47 percent  done   #       9890     71.54 percent  done   #       9900     71.61 percent  done   #       9910     71.69 percent  done   #       9920     71.76 percent  done   #       9930     71.83 percent  done   #       9940     71.90 percent  done   #       9950     71.98 percent  done   #       9960     72.05 percent  done   #       9970     72.12 percent  done   #       9980     72.19 percent  done   #       9990     72.27 percent  done   #      10000     72.34 percent  done   #      10010     72.41 percent  done   #      10020     72.48 percent  done   #      10030     72.55 percent  done   #      10040     72.63 percent  done   #      10050     72.70 percent  done   #      10060     72.77 percent  done   #      10070     72.84 percent  done   #      10080     72.92 percent  done   #      10090     72.99 percent  done   #      10100     73.06 percent  done   #      10110     73.13 percent  done   #      10120     73.21 percent  done   #      10130     73.28 percent  done   #      10140     73.35 percent  done   #      10150     73.42 percent  done   #      10160     73.50 percent  done   #      10170     73.57 percent  done   #      10180     73.64 percent  done   #      10190     73.71 percent  done   #      10200     73.78 percent  done   #      10210     73.86 percent  done   #      10220     73.93 percent  done   #      10230     74.00 percent  done   #      10240     74.07 percent  done   #      10250     74.15 percent  done   #      10260     74.22 percent  done   #      10270     74.29 percent  done   #      10280     74.36 percent  done   #      10290     74.44 percent  done   #      10300     74.51 percent  done   #      10310     74.58 percent  done   #      10320     74.65 percent  done   #      10330     74.73 percent  done   #      10340     74.80 percent  done   #      10350     74.87 percent  done   #      10360     74.94 percent  done   #      10370     75.01 percent  done   #      10380     75.09 percent  done   #      10390     75.16 percent  done   #      10400     75.23 percent  done   #      10410     75.30 percent  done   #      10420     75.38 percent  done   #      10430     75.45 percent  done   #      10440     75.52 percent  done   #      10450     75.59 percent  done   #      10460     75.67 percent  done   #      10470     75.74 percent  done   #      10480     75.81 percent  done   #      10490     75.88 percent  done   #      10500     75.95 percent  done   #      10510     76.03 percent  done   #      10520     76.10 percent  done   #      10530     76.17 percent  done   #      10540     76.24 percent  done   #      10550     76.32 percent  done   #      10560     76.39 percent  done   #      10570     76.46 percent  done   #      10580     76.53 percent  done   #      10590     76.61 percent  done   #      10600     76.68 percent  done   #      10610     76.75 percent  done   #      10620     76.82 percent  done   #      10630     76.90 percent  done   #      10640     76.97 percent  done   #      10650     77.04 percent  done   #      10660     77.11 percent  done   #      10670     77.18 percent  done   #      10680     77.26 percent  done   #      10690     77.33 percent  done   #      10700     77.40 percent  done   #      10710     77.47 percent  done   #      10720     77.55 percent  done   #      10730     77.62 percent  done   #      10740     77.69 percent  done   #      10750     77.76 percent  done   #      10760     77.84 percent  done   #      10770     77.91 percent  done   #      10780     77.98 percent  done   #      10790     78.05 percent  done   #      10800     78.12 percent  done   #      10810     78.20 percent  done   #      10820     78.27 percent  done   #      10830     78.34 percent  done   #      10840     78.41 percent  done   #      10850     78.49 percent  done   #      10860     78.56 percent  done   #      10870     78.63 percent  done   #      10880     78.70 percent  done   #      10890     78.78 percent  done   #      10900     78.85 percent  done   #      10910     78.92 percent  done   #      10920     78.99 percent  done   #      10930     79.07 percent  done   #      10940     79.14 percent  done   #      10950     79.21 percent  done   #      10960     79.28 percent  done   #      10970     79.35 percent  done   #      10980     79.43 percent  done   #      10990     79.50 percent  done   #      11000     79.57 percent  done   #      11010     79.64 percent  done   #      11020     79.72 percent  done   #      11030     79.79 percent  done   #      11040     79.86 percent  done   #      11050     79.93 percent  done   #      11060     80.01 percent  done   #      11070     80.08 percent  done   #      11080     80.15 percent  done   #      11090     80.22 percent  done   #      11100     80.30 percent  done   #      11110     80.37 percent  done   #      11120     80.44 percent  done   #      11130     80.51 percent  done   #      11140     80.58 percent  done   #      11150     80.66 percent  done   #      11160     80.73 percent  done   #      11170     80.80 percent  done   #      11180     80.87 percent  done   #      11190     80.95 percent  done   #      11200     81.02 percent  done   #      11210     81.09 percent  done   #      11220     81.16 percent  done   #      11230     81.24 percent  done   #      11240     81.31 percent  done   #      11250     81.38 percent  done   #      11260     81.45 percent  done   #      11270     81.52 percent  done   #      11280     81.60 percent  done   #      11290     81.67 percent  done   #      11300     81.74 percent  done   #      11310     81.81 percent  done   #      11320     81.89 percent  done   #      11330     81.96 percent  done   #      11340     82.03 percent  done   #      11350     82.10 percent  done   #      11360     82.18 percent  done   #      11370     82.25 percent  done   #      11380     82.32 percent  done   #      11390     82.39 percent  done   #      11400     82.47 percent  done   #      11410     82.54 percent  done   #      11420     82.61 percent  done   #      11430     82.68 percent  done   #      11440     82.75 percent  done   #      11450     82.83 percent  done   #      11460     82.90 percent  done   #      11470     82.97 percent  done   #      11480     83.04 percent  done   #      11490     83.12 percent  done   #      11500     83.19 percent  done   #      11510     83.26 percent  done   #      11520     83.33 percent  done   #      11530     83.41 percent  done   #      11540     83.48 percent  done   #      11550     83.55 percent  done   #      11560     83.62 percent  done   #      11570     83.70 percent  done   #      11580     83.77 percent  done   #      11590     83.84 percent  done   #      11600     83.91 percent  done   #      11610     83.98 percent  done   #      11620     84.06 percent  done   #      11630     84.13 percent  done   #      11640     84.20 percent  done   #      11650     84.27 percent  done   #      11660     84.35 percent  done   #      11670     84.42 percent  done   #      11680     84.49 percent  done   #      11690     84.56 percent  done   #      11700     84.64 percent  done   #      11710     84.71 percent  done   #      11720     84.78 percent  done   #      11730     84.85 percent  done   #      11740     84.92 percent  done   #      11750     85.00 percent  done   #      11760     85.07 percent  done   #      11770     85.14 percent  done   #      11780     85.21 percent  done   #      11790     85.29 percent  done   #      11800     85.36 percent  done   #      11810     85.43 percent  done   #      11820     85.50 percent  done   #      11830     85.58 percent  done   #      11840     85.65 percent  done   #      11850     85.72 percent  done   #      11860     85.79 percent  done   #      11870     85.87 percent  done   #      11880     85.94 percent  done   #      11890     86.01 percent  done   #      11900     86.08 percent  done   #      11910     86.15 percent  done   #      11920     86.23 percent  done   #      11930     86.30 percent  done   #      11940     86.37 percent  done   #      11950     86.44 percent  done   #      11960     86.52 percent  done   #      11970     86.59 percent  done   #      11980     86.66 percent  done   #      11990     86.73 percent  done   #      12000     86.81 percent  done   #      12010     86.88 percent  done   #      12020     86.95 percent  done   #      12030     87.02 percent  done   #      12040     87.09 percent  done   #      12050     87.17 percent  done   #      12060     87.24 percent  done   #      12070     87.31 percent  done   #      12080     87.38 percent  done   #      12090     87.46 percent  done   #      12100     87.53 percent  done   #      12110     87.60 percent  done   #      12120     87.67 percent  done   #      12130     87.75 percent  done   #      12140     87.82 percent  done   #      12150     87.89 percent  done   #      12160     87.96 percent  done   #      12170     88.04 percent  done   #      12180     88.11 percent  done   #      12190     88.18 percent  done   #      12200     88.25 percent  done   #      12210     88.32 percent  done   #      12220     88.40 percent  done   #      12230     88.47 percent  done   #      12240     88.54 percent  done   #      12250     88.61 percent  done   #      12260     88.69 percent  done   #      12270     88.76 percent  done   #      12280     88.83 percent  done   #      12290     88.90 percent  done   #      12300     88.98 percent  done   #      12310     89.05 percent  done   #      12320     89.12 percent  done   #      12330     89.19 percent  done   #      12340     89.27 percent  done   #      12350     89.34 percent  done   #      12360     89.41 percent  done   #      12370     89.48 percent  done   #      12380     89.55 percent  done   #      12390     89.63 percent  done   #      12400     89.70 percent  done   #      12410     89.77 percent  done   #      12420     89.84 percent  done   #      12430     89.92 percent  done   #      12440     89.99 percent  done   #      12450     90.06 percent  done   #      12460     90.13 percent  done   #      12470     90.21 percent  done   #      12480     90.28 percent  done   #      12490     90.35 percent  done   #      12500     90.42 percent  done   #      12510     90.49 percent  done   #      12520     90.57 percent  done   #      12530     90.64 percent  done   #      12540     90.71 percent  done   #      12550     90.78 percent  done   #      12560     90.86 percent  done   #      12570     90.93 percent  done   #      12580     91.00 percent  done   #      12590     91.07 percent  done   #      12600     91.15 percent  done   #      12610     91.22 percent  done   #      12620     91.29 percent  done   #      12630     91.36 percent  done   #      12640     91.44 percent  done   #      12650     91.51 percent  done   #      12660     91.58 percent  done   #      12670     91.65 percent  done   #      12680     91.72 percent  done   #      12690     91.80 percent  done   #      12700     91.87 percent  done   #      12710     91.94 percent  done   #      12720     92.01 percent  done   #      12730     92.09 percent  done   #      12740     92.16 percent  done   #      12750     92.23 percent  done   #      12760     92.30 percent  done   #      12770     92.38 percent  done   #      12780     92.45 percent  done   #      12790     92.52 percent  done   #      12800     92.59 percent  done   #      12810     92.66 percent  done   #      12820     92.74 percent  done   #      12830     92.81 percent  done   #      12840     92.88 percent  done   #      12850     92.95 percent  done   #      12860     93.03 percent  done   #      12870     93.10 percent  done   #      12880     93.17 percent  done   #      12890     93.24 percent  done   #      12900     93.32 percent  done   #      12910     93.39 percent  done   #      12920     93.46 percent  done   #      12930     93.53 percent  done   #      12940     93.61 percent  done   #      12950     93.68 percent  done   #      12960     93.75 percent  done   #      12970     93.82 percent  done   #      12980     93.89 percent  done   #      12990     93.97 percent  done   #      13000     94.04 percent  done   #      13010     94.11 percent  done   #      13020     94.18 percent  done   #      13030     94.26 percent  done   #      13040     94.33 percent  done   #      13050     94.40 percent  done   #      13060     94.47 percent  done   #      13070     94.55 percent  done   #      13080     94.62 percent  done   #      13090     94.69 percent  done   #      13100     94.76 percent  done   #      13110     94.84 percent  done   #      13120     94.91 percent  done   #      13130     94.98 percent  done   #      13140     95.05 percent  done   #      13150     95.12 percent  done   #      13160     95.20 percent  done   #      13170     95.27 percent  done   #      13180     95.34 percent  done   #      13190     95.41 percent  done   #      13200     95.49 percent  done   #      13210     95.56 percent  done   #      13220     95.63 percent  done   #      13230     95.70 percent  done   #      13240     95.78 percent  done   #      13250     95.85 percent  done   #      13260     95.92 percent  done   #      13270     95.99 percent  done   #      13280     96.06 percent  done   #      13290     96.14 percent  done   #      13300     96.21 percent  done   #      13310     96.28 percent  done   #      13320     96.35 percent  done   #      13330     96.43 percent  done   #      13340     96.50 percent  done   #      13350     96.57 percent  done   #      13360     96.64 percent  done   #      13370     96.72 percent  done   #      13380     96.79 percent  done   #      13390     96.86 percent  done   #      13400     96.93 percent  done   #      13410     97.01 percent  done   #      13420     97.08 percent  done   #      13430     97.15 percent  done   #      13440     97.22 percent  done   #      13450     97.29 percent  done   #      13460     97.37 percent  done   #      13470     97.44 percent  done   #      13480     97.51 percent  done   #      13490     97.58 percent  done   #      13500     97.66 percent  done   #      13510     97.73 percent  done   #      13520     97.80 percent  done   #      13530     97.87 percent  done   #      13540     97.95 percent  done   #      13550     98.02 percent  done   #      13560     98.09 percent  done   #      13570     98.16 percent  done   #      13580     98.23 percent  done   #      13590     98.31 percent  done   #      13600     98.38 percent  done   #      13610     98.45 percent  done   #      13620     98.52 percent  done   #      13630     98.60 percent  done   #      13640     98.67 percent  done   #      13650     98.74 percent  done   #      13660     98.81 percent  done   #      13670     98.89 percent  done   #      13680     98.96 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13690     99.03 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13700     99.10 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13710     99.18 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13720     99.25 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13730     99.32 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13740     99.39 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13750     99.46 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13760     99.54 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13770     99.61 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13780     99.68 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13790     99.75 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13800     99.83 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13810     99.90 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
-#      13820     99.97 percent  done    pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- pole fix
- sum of all weights divided by surface area of sphere  =   4.7448488153350367E-007
- actual number of weights    55862934
- anticipated number of weights  1080000000
- MIN/MAX area_target   5.9625187823219647E-006   1.4428903195735500E-003
- Remapping landfrac
- MIN/MAX before remap:   0.0000000000000000        1.0000000000000000     
- MIN/MAX after remap:   0.0000000000000000        1.0000000000000062     
- Remapping terrain
- MIN/MAX:  -26.999021561897994        5331.7705057505045     
- Remapping landm_coslat
- MIN/MAX:   0.0000000000000000        1.0000000000000071     
- Remapping SGH30
- MIN/MAX:   0.0000000000000000        278.39600138005329     
- max difference between target grid area and remapping software area   89.999994037481216     
- Elevation data passed min/max consistency check!
-  
- mean height (globally) of topography about sea-level for target grid unfiltered elevation   231.77294733834714        2912.5447546360410        12.566370614359258     
- volume of input cubed-sphere terrain           :   2912.5447546348078     
- average elevation of input cubed-sphere terrain:   231.77294733825056     
- average elevation of input cubed-sphere terrain over land:   802.10082786665907     
- compute variance with respect to 3km cubed-sphere data: SGH
- smoothing PHIS
- Using externally generated smoothed topography
- mean height (globally) of topography about sea-level for target grid filtered elevation   232.08615431186124     
- percentage change in mean height between filtered and unfiltered elevations  0.13513525936091939     
- percentage change in mean height between input cubed-sphere and unfiltered elevations  -4.2343549009557658E-011
-  !!!!!!!!  ******* maxval terr_target    5016.5929838768761     
- min/max of terr source                   :   -412.00000000000000        8267.4088528344146     
- min/max of terr_target                   :   -11.227146167432092        5016.5929838768761     
- min/max of landfrac_target               :    0.0000000000000000        1.0000000000000062     
- min/max of landm_coslat_target           :    0.0000000000000000        1.0000000000000071     
- min/max of var30_target                  :    0.0000000000000000        278.39600138005329     
- min/max of var_target                    :    0.0000000000000000        2305.8496248518072     
-  Model topo output file output/fv_1.9x2.5-gmted2010_modis-cam_fv_smooth-intermediate_ncube3000-no_anisoSGH.nc
- Create NetCDF file for output
- Create dimensions for output
- Create variable for output
- writing terrain data  -11.227146167432092        5016.5929838768761     
- done writing terrain data
- writing landfrac data   0.0000000000000000        1.0000000000000062     
- done writing landfrac data
- writing sgh data   0.0000000000000000        2305.8496248518072     
- done writing sgh data
- writing sgh30 data   0.0000000000000000        278.39600138005329     
- done writing sgh30 data
- writing landm_coslat data   0.0000000000000000        1.0000000000000071     
- done writing sgh30 data
- writing lat data
- done writing lat data
- writing lon data
- done writing lon data
- close file
