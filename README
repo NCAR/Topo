@@ -33,4 +33,4 @@ Remap elevation data to target grid and compute associated variables.
 4. cesm_meta_data_compliance:
 -----------------------------
 
-Python script to add CESM meta data to topography data file
+Python script to add CESM meta data to topography data file (must be done manually: "make cesm_compliance")
