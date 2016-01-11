@@ -3,7 +3,9 @@
 #
 machine=harmon
 machine=my_mac
-FC = gfortran
+machine=yellowstone
+FC = ifort
+#FC = gfortran
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
@@ -235,6 +237,7 @@ ifeq ($(FC),nagfor)
   endif
 
 endif
+
 #------------------------------------------------------------------------
 # PGF95
 #------------------------------------------------------------------------
@@ -248,6 +251,26 @@ ifeq ($(FC),pgf95)
 
   LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
   FFLAGS   := -c -Mlarge_arrays -I$(INC_NETCDF)
+
+
+  ifeq ($(DEBUG),TRUE)
+    FFLAGS += -g -Mbounds -traceback -Mchkfpstk
+  else
+    FFLAGS += -O
+  endif
+
+endif
+#------------------------------------------------------------------------
+# ifort
+#------------------------------------------------------------------------
+#
+
+ifeq ($(FC),ifort)
+  INC_NETCDF :=${NETCDF}/include
+  LIB_NETCDF :=${NETCDF}/lib
+
+#  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+  FFLAGS   := -c -I$(INC_NETCDF)
 
 
   ifeq ($(DEBUG),TRUE)

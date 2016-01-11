@@ -23,7 +23,7 @@ set all_tif_files = ($work_dir/*.hdf_$field.tif)
 foreach f ($all_tif_files)
   echo "$f"
 end  
-/opt/local/bin/python2.7 /opt/local/share/doc/py27-gdal/examples/scripts/gdal_merge.py $all_tif_files -o $field.all.tif
+/opt/local/bin/python2.7 gdal_merge.py $all_tif_files -o $field.all.tif
 #
 # change data format and projection (to lat lon)
 #
