@@ -3,9 +3,10 @@
 #
 machine=harmon
 machine=my_mac
-#machine=yellowstone
+machine=yellowstone
 #FC = ifort
-FC = gfortran
+#FC = gfortran
+FC=ifort
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
@@ -18,7 +19,7 @@ DEBUG=FALSE
 #
 model=fv
 res=0.9x1.25
-raw_data=gmted2010_modis
+raw_data=gtopo30
 smoothing=cam_fv_smooth
 ncube=3000
 aniso=no_anisoSGH
@@ -108,7 +109,7 @@ cube_to_target: cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-i
 cube_to_target/output/fv_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc cam_fv_topo-smoothing/$(raw_data)-$(model)_$(res)-$(smoothing).nc
 	echo cube_to_target/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
 	echo ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso)
-	(cd cube_to_target; make; chmod +x run.sh; cube_to_target.nl; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
+	(cd cube_to_target; make; chmod +x run.sh; rm cube_to_target.nl; ./run.sh $(model)_$(res) $(raw_data) $(smoothing) $(ncube) $(aniso))
 
 
 cube_to_target/output/se_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc: bin_to_cube/$(raw_data)-ncube$(ncube).nc
@@ -199,6 +200,17 @@ export FC
  # default settings
 # LIB_NETCDF := /opt/local/lib
 # INC_NETCDF := /opt/local/include
+
+#
+#------------------------------------------------------------------------
+# ifort
+#------------------------------------------------------------------------
+#
+ifeq ($(FC),ifort)
+  FFLAGS = -c -g -r8 -O1 -I$(INC_NETCDF)
+  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf
+endif
+
 
 #------------------------------------------------------------------------
 # GFORTRAN
