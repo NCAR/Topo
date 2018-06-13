@@ -1,3 +1,4 @@
+include ../../FortranCompilerSettings.make
 #
 # with PGI compiler "-byteswapio" option is needed to read in the binary USGS files correctly
 #
