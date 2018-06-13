@@ -3,10 +3,13 @@ MODULE shared_vars
 
   real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat
   real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area
-  real(r8),  allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30
+  real(r8), allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30, refine_l
+  integer,  allocatable, dimension(:) :: refine_li
 
   real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
   real(r8), allocatable, dimension(:) :: landm_coslat_target, area_target
+
+  real(r8), allocatable, dimension(:) :: terr_uf_target, sgh_uf_target
 
   real(r8) , allocatable, dimension(:,:,:) :: terr_sm, terr_dev
 
@@ -129,6 +132,17 @@ subroutine allocate_target_vars(ntarget)
   allocate (sgh_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh_target'
+    stop
+  end if
+
+  allocate (terr_uf_target(ntarget),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for terr_uf_target'
+    stop
+  end if
+  allocate (sgh_uf_target(ntarget),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for sgh_uf_target'
     stop
   end if
 
@@ -307,6 +321,8 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
         status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
         status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
         status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
+        nlon = 128!xxx hack
+        nlat = 64!xxx hack
         !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
         WRITE(*,*) "nlon=",nlon,"nlat=",nlat
         IF (lpole) THEN
@@ -449,6 +465,67 @@ subroutine get_latlon_grid(im,jm,lpole)
         end do
 
       end subroutine get_latlon_grid
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine read_refinement_factor(rrfactor_fname,ncube_rr)
+  implicit none
+#     include         <netcdf.inc>
+  character(len=1024), intent(in) :: rrfactor_fname
+  integer, intent(out) :: ncube_rr
+  integer :: ncid,status, dimid, alloc_error, landid,n
+
+  write(*,*) "Opening file w/ refinement factors : ",TRIM(rrfactor_fname)
+  status = nf_open(TRIM(rrfactor_fname) , 0, ncid)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  
+  status = NF_INQ_DIMID(ncid, 'grid_size', dimid)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  status = NF_INQ_DIMLEN(ncid, dimid, n)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  ncube_rr = INT(SQRT(DBLE(n/6)))
+  WRITE(*,*) "RR_factor dimension: ncube = ",ncube_rr
+
+  !
+  ! read  floating point refinement level
+  !
+  allocate ( refine_l(n),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for refine_l'
+    stop
+  end if
+  
+  status = NF_INQ_VARID(ncid, 'refine_level', landid)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  status = NF_GET_VAR_DOUBLE(ncid, landid,refine_l)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  WRITE(*,*) "min/max of FLOAT Refine level",MINVAL(refine_l),MAXVAL(refine_l)
+
+  !
+  ! read  INTEGER refinement level
+  !
+  allocate ( refine_li(n),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for refine_l'
+    stop
+  end if
+  
+  status = NF_INQ_VARID(ncid, 'refine_level', landid)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  status = NF_GET_VAR_INT(ncid, landid,refine_li)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  WRITE(*,*) "min/max of INT Refine level",MINVAL(refine_li),MAXVAL(refine_li)
+
+
+  print *,"close file"
+  status = nf_close (ncid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  WRITE(*,*) 'done reading in data from netCDF file'
+
+end subroutine read_refinement_factor
 
 
 END MODULE shared_vars

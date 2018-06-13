@@ -1,5 +1,4 @@
-include ../machine_settings.make
-
+include experiment_settings.make
 #
 # specify raw dataset (netCDF format)
 #
@@ -64,22 +63,30 @@ aniso=no_anisoSGH
 # DONE CASE DEFINITION # DONE CASE DEFINITION # DONE CASE DEFINITION # DONE CASE DEFINITION # DONE CASE DEFINITION # DONE CASE DEFINITION #
 ###########################################################################################################################################
 #
-ifeq ($(machine),my_mac)
-  python_command:=~pel/anaconda/bin/python
-else
-  python_command:=python
-endif
-cr:=create_netCDF_from_rawdata
-sm:=cam_fv_topo-smoothing
-
 all: cube_to_target plot
-bin_to_cube: bin_to_cube/$(raw_data)-ncube$(ncube).nc 
-cube_to_target: bin_to_cube/$(raw_data)-ncube$(ncube).nc cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc
+bin_to_cube: $(intermediate_cubed_sphere_file)
+cube_to_target: $(intermediate_cubed_sphere_file) $(name_list_file)
 plot: cube_to_target/ncl/topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf
 
-cube_to_target/ncl/topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf:
-	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(res) $(raw_data) $(smoothing) $(ncube) $(aniso) pdf;\
-	gv topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf)
+#cube_to_target/ncl/topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf:
+#	(cd cube_to_target/ncl; chmod +x plot-topo-vars.sh; ./plot-topo-vars.sh $(model) $(res) $(raw_data) $(smoothing) $(ncube) $(aniso) pdf;\
+#	gv topo-vars-$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).pdf)
+
+$(name_list_file):
+	if [ -s $(name_list_file) ];
+	then
+	  echo "file exists"
+	fi
+#	test -f $(nl_intermediate_cubed_sphere_file) make_namelist.sh
+#
+#********************************
+#
+# bin ~1km lat-lon data (GMTED2010, MODIS) to ~3km cubed-sphere grid
+#
+#********************************
+#
+$(intermediate_cubed_sphere_file): create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
+	test -f $(intermediate_cubed_sphere_file) || (cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
 
 #
 #********************************
@@ -104,34 +111,8 @@ cube_to_target/output/se_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncu
 cesm_compliance:
 	(cd cesm_meta_data_compliance; $(python_path) meta.py ../cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc $(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).metadata)	
 
-#
-#********************************
-#
-# smooth PHIS the CAM-FV way
-#
-#********************************
-#
-cam_fv_smooth:  cam_fv_topo-smoothing/$(raw_data)-$(model)_$(res)-$(smoothing).nc
-cam_fv_topo-smoothing/$(raw_data)-$(model)_$(res)-$(smoothing).nc: $(sm)/input/10min-$(raw_data)-phis-raw.nc
-	(cd $(sm)/definesurf; make; ./definesurf -t ../input/10min-$(raw_data)-phis-raw.nc  -g ../input/outgrid/$(model)_$(res).nc -l ../input/landm_coslat.nc -remap ../$(raw_data)-$(model)_$(res)-$(smoothing).nc)
-cam_fv_topo-smoothing/input/10min-gmted2010_modis-phis-raw.nc: create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc
-	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=True')
-cam_fv_topo-smoothing/input/10min-gtopo30-phis-raw.nc: create_netCDF_from_rawdata/gtopo30-rawdata.nc
-	(cd $(sm)/input; ncl < make-10min-raw-phis.ncl 'gmted2010_modis=False')
-#
-# calculate data for CAM-FV smoothing
-#
 
-#********************************
-#
-# bin ~1km lat-lon data (GMTED2010, MODIS) to ~3km cubed-sphere grid
-#
-#********************************
-#
-bin_to_cube/$(raw_data)-ncube$(ncube).nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
-	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
-#bin_to_cube/$(raw_data)-ncube$(ncube).nc: create_netCDF_from_rawdata/$(raw_data)-rawdata.nc raw_netCDF_$(raw_data)
-#	(cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
+
 test:
 	echo bin_to_cube/$(raw_data)-ncube$(ncube).nc
 

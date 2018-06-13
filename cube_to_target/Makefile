@@ -1,3 +1,4 @@
+include ../machine_settings.make
 EXEDIR = .
 EXENAME = cube_to_target
 RM = rm
@@ -12,7 +13,7 @@ RM = rm
 # Default rules and macros
 #------------------------------------------------------------------------
 
-OBJS :=  reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o subgrid_topo_ana.o ridge_ana.o cube_to_target.o 
+OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_ana.o cube_to_target.o 
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
 	$(FC) -o $@ $(OBJS) $(LDFLAGS)

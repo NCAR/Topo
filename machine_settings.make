@@ -9,24 +9,14 @@ export python_path=/usr/local/anaconda-2.4.0/bin/
 #
 # Fortran settings
 #
-
-#
-# location of libnetcdff.so.6
-#
-export LD_LIBRARY_PATH=/usr/local/lib
-
 FC=gfortran
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
-#
-#=====================================================================================================================
-#
-# user settings (compiler)
-#
-export FC
 
- # default settings
+
+
+# default settings
 # LIB_NETCDF := /opt/local/lib
 # INC_NETCDF := /opt/local/include
 #------------------------------------------------------------------------

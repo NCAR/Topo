@@ -1,3 +1,4 @@
+include ../machine_settings.make
 EXEDIR = .
 EXENAME = bin_to_cube
 RM = rm

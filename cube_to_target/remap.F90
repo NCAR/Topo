@@ -85,6 +85,92 @@ MODULE remap
 end function remap_field
 
 
+!==============================================================================================================
+    function select_sg_field(field,weights_eul_index_all,weights_lgr_index_all,ncube,jall,&
+         ntarget,itarget) result(ird)
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      implicit none
+      integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer , intent(in) :: ncube,jall,ntarget,itarget
+      real(r8), intent(in) :: field(6*ncube*ncube)
+      ! real(r8):: fsg(6*ncube*ncube)
+      
+      
+      integer :: i,ix,iy,ip,ii,counti
+      real(r8):: wt
+      real(r8):: ftarget(ntarget)
+      integer :: ijp3(10000,3),ird
+      
+      ird=1
+      !!fsg=0.0D0
+      do counti=1,jall
+        i    = weights_lgr_index_all(counti)
+
+        if (itarget == i) then        
+           ix  = weights_eul_index_all(counti,1)
+           iy  = weights_eul_index_all(counti,2)
+           ip  = weights_eul_index_all(counti,3)
+
+          !
+          ! convert to 1D indexing of cubed-sphere
+          !
+          ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+        
+        
+          ! Note:  Factor wt/area_target(i) is fractional overlap of target and source grid
+          ! cells
+          !
+          ijp3(ird,1) = ix
+          ijp3(ird,2) = iy
+          ijp3(ird,3) = ip
+          ird = ird+1
+          !fsg(ii) = field(ii)
+        end if
+     end do
+
+!write(311) ird,ijp3
+!write(311) fsg
+
+end function select_sg_field
+!==============================================================================================================
+    function paint_sg_field(field,weights_eul_index_all,weights_lgr_index_all,ncube,jall,&
+         ntarget,itarget) result(isg)
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      implicit none
+      integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer , intent(in) :: ncube,jall,ntarget,itarget
+      real(r8), intent(in) :: field(6*ncube*ncube)
+      integer :: isg(6*ncube*ncube)
+      
+      
+      integer :: i,ix,iy,ip,ii,counti
+      real(r8):: wt
+      real(r8):: ftarget(ntarget)
+      integer :: ijp3(10000,3),ird
+      
+      ird=1
+      isg=-1
+      do counti=1,jall
+        i    = weights_lgr_index_all(counti)
+        
+           ix  = weights_eul_index_all(counti,1)
+           iy  = weights_eul_index_all(counti,2)
+           ip  = weights_eul_index_all(counti,3)
+
+          !
+          ! convert to 1D indexing of cubed-sphere
+          !
+          ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+                
+          isg(ii) = i
+     end do
+
+!write(311) ncube
+!write(311) isg
+
+end function paint_sg_field
+
+!=====================================================================
 
   subroutine compute_weights_cell(xcell_in,ycell_in,jx,jy,nreconstruction,xgno,ygno,&
        jx_min, jx_max, jy_min, jy_max,tmp,&
