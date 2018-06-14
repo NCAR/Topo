@@ -1,14 +1,28 @@
-export ncube_sph_smooth_coarse=060
+#
+# Level of smoothing
+#
+export ncube_sph_smooth_coarse=120
+#
+# final grid and associated SCRIP grid desciptor file
+#
+export output_grid=fv_1.9x2.5
 export grid_descriptor_dir=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/
 export grid_descriptor_fname=$(grid_descriptor_dir)/fv_1.9x2.5.nc
-export rdgwin=_NoAniso
-export output_grid=fv_1.9x2.5
 #
-# DO NOT MODIFY BELOW OR YOU MIGHT VIOLATE NAMING CONVENTIONS
+# Compute ridges or not
+#
+export rdgwin=_NoAniso
+#
+#######################################################################################################
+#
+# DO NOT MODIFY BELOW OR YOU MIGHT VIOLATE NAMING CONVENTIONS OR WHAT RAW DATA IS USED
+#
+#######################################################################################################
 #
 export raw_data=gmted2010_modis
-export ncube=0540
-export intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube).nc
+export ncube=3000
+#export ncube=0540
+export intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)-stitch.nc
 export ncube_sph_smooth_fine=001
 #'_MulG' #valid options are '_MulG' or ''
 export MulG=_MulG
