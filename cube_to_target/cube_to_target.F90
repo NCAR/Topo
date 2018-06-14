@@ -267,7 +267,7 @@ program convterr
 
 
 !xxx         smooth_fname  = './output/topo_smooth_nc3000_Co360_Fi001_MulG_PF_nullRR_v02.dat'!xxx hack
-         smooth_fname  = './output/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
+         smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
          rdglist_fname = './output/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
          output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.nc'
