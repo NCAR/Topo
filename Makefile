@@ -14,19 +14,23 @@ include experiment_settings.make
 raw_data=gmted2010_modis
 ncube=3000
 #ncube=0540
-intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)-stitch.nc
+intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)$(stitch).nc
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
 MulG=_MulG
 # PF  : valid options are '_PF' or ''
 PF=_PF
 case_name=nc$(ncube)_Co$(ncube_sph_smooth_coarse)_Fi$(ncube_sph_smooth_fine)$(MulG)$(PF)_nullRR
-smooth_topo_file=cube_to_target/inputdata/smooth_topo_cube/topo_smooth_$(case_name)_v02.dat
-topo_smooth_nl=cube_to_target/inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
+ifeq ($(smooth_topo_file_dir),)
+  smooth_topo_file_dir=cube_to_target/inputdata/smooth_topo_cube
+endif
+smooth_topo_file=$(smooth_topo_file_dir)/topo_smooth_$(case_name)_v02.dat
+nl_dir=cube_to_target/inputdata/namelist_defaults
+topo_smooth_nl=$(nl_dir)/topo_smooth_$(case_name)_v02.nl
 topo_smooth_nl_subdir=inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
 topo_file_nl_subdir=inputdata/namelist_defaults/final_$(case_name)_v02$(rdgwin).nl
 topo_file_nl=cube_to_target/$(topo_file_nl_subdir)
-topo_file=cube_to_target/outout/$(output_grid)_$(case_name).nc
+topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
 #********************************
 #
@@ -87,7 +91,15 @@ test:
 	echo $(intermediate_cubed_sphere_file)
 	echo $(ncube_sph_smooth_coarse)
 	echo $(grid_descriptor_fname)
+	echo $(smooth_topo_file_dir)
 
+smooth_topo_cube_only: $(smooth_topo_file)
+
+namelists: $(topo_file_nl) $(topo_smooth_nl)
+	echo "Namelist files have been produced or already existed:"
+	echo "  "
+	echo "  $(topo_file_nl)"
+	echo "  $(topo_smooth_nl)"
 
 
 
