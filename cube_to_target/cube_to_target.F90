@@ -268,8 +268,10 @@ program convterr
 
          smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
          rdglist_fname = './output/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
-         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
-         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.nc'
+         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
+         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.nc'
+!         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
+!         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.nc'
 
 
 

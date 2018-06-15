@@ -3,10 +3,30 @@
 #
 # 1. do not look for raw data if the intermediate cubed-sphere data exists
 #
-
-
-
 include experiment_settings.make
+#
+#######################################################################################################
+#
+# DO NOT MODIFY BELOW OR YOU MIGHT VIOLATE NAMING CONVENTIONS OR WHAT RAW DATA IS USED
+#
+#######################################################################################################
+#
+raw_data=gmted2010_modis
+ncube=3000
+#ncube=0540
+intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)-stitch.nc
+ncube_sph_smooth_fine=001
+# MulG: valid options are '_MulG' or ''
+MulG=_MulG
+# PF  : valid options are '_PF' or ''
+PF=_PF
+case_name=nc$(ncube)_Co$(ncube_sph_smooth_coarse)_Fi$(ncube_sph_smooth_fine)$(MulG)$(PF)_nullRR
+smooth_topo_file=cube_to_target/inputdata/smooth_topo_cube/topo_smooth_$(case_name)_v02.dat
+topo_smooth_nl=cube_to_target/inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
+topo_smooth_nl_subdir=inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
+topo_file_nl_subdir=inputdata/namelist_defaults/final_$(case_name)_v02$(rdgwin).nl
+topo_file_nl=cube_to_target/$(topo_file_nl_subdir)
+topo_file=cube_to_target/outout/$(output_grid)_$(case_name).nc
 #
 #********************************
 #
@@ -62,9 +82,11 @@ fd: $(smooth_topo_file) $(topo_file_nl)
 	echo "Map to target grid"
 	(cd cube_to_target; rm nlmain.nl;  ln -s $(topo_file_nl_subdir) nlmain.nl;  make; ./cube_to_target)
 
-test: $(smooth_topo_file)
+test:
 	echo $(smooth_topo_file)
 	echo $(intermediate_cubed_sphere_file)
+	echo $(ncube_sph_smooth_coarse)
+	echo $(grid_descriptor_fname)
 
 
 
