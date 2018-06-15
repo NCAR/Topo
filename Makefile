@@ -12,7 +12,7 @@ include experiment_settings.make
 #######################################################################################################
 #
 raw_data=gmted2010_modis
-ncube=3000
+
 #ncube=0540
 intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)$(stitch).nc
 ncube_sph_smooth_fine=001

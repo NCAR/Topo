@@ -462,7 +462,6 @@ program convterr
   !
   ! Consistency checks  
   !
-  if (.false.) then!xxx
   do counti=1,ntarget
     if (terr_target(counti)>8848.0) then
       !
@@ -492,7 +491,6 @@ program convterr
   end do
   WRITE(*,*) "Elevation data passed min/max consistency check!"
   WRITE(*,*) " "
-  endif!xxx
   
 
   !
@@ -1088,6 +1086,7 @@ subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,lan
   
   IF (nlon*nlat.NE.n) THEN
     WRITE(*,*) "inconsistent input for wrtncdf_rll"
+    write(*,*) "nlon,nlat,n:", nlon,nlat,n
     STOP
   END IF
   !
