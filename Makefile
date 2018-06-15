@@ -1,3 +1,11 @@
+#
+# ISSUES:
+#
+# 1. do not look for raw data if the intermediate cubed-sphere data exists
+#
+
+
+
 include experiment_settings.make
 #
 #********************************
@@ -30,7 +38,7 @@ $(topo_smooth_nl):
 $(smooth_topo_file): $(topo_smooth_nl) $(intermediate_cubed_sphere_file)
 	echo "Here we go ..."
 	echo "Creating "$(smooth_topo_file)
-	(cd cube_to_target; rm nlmain.nl;  ln -s $(topo_smooth_nl_subdir) nlmain.nl;  make; ./cube_to_target)
+	test -f $(smooth_topo_file) || (cd cube_to_target; rm nlmain.nl;  ln -s $(topo_smooth_nl_subdir) nlmain.nl;  make; ./cube_to_target)
 
 $(topo_file_nl):
 	echo 'Namelist file does not exist - creating ...'
