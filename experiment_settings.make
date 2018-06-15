@@ -25,15 +25,15 @@
 #export case=fv_1.9x2.5_Co0120_NoAniso
 #export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_1.9x2.5_Co0120_ridge
-export case=quick_test_fv_1.9x2.5
+export case=quick_test_fv
 
-ifeq ($(case),quick_test_fv_1.9x2.5)
-  export ncube_sph_smooth_coarse=020
-  export output_grid=fv_1.9x2.5
-  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_1.9x2.5.nc
+ifeq ($(case),quick_test_fv)
+  export ncube_sph_smooth_coarse=006
+  export output_grid=fv_10x15
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_10x15.nc
   export rdgwin=_NoAniso
   export stitch=
-  export ncube=0540
+  export ncube=040
 endif
 #
 # Standard 2 degree smoothing for FV: Co120

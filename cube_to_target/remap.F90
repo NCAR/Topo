@@ -293,7 +293,7 @@ end function paint_sg_field
       enddo
 
       IF (abs(tmp)>0.01) THEN
-        WRITE(*,*) "sum of weights large",tmp
+!        WRITE(*,*) "sum of weights large",tmp
 !        stop
       END IF
       IF (tmp<-1.0E-9) THEN
