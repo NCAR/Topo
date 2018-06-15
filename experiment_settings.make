@@ -25,7 +25,8 @@
 #export case=fv_1.9x2.5_Co0120_NoAniso
 #export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_1.9x2.5_Co0120_ridge
-export case=quick_test_fv
+export case=fv_0.9x1.25_Co060_ridge
+#export case=quick_test_fv
 
 ifeq ($(case),quick_test_fv)
   export ncube_sph_smooth_coarse=006
@@ -58,6 +59,21 @@ ifeq ($(case),fv_0.9x1.25_Co0120_NoAniso)
   export output_grid=fv_1.9x2.5
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.9x1.5.nc
   export rdgwin=_NoAniso
+  export stitch=-stitch
+  export ncube=3000
+endif
+#
+# Standard 1 degree smoothing for FV: Co060
+# Map to fv_0.9x1.25
+# Compute ridges (compatible with CAM6)
+#
+ifeq ($(case),fv_0.9x1.25_Co060_ridge)
+  export ncube_sph_smooth_coarse=060
+  export output_grid=fv_0.9x1.25
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.9x1.25.nc
+  export nwindow_halfwidth=042
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export lfind_ridges=.true.
   export stitch=-stitch
   export ncube=3000
 endif
