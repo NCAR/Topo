@@ -266,7 +266,6 @@ program convterr
          write(*,*)" Ridge  ", trim(rdgwin$)
 
 
-!xxx         smooth_fname  = './output/topo_smooth_nc3000_Co360_Fi001_MulG_PF_nullRR_v02.dat'!xxx hack
          smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
          rdglist_fname = './output/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'

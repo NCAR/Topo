@@ -321,8 +321,6 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
         status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
         status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
         status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-        nlon = 128!xxx hack
-        nlat = 64!xxx hack
         !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
         WRITE(*,*) "nlon=",nlon,"nlat=",nlat
         IF (lpole) THEN
