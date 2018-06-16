@@ -23,9 +23,9 @@
 
 
 #export case=fv_1.9x2.5_Co0120_NoAniso
-#export case=fv_0.9x1.25_Co0120_NoAniso
+export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_1.9x2.5_Co0120_ridge
-export case=fv_0.9x1.25_Co060_ridge
+#export case=fv_0.9x1.25_Co060_ridge
 #export case=quick_test_fv
 
 ifeq ($(case),quick_test_fv)

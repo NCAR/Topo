@@ -1,6 +1,7 @@
 #
 # ISSUES:
 #
+# 0. set lfind_ridges automatically based on rdgwin
 # 1. do not look for raw data if the intermediate cubed-sphere data exists
 #
 include experiment_settings.make
@@ -79,6 +80,7 @@ $(topo_file_nl):
 	if [ $(PF),'_PF' ]; then echo "luse_prefilter = .true." 		 	>> $(topo_file_nl); fi
 	echo "lstop_after_smoothing = .false." 		 				>> $(topo_file_nl)
 	echo "lread_smooth_topofile = .true." 		 				>> $(topo_file_nl)
+#	echo "lfind_ridges=$(lfind_ridges)" 		 				>> $(topo_file_nl)
 	echo '/' >>  $(topo_file_nl)
 
 #$(topo_file): $(smooth_topo_file) $(topo_file_nl)
