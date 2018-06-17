@@ -29,7 +29,7 @@ smooth_topo_file=$(smooth_topo_file_dir)/topo_smooth_$(case_name)_v02.dat
 nl_dir=cube_to_target/inputdata/namelist_defaults
 topo_smooth_nl=$(nl_dir)/topo_smooth_$(case_name)_v02.nl
 topo_smooth_nl_subdir=inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
-topo_file_nl_subdir=inputdata/namelist_defaults/final_$(case_name)_v02$(rdgwin).nl
+topo_file_nl_subdir=inputdata/namelist_defaults/final_$(output_grid)_$(case_name)_v02$(rdgwin).nl
 topo_file_nl=cube_to_target/$(topo_file_nl_subdir)
 topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
