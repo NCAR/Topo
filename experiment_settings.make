@@ -23,11 +23,12 @@
 
 
 #export case=fv_1.9x2.5_Co0120_NoAniso
-export case=fv_0.9x1.25_Co0120_NoAniso
+#export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_0.47x0.63_Co0120_NoAniso
 #export case=fv_1.9x2.5_Co0120_ridge
 #export case=fv_0.9x1.25_Co060_ridge
 #export case=quick_test_fv
+export case=ne30np4_Co0120_NoAniso
 
 ifeq ($(case),quick_test_fv)
   export ncube_sph_smooth_coarse=006
@@ -37,6 +38,16 @@ ifeq ($(case),quick_test_fv)
   export stitch=
   export ncube=040
 endif
+
+ifeq ($(case),ne30np4_Co0120_NoAniso)
+  export ncube_sph_smooth_coarse=120
+  export output_grid=ne30np4
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/ne30np4_091226_pentagons.nc
+  export rdgwin=_NoAniso
+  export stitch=-stitch
+  export ncube=3000
+endif
+
 #
 # Standard 2 degree smoothing for FV: Co120
 # Map to fv_1.9x2.5
