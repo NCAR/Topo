@@ -32,11 +32,13 @@
 #not run yet
 export case=ne16pg3_Co0120_NoAnisoo
 #running
-export case=ne30pg3_Co0120_NoAniso
+#export case=ne30pg3_Co0120_NoAniso
 #not run yet
-export case=ne60pg3_Co0120_NoAniso
+#export case=ne60pg3_Co0120_NoAniso
 #no run yet
-export case=ne120pg3_Co0120_NoAniso
+#export case=ne120pg3_Co0120_NoAniso
+
+case_found=False
 
 ifeq ($(case),quick_test_fv)
   export ncube_sph_smooth_coarse=006
@@ -45,6 +47,7 @@ ifeq ($(case),quick_test_fv)
   export rdgwin=_NoAniso
   export stitch=
   export ncube=040
+  case_found=
 endif
 #
 #
@@ -56,6 +59,7 @@ ifeq ($(case),ne30np4_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # ne16pg3 smoothed to Co120 (recommended for ne30pg3 is Co160-ish)
@@ -68,6 +72,7 @@ ifeq ($(case),ne16pg3_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # ne30pg3 smoothed to Co120 (recommended for ne30pg3 is Co080)
@@ -80,6 +85,7 @@ ifeq ($(case),ne30pg3_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # ne60pg3 smoothed to Co120 (recommended for ne30pg3 is Co040)
@@ -92,6 +98,7 @@ ifeq ($(case),ne60pg3_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # ne120pg3 smoothed to Co120 (recommended for ne30pg3 is Co020)
@@ -104,6 +111,7 @@ ifeq ($(case),ne120pg3_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 
 #
@@ -118,6 +126,7 @@ ifeq ($(case),fv_1.9x2.5_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # Standard 2 degree smoothing for FV: Co120
@@ -131,7 +140,10 @@ ifeq ($(case),fv_0.9x1.25_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
+
+
 ifeq ($(case),fv_0.47x0.63_Co0120_NoAniso)
   export ncube_sph_smooth_coarse=120
   export output_grid=fv_0.47x0.63
@@ -139,6 +151,7 @@ ifeq ($(case),fv_0.47x0.63_Co0120_NoAniso)
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 
 
@@ -156,6 +169,7 @@ ifeq ($(case),fv_0.9x1.25_Co060_ridge)
   export lfind_ridges=.true.
   export stitch=-stitch
   export ncube=3000
+  case_found=
 endif
 #
 # Standard 2 degree smoothing for FV: Co120
@@ -171,4 +185,9 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export lfind_ridges=.true.
   export stitch=-stitch
   export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case_found),False)
+  echo "CASE NOT FOUND - ABORT"
 endif
