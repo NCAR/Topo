@@ -6,7 +6,7 @@ include ../machine_settings.make
 #	gtopo30
 #
 #raw_data=gtopo30
-raw_data=gmted2010_modis
+#raw_data=gmted2010_modis
 all: raw_netCDF_$(raw_data)
 #
 #***DO NOT EDIT BELOW THIS LINE*******DO NOT EDIT BELOW THIS LINE*******DO NOT EDIT BELOW THIS LINE*******DO NOT EDIT BELOW THIS LINE****

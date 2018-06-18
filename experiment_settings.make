@@ -30,7 +30,7 @@
 #export case=quick_test_fv
 #export case=ne30np4_Co0120_NoAnis
 #not run yet
-export case=ne16pg3_Co0120_NoAnisoo
+export case=ne16pg3_Co0120_NoAniso
 #running
 #export case=ne30pg3_Co0120_NoAniso
 #not run yet

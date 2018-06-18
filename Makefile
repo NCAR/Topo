@@ -39,6 +39,9 @@ topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
 #********************************
 #
+create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
+	test -f $(create_netCDF_from_rawdata/$(raw_data)-rawdata.nc) ||(cd create_netCDF_from_rawdata; make)
+
 $(intermediate_cubed_sphere_file): create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
 	test -f $(intermediate_cubed_sphere_file) || (cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
 
