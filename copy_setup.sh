@@ -1,6 +1,6 @@
 #!/bin/bash
 from_path="/project/amp/pel/TopoTrunk"
-to_path="/project/amp/pel/TopoCopyXXX"
+to_path="/project/amp/pel/TopoCopy"
 if [ -d "$to_path" ]; then
     echo "$to_path already exists - ABORT"
 else
