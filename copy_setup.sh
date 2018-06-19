@@ -1,6 +1,13 @@
 #!/bin/bash
+#
+# This script copies an existing setup without copying large input files
+# The large input files are symbolic linked to the new directory
+#
+# This script is useful when needing to generate many topography files
+# simultaneously on the same machine
+#
 from_path="/project/amp/pel/TopoTrunk"
-to_path="/project/amp/pel/TopoCopy"
+to_path="/project/amp/pel/TopoCopy2"
 if [ -d "$to_path" ]; then
     echo "$to_path already exists - ABORT"
 else
@@ -35,4 +42,3 @@ for i in $tmp/*.nc; do
   ln -s $i .
 done
 fi
-
