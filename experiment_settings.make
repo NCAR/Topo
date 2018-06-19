@@ -23,7 +23,8 @@
 
 #export case=ne30np4_Co0080_ridge
 #export case=ne30pg3_Co0080_ridge
-export case=ne30pg2_Co0080_ridge
+#export case=ne30pg2_Co0080_ridge
+export case=ne60pg2_Co0040_ridge
 #
 # Experimental setups
 #
@@ -73,6 +74,16 @@ ifeq ($(case),ne30pg2_Co0080_ridge)
   export output_grid=ne30pg2
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export nwindow_halfwidth=057
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+ifeq ($(case),ne60pg2_Co0040_ridge)
+  export ncube_sph_smooth_coarse=040
+  export output_grid=ne60pg2
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
+  export nwindow_halfwidth=028
   export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
