@@ -21,7 +21,10 @@
 # 	smooth_topo_file_dir
 #
 
-
+export case=ne30np4_Co0080_ridge
+#
+# Experimental setups
+#
 #export case=fv_1.9x2.5_Co0120_NoAniso
 #export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_0.47x0.63_Co0120_NoAniso
@@ -30,7 +33,7 @@
 #export case=quick_test_fv
 #export case=ne30np4_Co0120_NoAnis
 #not run yet
-export case=ne16pg3_Co0120_NoAniso
+#export case=ne16pg3_Co0120_NoAniso
 #running
 #export case=ne30pg3_Co0120_NoAniso
 #not run yet
@@ -40,6 +43,22 @@ export case=ne16pg3_Co0120_NoAniso
 
 case_found=False
 
+#
+# Scientifically supported setups
+#
+ifeq ($(case),ne30np4_Co0080_ridge)
+  export ncube_sph_smooth_coarse=080
+  export output_grid=ne30np4
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/ne30np4_091226_pentagons.nc
+  export nwindow_halfwidth=057
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+#
+# Experimental setup
+#
 ifeq ($(case),quick_test_fv)
   export ncube_sph_smooth_coarse=006
   export output_grid=fv_10x15
