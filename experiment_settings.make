@@ -21,8 +21,8 @@
 # 	smooth_topo_file_dir
 #
 #export case=fv_0.9x1.25_Co060_ridge
-export case=fv_1.9x2.5_Co0120_ridge
-#export case=ne30np4_Co0080_ridge
+#export case=fv_1.9x2.5_Co0120_ridge
+export case=ne30np4_Co0080_ridge
 #export case=ne16pg3_Co0160_ridge
 #export case=ne30pg3_Co0080_ridge
 #export case=ne30pg2_Co0080_ridge
@@ -46,6 +46,7 @@ export case=fv_1.9x2.5_Co0120_ridge
 #export case=ne120pg3_Co0120_NoAniso
 
 case_found=False
+export nwindow_halfwidth=-1
 
 #
 # Scientifically supported setups
@@ -76,7 +77,6 @@ ifeq ($(case),ne16pg3_Co0160_ridge)
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export nwindow_halfwidth=113
   export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -87,7 +87,6 @@ ifeq ($(case),ne30pg2_Co0080_ridge)
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export nwindow_halfwidth=057
   export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -97,8 +96,7 @@ ifeq ($(case),ne60pg2_Co0040_ridge)
   export output_grid=ne60pg2
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export nwindow_halfwidth=028
-  export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
+  export rdgwin=_Nsw$(nwindow_halfwidth)  
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -199,8 +197,7 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export output_grid=fv_1.9x2.5
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_1.9x2.5.nc
   export nwindow_halfwidth=085
-  export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
+  export rdgwin=_Nsw$(nwindow_halfwidth)  
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -242,8 +239,7 @@ ifeq ($(case),fv_0.9x1.25_Co060_ridge)
   export output_grid=fv_0.9x1.25
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.9x1.25.nc
   export nwindow_halfwidth=042
-  export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
+  export rdgwin=_Nsw$(nwindow_halfwidth)  
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -258,8 +254,7 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export output_grid=fv_1.9x2.5
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_1.9x2.5.nc
   export nwindow_halfwidth=085
-  export rdgwin=_Nsw$(nwindow_halfwidth)
-  export lfind_ridges=.true.
+  export rdgwin=_Nsw$(nwindow_halfwidth)  
   export stitch=-stitch
   export ncube=3000
   case_found=

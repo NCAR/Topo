@@ -25,11 +25,15 @@ case_name=nc$(ncube)_Co$(ncube_sph_smooth_coarse)_Fi$(ncube_sph_smooth_fine)$(Mu
 ifeq ($(smooth_topo_file_dir),)
   smooth_topo_file_dir=cube_to_target/inputdata/smooth_topo_cube
 endif
+ifeq ($(rdgwin),"_NoAniso")
+  lfind_ridges=.false.
+else
+  lfind_ridges=.true.
+endif
 smooth_topo_file=$(smooth_topo_file_dir)/topo_smooth_$(case_name)_v02.dat
-nl_dir=cube_to_target/inputdata/namelist_defaults
-topo_smooth_nl=$(nl_dir)/topo_smooth_$(case_name)_v02.nl
-topo_smooth_nl_subdir=inputdata/namelist_defaults/topo_smooth_$(case_name)_v02.nl
-topo_file_nl_subdir=inputdata/namelist_defaults/final_$(output_grid)_$(case_name)_v02$(rdgwin).nl
+topo_smooth_nl=cube_to_target/output/topo_smooth_$(case_name)_v02.nl
+topo_smooth_nl_subdir=output/topo_smooth_$(case_name)_v02.nl
+topo_file_nl_subdir=output/final_$(output_grid)_$(case_name)_v02$(rdgwin).nl
 topo_file_nl=cube_to_target/$(topo_file_nl_subdir)
 topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
@@ -60,6 +64,7 @@ $(topo_smooth_nl):
 	if [ $(MulG),'_MulG' ]; then echo "luse_multigrid = .true." 		 	>> $(topo_smooth_nl); fi
 	if [ $(PF),'_PF' ]; then echo "luse_prefilter = .true." 		 	>> $(topo_smooth_nl); fi
 	echo "lstop_after_smoothing = .true." 		 				>> $(topo_smooth_nl)
+	echo "lfind_ridges=.false."        		 				>> $(topo_smooth_nl)
 	echo '/' >>  $(topo_smooth_nl)
 
 
@@ -83,7 +88,8 @@ $(topo_file_nl):
 	if [ $(PF),'_PF' ]; then echo "luse_prefilter = .true." 		 	>> $(topo_file_nl); fi
 	echo "lstop_after_smoothing = .false." 		 				>> $(topo_file_nl)
 	echo "lread_smooth_topofile = .true." 		 				>> $(topo_file_nl)
-#	echo "lfind_ridges=$(lfind_ridges)" 		 				>> $(topo_file_nl)
+	echo "lfind_ridges=$(lfind_ridges)" 		 				>> $(topo_file_nl)
+	echo "nwindow_halfwidth=$(nwindow_halfwidth)" 		 			>>  $(topo_file_nl)
 	echo '/' >>  $(topo_file_nl)
 
 #$(topo_file): $(smooth_topo_file) $(topo_file_nl)
