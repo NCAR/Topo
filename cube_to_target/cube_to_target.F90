@@ -255,6 +255,10 @@ program convterr
          ncube, ncube_sph_smooth_coarse, ncube_sph_smooth_fine
 
          if(lfind_ridges) then
+           if (nwindow_halfwidth<1) then
+             write(*,*) "nwindow_halfwidth must be >0",nwindow_halfwidth
+             stop
+           endif
          write( rdgwin$ , &
              "('_Nsw',i0.3 )" ) nwindow_halfwidth  
          else
