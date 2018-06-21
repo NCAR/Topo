@@ -7,7 +7,7 @@
 # simultaneously on the same machine
 #
 from_path="/project/amp/pel/TopoTrunk"
-to_path="/project/amp/pel/TopoCopy7"
+to_path="/project/amp/pel/TopoCopy_ne30pg3_co80"
 if [ -d "$to_path" ]; then
     echo "$to_path already exists - ABORT"
 else
@@ -21,6 +21,7 @@ mkdir $to_path/cube_to_target/inputdata
 mkdir $to_path/cube_to_target/inputdata/grid-descriptor-file
 mkdir $to_path/cube_to_target/inputdata/namelist_defaults
 mkdir $to_path/cube_to_target/inputdata/smooth_topo_cube
+mkdir $to_path/cube_to_target/output
 cd $to_path/cube_to_target/inputdata/grid-descriptor-file
 tmp=$from_path/cube_to_target/inputdata/grid-descriptor-file
 for i in $tmp/*.nc; do
