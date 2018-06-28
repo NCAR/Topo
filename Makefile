@@ -18,9 +18,11 @@ raw_data=gmted2010_modis
 intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)$(stitch).nc
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
-MulG=_MulG
+MulG=''
+#MulG=_MulG
 # PF  : valid options are '_PF' or ''
-PF=_PF
+#PF=_PF
+PF=''
 case_name=nc$(ncube)_Co$(ncube_sph_smooth_coarse)_Fi$(ncube_sph_smooth_fine)$(MulG)$(PF)_nullRR
 ifeq ($(smooth_topo_file_dir),)
   smooth_topo_file_dir=cube_to_target/inputdata/smooth_topo_cube
@@ -61,8 +63,16 @@ $(topo_smooth_nl):
 	echo "lsmooth_on_cubed_sphere = .true."						>> $(topo_smooth_nl)
 	echo "ncube_sph_smooth_coarse = $(ncube_sph_smooth_coarse)"			>> $(topo_smooth_nl)
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_smooth_nl)
-	if [ $(MulG),'_MulG' ]; then echo "luse_multigrid = .true." 		 	>> $(topo_smooth_nl); fi
-	if [ $(PF),'_PF' ]; then echo "luse_prefilter = .true." 		 	>> $(topo_smooth_nl); fi
+	@ if [$(MulG),'_MulG']; then \
+	  echo "luse_multigrid = .true." 		 	>> $(topo_smooth_nl); \
+	else \
+	  echo "luse_multigrid = .false." 		 	>> $(topo_smooth_nl); \
+	fi
+	@ if [$(PF),'_PF']; then \
+	  echo "luse_prefilter = .true." 		 	>> $(topo_smooth_nl); \
+	else \
+	  echo "luse_prefilter = .false." 		 	>> $(topo_smooth_nl); \
+	fi
 	echo "lstop_after_smoothing = .true." 		 				>> $(topo_smooth_nl)
 	echo "lfind_ridges=.false."        		 				>> $(topo_smooth_nl)
 	echo '/' >>  $(topo_smooth_nl)
@@ -84,8 +94,16 @@ $(topo_file_nl):
 	echo "lsmooth_on_cubed_sphere = .true."						>> $(topo_file_nl)
 	echo "ncube_sph_smooth_coarse = $(ncube_sph_smooth_coarse)"			>> $(topo_file_nl)
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_file_nl)
-	if [ $(MulG),'_MulG' ]; then echo "luse_multigrid = .true." 		 	>> $(topo_file_nl); fi
-	if [ $(PF),'_PF' ]; then echo "luse_prefilter = .true." 		 	>> $(topo_file_nl); fi
+	@ if [$(MulG),'_MulG']; then \
+	  echo "luse_multigrid = .true." 		 	>> $(topo_smooth_nl); \
+	else \
+	  echo "luse_multigrid = .false." 		 	>> $(topo_smooth_nl); \
+	fi
+	@ if [$(PF),'_PF']; then \
+	  echo "luse_prefilter = .true." 		 	>> $(topo_smooth_nl); \
+	else \
+	  echo "luse_prefilter = .false." 		 	>> $(topo_smooth_nl); \
+	fi
 	echo "lstop_after_smoothing = .false." 		 				>> $(topo_file_nl)
 	echo "lread_smooth_topofile = .true." 		 				>> $(topo_file_nl)
 	echo "lfind_ridges=$(lfind_ridges)" 		 				>> $(topo_file_nl)

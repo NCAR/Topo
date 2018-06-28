@@ -22,7 +22,8 @@
 #
 #export case=fv_0.9x1.25_Co060_ridge
 #export case=fv_1.9x2.5_Co0120_ridge
-export case=ne30np4_Co0080_ridge
+#export case=ne30np4_Co0080_ridge
+export case=ne30pg3_Co0070_ridge
 #export case=ne16pg3_Co0160_ridge
 #export case=ne30pg3_Co0080_ridge
 #export case=ne30pg2_Co0080_ridge
@@ -255,6 +256,17 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_1.9x2.5.nc
   export nwindow_halfwidth=085
   export rdgwin=_Nsw$(nwindow_halfwidth)  
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case),ne30pg3_Co0070_ridge)
+  export ncube_sph_smooth_coarse=070
+  export output_grid=ne30pg3
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
+  export nwindow_halfwidth=049
+  export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
   case_found=

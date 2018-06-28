@@ -160,6 +160,16 @@ CONTAINS
 
                 write(*,*) " now prolong "
 
+                !
+                !xxx ERROR in bounds: terr_smx_halo starts with 1-nhalo/4
+                !
+                !Got the following error with ne30pg3_Co0070_ridge:
+                !
+                ! At line 164 of file smooth_topo_cube.F90
+                ! Fortran runtime error: Array bound mismatch for dimension 1 of array 't1_halo' (3280/820)
+                !
+                !
+                !
          do ip = 1,6 
           t1_halo(1-nhalo: , 1-nhalo: ) = terr_smx_halo(: ,: , ip)
           t2_halo(:,:)=0.
