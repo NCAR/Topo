@@ -7,7 +7,7 @@
 # simultaneously on the same machine
 #
 from_path="/project/amp/pel/TopoTrunk"
-to_path="/project/amp/pel/TopoCopy_ne30pg3_co80"
+to_path="/project/amp/pel/TopoCopy_ne120"
 if [ -d "$to_path" ]; then
     echo "$to_path already exists - ABORT"
 else

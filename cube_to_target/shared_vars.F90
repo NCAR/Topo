@@ -345,6 +345,7 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
      status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
      status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
      IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
+
      !
      ! for writing remapped data on file at the end of the program
      !

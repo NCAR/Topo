@@ -20,7 +20,7 @@ $(EXEDIR)/$(EXENAME): $(OBJS)
 	mkdir -p output
 
 clean:
-	$(RM) -f $(OBJS)  *.mod $(EXEDIR)/$(EXENAME)
+	$(RM) -f $(OBJS)  *.mod $(EXEDIR)/$(EXENAME) output/*.nl
 
 cube_to_target.o: shr_kind_mod.o remap.o reconstruct.o shared_vars.o
 reconstruct.o: remap.o 

@@ -9,13 +9,14 @@ MODULE remap
 !  LOGICAL, PARAMETER:: ldbgr_r = .FALSE.
   LOGICAL :: ldbgr
   LOGICAL :: ldbg_global
+  integer :: jx_dbg, jy_dbg
 
   REAL(kind=real_kind), PARAMETER ::              &
        one = 1.0                       ,&
        aa  = 1.0                       ,&
        tiny= 1.0E-9  ,&
        bignum = 1.0E20
-  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny  !CAM-SE add           
+  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny!1.0E-12  !CAM-SE add           
 
   contains
 
@@ -175,7 +176,7 @@ end function paint_sg_field
   subroutine compute_weights_cell(xcell_in,ycell_in,jx,jy,nreconstruction,xgno,ygno,&
        jx_min, jx_max, jy_min, jy_max,tmp,&
        ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
-       nc_in,nhe_in,nvertex,ldbg)
+       nc_in,nhe_in,nvertex,ldbg,target_cell_idx)
 
     implicit none
     integer (kind=int_kind), intent(in) :: nc_in,nhe_in,nvertex
@@ -190,6 +191,7 @@ end function paint_sg_field
     integer (kind=int_kind), intent(in)               :: jx_min, jy_min, jx_max, jy_max
     real (kind=real_kind), dimension(-nhe_in:nc_in+2+nhe_in), intent(in) :: xgno
     real (kind=real_kind), dimension(-nhe_in:nc_in+2+nhe_in), intent(in) :: ygno
+    integer, intent(in) :: target_cell_idx
     !
     ! for Gaussian quadrature
     !
@@ -215,7 +217,7 @@ end function paint_sg_field
     integer (kind=int_kind),  &
          dimension(jmax_segments,2), intent(out)      :: weights_eul_index
     
-    integer (kind=int_kind) :: jsegment,i
+    integer (kind=int_kind) :: jsegment,i,j
     !
     ! variables for registering crossings with Eulerian latitudes and longitudes
     !
@@ -229,11 +231,56 @@ end function paint_sg_field
          dimension(jmax_segments,2) :: cross_lat_eul_index
     real (kind=real_kind)   ,  dimension(1:nvertex) :: xcell,ycell
 
-    real (kind=real_kind) :: eps
-
+    real (kind=real_kind) :: eps, signed_area
+    !
+    ! this module assumes that cells are specified clockwise (not counter-clockwise); CHECK
+    !
+    signed_area=0.0
+    do i=1,nvertex
+!      signed_area=signed_area+xcell_in(i)*ycell_in(i+1)-xcell_in(i+1)*ycell(i)
+      signed_area=signed_area+(xcell_in(i+1)+xcell_in(i))*(ycell_in(i+1)-ycell_in(i))
+    end do
+    signed_area=0.5*signed_area
+    if (signed_area>0.0) then
+      write(*,*) "area must be clockwise (and counter clockwise in input file)"
+      do i=0,nvertex
+        write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+      end do
+      
+      stop
+    endif
+    
+    
     ldbg_global = ldbg
     ldbgr = ldbg
 
+    jx_dbg=2999
+    jy_dbg=2
+
+!    if (target_cell_idx==5) then
+!      ldbg_global = .true.
+!    else
+!      ldbg_global = .false.
+!    end if
+    
+    if (ldbg_global) then
+      write(*,*) "signed area = ",signed_area
+      OPEN(unit=40, file='side_integral.dat',status='replace')
+      OPEN(unit=43, file='inner_integral.dat',status='replace')
+      OPEN(unit=41, file='nc3000.dat',status='replace')
+      WRITE(41,*) "  "
+      do j=jy_dbg,jy_dbg+1
+        do i=jx_dbg,jx_dbg+1
+          write(41,*) xgno(i),ygno(j)
+        end do
+      end do
+      CLOSE(41)
+      do i=0,nvertex
+        write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+      end do
+      
+    end if
+    
     nc = nc_in
     nhe = nhe_in
 
@@ -275,10 +322,16 @@ end function paint_sg_field
     !
     !**********************
     !
+!    call compute_inner_line_integrals_lat(r_cross_lat,cross_lat_eul_index,&
+!         jcross_lat,jsegment,jmax_segments,xgno,jx_min, jx_max, jy_min, jy_max,&
+!         weights,weights_eul_index,&
+!         nreconstruction,ngauss,gauss_weights,abscissae)
+
     call compute_inner_line_integrals_lat_nonconvex(r_cross_lat,cross_lat_eul_index,&
          jcross_lat,jsegment,jmax_segments,xgno,jx_min, jx_max, jy_min, jy_max,&
          weights,weights_eul_index,&
          nreconstruction,ngauss,gauss_weights,abscissae)
+
     !
     ! collect line-segment that reside in the same Eulerian cell
     !
@@ -296,13 +349,36 @@ end function paint_sg_field
 !        WRITE(*,*) "sum of weights large",tmp
 !        stop
       END IF
-      IF (tmp<-1.0E-9) THEN
-        WRITE(*,*) "sum of weights is negative - negative area?",tmp,jx,jy
+      IF (tmp<-1.0E-11) THEN
+        WRITE(*,*) "sum of weights is negative - negative area?",tmp,target_cell_idx
         !              ldbgr=.TRUE.
+        do i=0,nvertex
+          write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+        end do
+        write(*,*) " "
+        do i=1,jcollect     
+          write(*,*) "w ",weights_eul_index(i,1),weights_eul_index(i,2),weights(i,1)
+          write(*,*) " "
+          if (weights(i,1)<-1.0E-11) then
+            write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)),ygno(weights_eul_index(i,2))
+            write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)+1),ygno(weights_eul_index(i,2))
+            write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)+1),ygno(weights_eul_index(i,2)+1)
+            write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)),ygno(weights_eul_index(i,2)+1)
+            write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)),ygno(weights_eul_index(i,2))
+
+            write(*,*) " "
+          end if
+        enddo
+        
         stop
       END IF
     else
       jcollect = 0
+    end if
+
+    if (ldbg_global) then
+      close(40)
+      close(43)
     end if
   end subroutine compute_weights_cell
 
@@ -442,7 +518,6 @@ end function paint_sg_field
               call get_weights_gauss(weights_tmp,&
                    xseg,yseg,nreconstruction,ngauss,gauss_weights,abscissae)
               
-              
               if (i.LE.jy_max-1.AND.i.GE.jy_min.AND.h.LE.jx_max-1.AND.h.GE.jx_min) then
                 jsegment=jsegment+1
                 if (jsegment>jmax_segments) then
@@ -459,6 +534,16 @@ end function paint_sg_field
                 weights_eul_index(jsegment,1) = h 
                 weights_eul_index(jsegment,2) = i
                 weights(jsegment,1:nreconstruction) = -weights_tmp
+!                weights(jsegment,1:nreconstruction) = weights_tmp!we are doing integrals counter-clockwise
+                
+                if (ldbg_global) then
+                  if ( h==jx_dbg.and.i==jy_dbg) then
+!                    OPEN(unit=43, file='inner_integral.dat',status='old',POSITION='APPEND')
+                    WRITE(43,*) xseg(1),yseg(1),xseg(2)-xseg(1),yseg(2)-yseg(1)," # in ",h,i," w ",weights_tmp,"# inner"
+                    WRITE(43,*) "  "
+!                    CLOSE(43)
+                  end if
+                end if
               endif
               
               !
@@ -481,6 +566,16 @@ end function paint_sg_field
                 weights_eul_index(jsegment,1) = h 
                 weights_eul_index(jsegment,2) = i-1
                 weights(jsegment,1:nreconstruction) = weights_tmp
+!                weights(jsegment,1:nreconstruction) = -weights_tmp!we are doing integrals counter-clockwise
+
+                if (ldbg_global) then
+                  if ( h==jx_dbg.and.i-1==jy_dbg) then
+!                    OPEN(unit=43, file='inner_integral.dat',status='old',POSITION='APPEND')
+                    WRITE(43,*) xseg(2),yseg(2),xseg(1)-xseg(2),yseg(1)-yseg(2)," # in ",h,i-1," w ",-weights_tmp,"# inner"
+                    WRITE(43,*) "  "
+!                    CLOSE(43)
+                  end if
+                end if
               endif
               !
               ! prepare for next iteration
@@ -653,12 +748,6 @@ end function paint_sg_field
     
     integer (kind=int_kind) :: jx_eul, jy_eul, side_count,jdbg
     real (kind=real_kind), dimension(0:nvertex+2)  :: xcell,ycell
-    
-!    if (ldbg_global) then
-!      OPEN(unit=40, file='side_integral.dat',status='replace')
-!      WRITE(40,*) "  "
-!      CLOSE(40)              
-!    end if
     
     !
     !***********************************************
@@ -947,13 +1036,14 @@ end function paint_sg_field
             call get_weights_gauss(weights(jsegment,1:nreconstruction),&
                  xseg,yseg,nreconstruction,ngauss,gauss_weights,abscissae)
             
-!            if (ldbg_global) then
-!              OPEN(unit=40, file='side_integral.dat',status='old',POSITION='APPEND')
-!              WRITE(40,*) xseg(1),yseg(1)
-!              WRITE(40,*) xseg(2),yseg(2)
-!              WRITE(40,*) "  "
-!              CLOSE(40)              
-!            end if
+            if (ldbg_global) then
+              if ( jx_eul_tmp==jx_dbg.and.jy_eul_tmp==jy_dbg) then
+                !              WRITE(40,*) xseg(1),yseg(1)," # in ",jx_eul_tmp,jy_eul_tmp
+                !              WRITE(40,*) xseg(2),yseg(2)," # in ",jx_eul_tmp,jy_eul_tmp
+                WRITE(40,*) xseg(1),yseg(1),xseg(2)-xseg(1),yseg(2)-yseg(1)," # in ",jx_eul_tmp,jy_eul_tmp
+                WRITE(40,*) "  "
+              end if
+            end if
             
             
             jdbg=jdbg+1
@@ -1074,7 +1164,7 @@ end function paint_sg_field
         weights(3) = ((I_01(xseg(2),yseg(2))-I_01(xseg(1),yseg(1))))
       endif
       if (nreconstruction>3) then
-        weights(4) = ((I_20(xseg(2),yseg(2))-I_20(xseg(1),yseg(1))))
+       weights(4) = ((I_20(xseg(2),yseg(2))-I_20(xseg(1),yseg(1))))
         weights(5) = ((I_02(xseg(2),yseg(2))-I_02(xseg(1),yseg(1))))
         weights(6) = ((I_11(xseg(2),yseg(2))-I_11(xseg(1),yseg(1))))
       endif

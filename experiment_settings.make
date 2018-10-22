@@ -23,11 +23,12 @@
 #export case=fv_0.9x1.25_Co060_ridge
 #export case=fv_1.9x2.5_Co0120_ridge
 #export case=ne30np4_Co0080_ridge
-export case=ne30pg3_Co0070_ridge
+#export case=ne30pg3_Co0070_ridge
 #export case=ne16pg3_Co0160_ridge
 #export case=ne30pg3_Co0080_ridge
 #export case=ne30pg2_Co0080_ridge
 #export case=ne60pg2_Co0040_ridge
+#export case=ne120np4_Co0015_ridge
 #
 # Experimental setups
 #
@@ -45,6 +46,7 @@ export case=ne30pg3_Co0070_ridge
 #export case=ne60pg3_Co0120_NoAniso
 #no run yet
 #export case=ne120pg3_Co0120_NoAniso
+export case=fv3_C96_Co0060_ridge
 
 case_found=False
 export nwindow_halfwidth=-1
@@ -97,7 +99,17 @@ ifeq ($(case),ne60pg2_Co0040_ridge)
   export output_grid=ne60pg2
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export nwindow_halfwidth=028
-  export rdgwin=_Nsw$(nwindow_halfwidth)  
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+ifeq ($(case),ne120np4_Co0015_ridge)
+  export ncube_sph_smooth_coarse=015
+  export output_grid=ne120np4
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/ne120np4_pentagons_100310.nc
+  export nwindow_halfwidth=011
+  export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -240,7 +252,7 @@ ifeq ($(case),fv_0.9x1.25_Co060_ridge)
   export output_grid=fv_0.9x1.25
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.9x1.25.nc
   export nwindow_halfwidth=042
-  export rdgwin=_Nsw$(nwindow_halfwidth)  
+  export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -255,7 +267,7 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export output_grid=fv_1.9x2.5
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_1.9x2.5.nc
   export nwindow_halfwidth=085
-  export rdgwin=_Nsw$(nwindow_halfwidth)  
+  export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
   case_found=
@@ -271,6 +283,24 @@ ifeq ($(case),ne30pg3_Co0070_ridge)
   export ncube=3000
   case_found=
 endif
+#
+# FV3
+#
+ifeq ($(case),fv3_C96_Co0060_ridge)
+  export ncube_sph_smooth_coarse=060
+  export output_grid=fv3_C96
+  #
+  # grid descriptor file copied from /project/amp/jet/mapping/grids/C96_SCRIP_desc_180822.nc
+  #
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv3_C96.nc
+  export nwindow_halfwidth=042
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+
 
 ifeq ($(case_found),False)
   echo "CASE NOT FOUND - ABORT"

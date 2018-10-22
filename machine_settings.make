@@ -25,8 +25,13 @@ DEBUG=FALSE
 #
 ifeq ($(FC),gfortran)
   ifeq ($(machine),thorodin)
-    INC_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/include
-    LIB_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/lib
+#    INC_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/include
+    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/include
+#    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/include
+
+#    LIB_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/lib
+    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/lib
+#    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/lib
   endif
 
   LDFLAGS= -L$(LIB_NETCDF) -lnetcdf -lnetcdff

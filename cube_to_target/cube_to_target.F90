@@ -51,6 +51,7 @@ program convterr
 
   integer :: ii,ip,jx,jy,jp,np
   integer, parameter :: ngauss = 3
+!  integer, parameter :: ngauss = 5
   integer :: jmax_segments,jall,jall_anticipated
   real(r8) :: tmp
   
@@ -262,7 +263,7 @@ program convterr
          write( rdgwin$ , &
              "('_Nsw',i0.3 )" ) nwindow_halfwidth  
          else
-         rdgwin$ = '_NoAniso'
+           rdgwin$ = '_NoAniso'
          end if  
          
          write(*,*)" Smooth ", trim(smoothprm$)
@@ -271,7 +272,7 @@ program convterr
 
 
          smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
-         rdglist_fname = './output/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
+         rdglist_fname = './inputdata/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.nc'
 !         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
@@ -372,20 +373,21 @@ program convterr
 
    jall_anticipated = ncube*ncube*12*10 !anticipated number of weights (can be tweaked)
 
-   if (nrank == 1) then
-     da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
-     da_min_target = MAXVAL(target_area)
-     if (da_min_target==0) then !bug with MPAS files
-        jmax_segments = 100000
-     else
-        jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
-     end if
-     write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
-     write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
-   else
-     jmax_segments = 100000   !can be tweaked
-   end if
-   jmax_segments = 10000000   !can be tweaked xxx
+!   if (nrank == 1) then
+!     da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
+!     da_min_target = MAXVAL(target_area)
+!     if (da_min_target==0) then !bug with MPAS files
+!        jmax_segments = 100000
+!     else
+!        jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
+!     end if
+!!     write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
+!!     write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
+!   else
+!     jmax_segments = 100000   !can be tweaked
+!   end if
+   jmax_segments = 100000   !can be tweaked xxx
+   write(*,*) "jmax_segments",jmax_segments !,da_min_target,da_min_ncube   
    nreconstruction = 1
    allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
    allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
@@ -1807,7 +1809,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
            jx,jy,nreconstruction,xgno,ygno,&
            1, ncube+1, 1,ncube+1, tmp,&
            ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
-           ncube,0,ncorner_this_cell,ldbg)
+           ncube,0,ncorner_this_cell,ldbg,i)
       
       weights_all(jall:jall+jcollect-1,1:nreconstruction)  = weights(1:jcollect,1:nreconstruction)
 
@@ -1940,7 +1942,7 @@ SUBROUTINE overlap_weights_cube_to_cube(ncube_coarse,weights_lgr_index_all,weigh
            jx,jy,nreconstruction,xgno,ygno,&
            1, ncube+1, 1,ncube+1, tmp,&
            ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
-           ncube,0,ncorner,ldbg)
+           ncube,0,ncorner,ldbg,i+(j-1)*ncube_coarse)
       
       weights_all(jall:jall+jcollect-1,1:nreconstruction)  = weights(1:jcollect,1:nreconstruction)
       area_sphere_wt = area_sphere_wt + tmp
