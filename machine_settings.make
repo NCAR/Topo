@@ -1,7 +1,9 @@
 #
 # set machine
 #
-machine=thorodin
+#machine=thorodin
+machine=cheyenne
+#module load gnu
 #
 # set python path
 #
@@ -9,7 +11,12 @@ export python_path=/usr/local/anaconda-2.4.0/bin/
 #
 # Fortran settings
 #
-FC=gfortran
+ifeq ($(machine),thorodin)
+  FC=gfortran
+endif
+ifeq ($(machine),cheyenne)
+  FC=gfortran
+endif
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
@@ -34,8 +41,14 @@ ifeq ($(FC),gfortran)
 #    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/lib
   endif
 
-  LDFLAGS= -L$(LIB_NETCDF) -lnetcdf -lnetcdff
-  FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF)
+  ifeq ($(machine),cheyenne)
+    LIB_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/lib
+    INC_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/include
+  endif
+
+
+  LDFLAGS= -L$(LIB_NETCDF)  -lnetcdf -lnetcdff
+  FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF) 
 
   ifeq ($(DEBUG),TRUE)
 #   FFLAGS += --chk aesu  -Cpp --trace
@@ -43,7 +56,6 @@ ifeq ($(FC),gfortran)
   else
     FFLAGS += -O
   endif
-
 endif
 
 #------------------------------------------------------------------------
@@ -57,7 +69,7 @@ ifeq ($(FC),nagfor)
   INC_NETCDF :=/usr/local/netcdf-gcc-nag/include
   LIB_NETCDF :=/usr/local/netcdf-gcc-nag/lib
 
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+  LDFLAGS = -L$(LIB_NETCD)F -lnetcdf -lnetcdff
   FFLAGS   := -c  -I$(INC_NETCDF)
 
 
