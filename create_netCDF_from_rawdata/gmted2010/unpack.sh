@@ -7,8 +7,8 @@
 field=mea
 resolution=300
 
-for f in $( ls data/*_$resolution*zip); do
-#xxx  unzip $f 
+for f in $( ls rawdata/*_$resolution*zip); do
+  unzip $f 
   echo $f
 done
 all_tif_files=`ls *$field*.tif`
@@ -17,7 +17,7 @@ echo " "
 echo $all_tif_files
 echo
 echo "gdal_merge.py $all_tif_files -o $field.tif"
-gdal_merge.py $all_tif_files -o $field.tif
+./gdal_merge.py $all_tif_files -o $field.tif
 #python /usr/local/anaconda-2.4.0/bin/gdal_merge.py $all_tif_files -o $field.tif
 echo "dal_translate -of netCDF 1.tif 1.nc"
 gdal_translate -of netCDF $field.tif $field.nc
