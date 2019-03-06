@@ -1,9 +1,12 @@
 #
 # set machine
 #
-#machine=thorodin
-machine=cheyenne
-#module load gnu
+machine=thorodin
+#export machine=cheyenne
+export machine=thorodin
+ifeq ($(machine),thorodin)
+  export module_gnu="compiler/gnu/8.1.0"
+endif
 #
 # set python path
 #
@@ -31,24 +34,34 @@ DEBUG=FALSE
 #------------------------------------------------------------------------
 #
 ifeq ($(FC),gfortran)
-  ifeq ($(machine),thorodin)
-#    INC_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/include
-    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/include
-#    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/include
 
-#    LIB_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/lib
-    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/lib
-#    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/lib
-  endif
-
+#  ifeq ($(machine),thorodin)
+##    INC_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/include
+#    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/include
+###    INC_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/include
+#
+##    LIB_NETCDF=/usr/local/netcdf-gcc-g++-gfortran/lib
+#    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-8.1.0/lib
+##    LIB_NETCDF=/usr/local/netcdf-c-4.6.1-f-4.4.4-gcc-g++-gfortran-4.8.5/lib
+#  endif
+#
   ifeq ($(machine),cheyenne)
     LIB_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/lib
     INC_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/include
   endif
 
 
-  LDFLAGS= -L$(LIB_NETCDF)  -lnetcdf -lnetcdff
-  FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF) 
+#  LDFLAGS= -L$(LIB_NETCDF)  -lnetcdf -lnetcdff
+#  FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF) 
+
+  #
+  # module purge
+  # module load compiler/gnu/8.1.0
+  #
+  LIB_NETCDF = $(NETCDF_PATH)/lib
+  INC_NETCDF = $(NETCDF_PATH)/include
+  LDFLAGS= -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+  FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF)
 
   ifeq ($(DEBUG),TRUE)
 #   FFLAGS += --chk aesu  -Cpp --trace
@@ -104,8 +117,7 @@ ifeq ($(FC),pgf95)
 endif
 
 export INC_NETCDF
-export LIB_NETCDF
+#export LIB_NETCDF
 export LDFLAGS
 export FFLAGS
 export FC
-
