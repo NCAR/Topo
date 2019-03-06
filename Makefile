@@ -47,12 +47,12 @@ topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
 #********************************
 #
-#$(topo_file): $(smooth_topo_file) $(topo_file_nl)
 all: load_modules $(smooth_topo_file) $(topo_file_nl)
 	(cd cube_to_target; rm nlmain.nl;  ln -s $(topo_file_nl_subdir) nlmain.nl;  make; ./cube_to_target)
-
+#
+# load appropriate modules (machine specific)
+#
 load_modules:
-#	./load_$(machine)_modules.sh
 	module purge
 	module load $(module_gnu)
 	touch modules_loaded.txt
