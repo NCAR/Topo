@@ -55,6 +55,8 @@ all: load_modules $(smooth_topo_file) $(topo_file_nl)
 load_modules:
 	module purge
 	module load $(module_gnu)
+	module load $(module_python)
+	module spider gdal
 	touch modules_loaded.txt
 
 create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
@@ -119,6 +121,11 @@ namelists: $(topo_file_nl) $(topo_smooth_nl)
 	echo "  "
 	echo "  $(topo_file_nl)"
 	echo "  $(topo_smooth_nl)"
+
+# generate ~1km GMTED2010 data from source
+##
+create_netCDF_from_rawdata/gmted2010/mea.nc:
+	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010; chmod +x unpack.sh; ./unpack.sh)
 
 clean:
 	rm modules_loaded.txt

@@ -6,6 +6,10 @@ machine=thorodin
 export machine=thorodin
 ifeq ($(machine),thorodin)
   export module_gnu="compiler/gnu/8.1.0"
+  export module_python="lang/python/3.7.0"
+endif
+ifeq ($(machine),cheyenne)
+#  module spider gdal
 endif
 #
 # set python path

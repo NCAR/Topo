@@ -42,9 +42,8 @@ Remap elevation data to target grid and compute associated variables.
 Python script to add CESM meta data to topography data file (must be done manually: "make cesm_compliance")
 
 
-Notes on setting system up on CGD machines:
+Commands:
 
-use the module files to configure your compute environment
-
-  % module purge
-  % module load compiler/gnu/8.1.0
+git clone https://github.com/NCAR/Topo
+# switch to branch
+git checkout TopoCESM2
