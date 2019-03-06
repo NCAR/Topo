@@ -45,5 +45,6 @@ Python script to add CESM meta data to topography data file (must be done manual
 Commands:
 
 git clone https://github.com/NCAR/Topo
+cd Topo
 # switch to branch
 git checkout TopoCESM2
