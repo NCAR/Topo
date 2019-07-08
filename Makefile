@@ -1,12 +1,12 @@
 #
 # COMPILER/MACHINE SETTINGS
 #
-machine=harmon
-machine=my_mac
-machine=yellowstone
+#machine=harmon
+#machine=my_mac
+machine=cheyenne
 #FC = ifort
-#FC = gfortran
-FC=ifort
+FC = gfortran
+#FC=ifort
 #FC = nagfor
 #FC = pgf95
 DEBUG=FALSE
@@ -206,10 +206,10 @@ export FC
 # ifort
 #------------------------------------------------------------------------
 #
-ifeq ($(FC),ifort)
-  FFLAGS = -c -g -r8 -O1 -I$(INC_NETCDF)
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf
-endif
+#ifeq ($(FC),ifort)
+#  FFLAGS = -c -g -r8 -O1 -I$(INC_NETCDF)
+#  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf
+#endif
 
 
 #------------------------------------------------------------------------
@@ -217,49 +217,50 @@ endif
 #------------------------------------------------------------------------
 #
 ifeq ($(FC),gfortran)
-  ifeq ($(machine),my_mac)
-    INC_NETCDF := /opt/local/include
-    LIB_NETCDF := /opt/local/lib
-  endif
-  ifeq ($(machine),harmon)
-    INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
-    LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
-  endif
-
+#  ifeq ($(machine),my_mac)
+#    INC_NETCDF := /opt/local/include
+#    LIB_NETCDF := /opt/local/lib
+#  endif
+#  ifeq ($(machine),harmon)
+#    INC_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/include
+#    LIB_NETCDF :=/usr/local/netcdf-gcc-g++-gfortran/lib
+# # endif
+##
+#
   LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff 
   FFLAGS   := -c  -fdollar-ok  -I$(INC_NETCDF)
-
+#
   ifeq ($(DEBUG),TRUE)
 #   FFLAGS += --chk aesu  -Cpp --trace
     FFLAGS += -Wall -fbacktrace -fbounds-check -fno-range-check
   else
     FFLAGS += -O
   endif
-
+#
 endif
 
 #------------------------------------------------------------------------
 # NAG
 #------------------------------------------------------------------------
-ifeq ($(FC),nagfor)
-
+#ifeq ($(FC),nagfor)
+#
+##  INC_NETCDF :=/usr/local/netcdf-gcc-nag/include
+##  LIB_NETCDF :=/usr/local/netcdf-pgi/lib
+#
 #  INC_NETCDF :=/usr/local/netcdf-gcc-nag/include
-#  LIB_NETCDF :=/usr/local/netcdf-pgi/lib
-
-  INC_NETCDF :=/usr/local/netcdf-gcc-nag/include
-  LIB_NETCDF :=/usr/local/netcdf-gcc-nag/lib
-
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
-  FFLAGS   := -c  -I$(INC_NETCDF)
-
-
-  ifeq ($(DEBUG),TRUE)
-    FFLAGS += -g -C
-  else
-    FFLAGS += -O
-  endif
-
-endif
+#  LIB_NETCDF :=/usr/local/netcdf-gcc-nag/lib
+#
+#  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+#  FFLAGS   := -c  -I$(INC_NETCDF)
+#
+#
+#  ifeq ($(DEBUG),TRUE)
+#    FFLAGS += -g -C
+#  else
+#    FFLAGS += -O
+#  endif
+#
+#endif
 
 #------------------------------------------------------------------------
 # PGF95
@@ -268,45 +269,45 @@ endif
 # setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/netcdf-4.1.3-gcc-4.4.4-13-lf9581/lib
 #
 
-ifeq ($(FC),pgf95)
-  INC_NETCDF :=/opt/local/include
-  LIB_NETCDF :=/opt/local/lib
-
-  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
-  FFLAGS   := -c -Mlarge_arrays -I$(INC_NETCDF)
-
-
-  ifeq ($(DEBUG),TRUE)
-    FFLAGS += -g -Mbounds -traceback -Mchkfpstk
-  else
-    FFLAGS += -O
-  endif
-
-endif
+#ifeq ($(FC),pgf95)
+#  INC_NETCDF :=/opt/local/include
+#  LIB_NETCDF :=/opt/local/lib
+#
+#  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+#  FFLAGS   := -c -Mlarge_arrays -I$(INC_NETCDF)
+#
+#
+#  ifeq ($(DEBUG),TRUE)
+#    FFLAGS += -g -Mbounds -traceback -Mchkfpstk
+#  else
+#    FFLAGS += -O
+#  endif
+#
+#endif
 #------------------------------------------------------------------------
 # ifort
 #------------------------------------------------------------------------
 #
 
-ifeq ($(FC),ifort)
-  INC_NETCDF :=${NETCDF}/include
-  LIB_NETCDF :=${NETCDF}/lib
+#ifeq ($(FC),ifort)
+#  INC_NETCDF :=${NETCDF}/include
+#  LIB_NETCDF :=${NETCDF}/lib
+#
+##  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
+#  FFLAGS   := -c -I$(INC_NETCDF)
+#
+#
+#  ifeq ($(DEBUG),TRUE)
+#    FFLAGS += -g -Mbounds -traceback -Mchkfpstk
+#  else
+#    FFLAGS += -O
+#  endif
+#
+#endif
 
-#  LDFLAGS = -L$(LIB_NETCDF) -lnetcdf -lnetcdff
-  FFLAGS   := -c -I$(INC_NETCDF)
 
-
-  ifeq ($(DEBUG),TRUE)
-    FFLAGS += -g -Mbounds -traceback -Mchkfpstk
-  else
-    FFLAGS += -O
-  endif
-
-endif
-
-
-export INC_NETCDF
-export LIB_NETCDF
+#export INC_NETCDF
+#export LIB_NETCDF
 export LDFLAGS
 export FFLAGS
 
