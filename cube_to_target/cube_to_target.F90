@@ -211,16 +211,16 @@ program convterr
   ! RRfac is always used. If output_grid has no 
   ! regional refinement then rrfac(:,:,:)=1.
   allocate( rrfac(ncube,ncube,6)  )
-  if (trim(output_grid) == 'conus_30_x8' ) then 
-     rrfactor_fname = '../bin_to_cube/refinelevel-ne0conus30x8-ncube3000-stitch.nc'
-     CALL read_refinement_factor(rrfactor_fname,ncube_rr)
-     rrfac = (reshape( refine_li ,    (/ncube,ncube,6/) ) + 1)*  1.
-     WRITE(*,*) "Read in refinement control from: "
-     write(*,*) rrfactor_fname
-  else
+!xxx  if (trim(output_grid) == 'conus_30_x8' ) then 
+!xxx     rrfactor_fname = '../bin_to_cube/refinelevel-ne0conus30x8-ncube3000-stitch.nc'
+!xxx     CALL read_refinement_factor(rrfactor_fname,ncube_rr)
+!xxx     rrfac = (reshape( refine_li ,    (/ncube,ncube,6/) ) + 1)*  1.
+!xxx     WRITE(*,*) "Read in refinement control from: "
+!xxx     write(*,*) rrfactor_fname
+!xxx  else
      rrfac(:,:,:) = 1.
      write(*,*) " NO refinement: RRFAC = 1. everywhere "
-  endif
+!xxx  endif
   write(*,*) "MINMAX RRFAC ",minval(rrfac),maxval(rrfac)
 
 
@@ -244,11 +244,11 @@ program convterr
          end if
          if (lregional_refinement) then
             !proctag$ = trim(proctag$)//'_RR'
-            if (trim(output_grid) == 'conus_30_x8' ) then 
-               proctag$ = trim(proctag$)//'_CONUS'
-            else 
+!            if (trim(output_grid) == 'conus_30_x8' ) then 
+!               proctag$ = trim(proctag$)//'_CONUS'
+!            else 
                proctag$ = trim(proctag$)//'_nullRR'
-            endif
+!            endif
          end if
 
          write( smoothprm$ , &

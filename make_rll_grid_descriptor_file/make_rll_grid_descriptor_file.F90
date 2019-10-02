@@ -15,9 +15,9 @@
 !        integer, parameter :: jm = 1080       !10 min
 !        logical, parameter :: lpole=.FALSE.   !10 min
 
-        integer, parameter :: im = 576       !FV 0.47x0.63
-        integer, parameter :: jm = 384       !FV 0.47x0.63
-        logical, parameter :: lpole=.TRUE.   !FV 0.47x0.63
+!        integer, parameter :: im = 576       !FV 0.47x0.63
+!        integer, parameter :: jm = 384       !FV 0.47x0.63
+!        logical, parameter :: lpole=.TRUE.   !FV 0.47x0.63
 
 !        integer, parameter :: im = 288       !0.9x1.25 CAM-FV
 !        integer, parameter :: jm = 192       !0.9x1.25 CAM-FV 
@@ -40,17 +40,9 @@
 !        logical, parameter :: lpole=.TRUE.   !CAM-FV 10x15
 
 
-!        integer, parameter :: im = 1152       !0.23x0.31 CAM-FV
-!        integer, parameter :: jm =768         !0.23x0.31 CAM-FV 
-!        logical, parameter :: lpole=.TRUE.    !CAM-FV setting is
-
-!        integer, parameter :: im = 1440    
-!        integer, parameter :: jm =720     
-!        logical, parameter :: lpole=.FALSE.
-
-!        integer, parameter :: im = 1440       !0.23x0.31 CAM-FV
-!        integer, parameter :: jm =720         !0.23x0.31 CAM-FV 
-!        logical, parameter :: lpole=.FALSE.    !CAM-FV setting is
+        integer, parameter :: im = 1152       !0.23x0.31 CAM-FV
+        integer, parameter :: jm =768         !0.23x0.31 CAM-FV 
+        logical, parameter :: lpole=.TRUE.    !CAM-FV setting is
 
 
 !        integer, parameter :: im = 2160       !USGS 10 min data setting

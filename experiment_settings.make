@@ -29,6 +29,7 @@
 #export case=ne30pg2_Co0080_ridge
 #export case=ne60pg2_Co0040_ridge
 #export case=ne120np4_Co0015_ridge
+
 #
 # Experimental setups
 #
@@ -46,7 +47,12 @@
 #export case=ne60pg3_Co0120_NoAniso
 #no run yet
 #export case=ne120pg3_Co0120_NoAniso
-export case=fv3_C96_Co0060_ridge
+#export case=fv3_C96_Co0060_ridge
+#export case=fv3_C384_Co0015_ridge
+#export case=conus_30_x8_Co0060_ridge
+#export case=fv_0.47x0.63_Co0030_ridge
+export case=fv_0.23x0.31_Co0015_ridge
+#export case=conus_30_x8_Co0008_ridge
 
 case_found=False
 export nwindow_halfwidth=-1
@@ -64,6 +70,7 @@ ifeq ($(case),ne30np4_Co0080_ridge)
   export ncube=3000
   case_found=
 endif
+
 ifeq ($(case),ne30pg3_Co0080_ridge)
   export ncube_sph_smooth_coarse=080
   export output_grid=ne30pg3
@@ -117,6 +124,30 @@ endif
 #
 # Experimental setup
 #
+
+ifeq ($(case),conus_30_x8_Co0060_ridge)
+  export ncube_sph_smooth_coarse=060
+  export output_grid=conus_30_x8
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/conus_30_x8.g_scrip.nc
+  export nwindow_halfwidth=042
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case),conus_30_x8_Co0008_ridge)
+  export ncube_sph_smooth_coarse=008
+  export output_grid=conus_30_x8
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/conus_30_x8.g_scrip.nc
+  export nwindow_halfwidth=006
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+
 ifeq ($(case),quick_test_fv)
   export ncube_sph_smooth_coarse=006
   export output_grid=fv_10x15
@@ -241,6 +272,28 @@ ifeq ($(case),fv_0.47x0.63_Co0120_NoAniso)
   case_found=
 endif
 
+ifeq ($(case),fv_0.47x0.63_Co0030_ridge)
+  export ncube_sph_smooth_coarse=030
+  export output_grid=fv_0.47x0.63
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.47x0.63.nc
+  export nwindow_halfwidth=021
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case),fv_0.23x0.31_Co0015_ridge)
+  export ncube_sph_smooth_coarse=015
+  export output_grid=fv_0.23x0.31
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_0.23x0.31.nc
+  export nwindow_halfwidth=011
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
 
 #
 # Standard 1 degree smoothing for FV: Co060
@@ -294,6 +347,17 @@ ifeq ($(case),fv3_C96_Co0060_ridge)
   #
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv3_C96.nc
   export nwindow_halfwidth=042
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case),fv3_C384_Co0015_ridge)
+  export ncube_sph_smooth_coarse=015
+  export output_grid=fv3_C384
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/FV3_C384_SCRIP_desc.181018.nc
+  export nwindow_halfwidth=011
   export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
