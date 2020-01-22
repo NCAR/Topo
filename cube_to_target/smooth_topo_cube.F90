@@ -76,8 +76,8 @@ CONTAINS
     logical ::     b4b_with_cesm2, smooth_topo_cubesph, do_refine
 
 
-    !read_in_precomputed = .FALSE.
-    read_in_precomputed = lread_smooth_topofile  !.TRUE.
+    read_in_precomputed = .FALSE.
+    !read_in_precomputed = lread_smooth_topofile  !.TRUE.
     use_multigrid = luse_multigrid 
     use_prefilter = luse_prefilter 
     stop_after_smoothing = lstop_after_smoothing 

@@ -244,7 +244,7 @@ end function paint_sg_field
     if (signed_area>0.0) then
       write(*,*) "area must be clockwise (and counter clockwise in input file)"
       do i=0,nvertex
-        write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+        !write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
       end do
       
       stop
@@ -268,6 +268,7 @@ end function paint_sg_field
       OPEN(unit=40, file='side_integral.dat',status='replace')
       OPEN(unit=43, file='inner_integral.dat',status='replace')
       OPEN(unit=41, file='nc3000.dat',status='replace')
+      OPEN(unit=44, file='target-cell.dat',status='replace')
       WRITE(41,*) "  "
       do j=jy_dbg,jy_dbg+1
         do i=jx_dbg,jx_dbg+1
@@ -276,7 +277,9 @@ end function paint_sg_field
       end do
       CLOSE(41)
       do i=0,nvertex
+        !write(44,*) i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
         write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+        write(44,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
       end do
       
     end if
@@ -379,6 +382,7 @@ end function paint_sg_field
     if (ldbg_global) then
       close(40)
       close(43)
+      close(44)
     end if
   end subroutine compute_weights_cell
 
@@ -537,12 +541,12 @@ end function paint_sg_field
 !                weights(jsegment,1:nreconstruction) = weights_tmp!we are doing integrals counter-clockwise
                 
                 if (ldbg_global) then
-                  if ( h==jx_dbg.and.i==jy_dbg) then
+!                  if ( h==jx_dbg.and.i==jy_dbg) then
 !                    OPEN(unit=43, file='inner_integral.dat',status='old',POSITION='APPEND')
                     WRITE(43,*) xseg(1),yseg(1),xseg(2)-xseg(1),yseg(2)-yseg(1)," # in ",h,i," w ",weights_tmp,"# inner"
                     WRITE(43,*) "  "
 !                    CLOSE(43)
-                  end if
+!                  end if
                 end if
               endif
               
@@ -569,12 +573,12 @@ end function paint_sg_field
 !                weights(jsegment,1:nreconstruction) = -weights_tmp!we are doing integrals counter-clockwise
 
                 if (ldbg_global) then
-                  if ( h==jx_dbg.and.i-1==jy_dbg) then
+!                  if ( h==jx_dbg.and.i-1==jy_dbg) then
 !                    OPEN(unit=43, file='inner_integral.dat',status='old',POSITION='APPEND')
                     WRITE(43,*) xseg(2),yseg(2),xseg(1)-xseg(2),yseg(1)-yseg(2)," # in ",h,i-1," w ",-weights_tmp,"# inner"
                     WRITE(43,*) "  "
 !                    CLOSE(43)
-                  end if
+!                  end if
                 end if
               endif
               !
@@ -1037,12 +1041,12 @@ end function paint_sg_field
                  xseg,yseg,nreconstruction,ngauss,gauss_weights,abscissae)
             
             if (ldbg_global) then
-              if ( jx_eul_tmp==jx_dbg.and.jy_eul_tmp==jy_dbg) then
+!              if ( jx_eul_tmp==jx_dbg.and.jy_eul_tmp==jy_dbg) then
                 !              WRITE(40,*) xseg(1),yseg(1)," # in ",jx_eul_tmp,jy_eul_tmp
                 !              WRITE(40,*) xseg(2),yseg(2)," # in ",jx_eul_tmp,jy_eul_tmp
                 WRITE(40,*) xseg(1),yseg(1),xseg(2)-xseg(1),yseg(2)-yseg(1)," # in ",jx_eul_tmp,jy_eul_tmp
                 WRITE(40,*) "  "
-              end if
+!              end if
             end if
             
             
