@@ -78,8 +78,9 @@ program convterr
 !  integer , allocatable, dimension(:)   :: weights_lgr_index_all_coarse
 !  real(r8), allocatable, dimension(:)   :: area_target_coarse
 !  real(r8), allocatable, dimension(:,:) :: da_coarse,da
-  real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:)
+  real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:),rrfac_tmp(:,:,:)
 !  real(r8), allocatable, dimension(:,:) :: recons,centroids
+  real(r8) :: rrfac_limit
   integer :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
   real(r8) :: volterr, volterr_sm  
@@ -132,7 +133,7 @@ program convterr
   integer :: nridge_subsample = -1
   !
   logical :: lridgetiles = .FALSE.
-  logical :: lregional_refinement
+  logical :: lregional_refinement = .FALSE.
   !
   !
   ! For internal smoothing (experimental at this point)
@@ -157,6 +158,10 @@ program convterr
   character(len=8)  :: date$
   character(len=10) :: time$
 
+!+++ARH
+  character(len=1024) :: cube_file
+!+++ARH
+
 #if 0  
     type (peak_type), allocatable, dimension(:) ::  peaks
     integer :: npeaks
@@ -167,14 +172,15 @@ program convterr
        output_fname, externally_smoothed_topo_file,&
        lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis, & 
        lsmooth_on_cubed_sphere,lfind_ridges,lridgetiles,lzero_negative_peaks, &
+       lregional_refinement, &
        !
        ! variables for interal smoothing of topography
        !
        ncube_coarse,norder,nmono,npd,ncube_sph_smooth_coarse,ncube_sph_smooth_fine, &
        ncube_sph_smooth_iter,nwindow_halfwidth,nridge_subsample,lread_smooth_topofile, &
        luse_multigrid,luse_prefilter,lstop_after_smoothing, &
-       lb4b_with_cesm2
-  
+       lb4b_with_cesm2 
+ 
   UNIT=221
   OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
   READ( UNIT=UNIT, NML=topoparams)
@@ -182,26 +188,46 @@ program convterr
   
   call  set_constants
 
-      lregional_refinement = .TRUE.
-
-
-
-
-
   !
   ! turn extra debugging on/off
   !
   ldbg = .FALSE.
 
-!!!  call read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
-
+  ! Read in target grid
+  !------------------------------------------------------------------------------------------------
+  call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
 
   ! Read in topo data on cubed sphere grid
+  !------------------------------------------------------------------------------------------------
   call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
    
-
   allocate ( dA(ncube,ncube),stat=alloc_error )
   CALL EquiangularAllAreas(ncube, dA)
+
+!+++ARH
+  ! Compute overlap weights
+  !------------------------------------------------------------------------------------------------
+
+  ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
+  ! in the 'exchange grid'
+
+   jall_anticipated = ncube*ncube*12*10 !anticipated number of weights (can be tweaked)
+
+   jmax_segments = 100000   !can be tweaked xxx
+   write(*,*) "jmax_segments",jmax_segments !,da_min_target,da_min_ncube   
+   nreconstruction = 1
+   allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
+   allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
+   allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
+   jall=jall_anticipated
+
+   write(*,*) "Compute overlap weights: "
+   CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
+        jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+   deallocate(target_corner_lon,target_corner_lat)
+
+  ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
+  !------------------------------------------------------------------------------------------------
             
   ! Set-up regional refinement control.
   !------------------------------------------
@@ -210,19 +236,32 @@ program convterr
   ! control lengthscales used in algorithms. 
   ! RRfac is always used. If output_grid has no 
   ! regional refinement then rrfac(:,:,:)=1.
+
   allocate( rrfac(ncube,ncube,6)  )
-!xxx  if (trim(output_grid) == 'conus_30_x8' ) then 
-!xxx     rrfactor_fname = '../bin_to_cube/refinelevel-ne0conus30x8-ncube3000-stitch.nc'
-!xxx     CALL read_refinement_factor(rrfactor_fname,ncube_rr)
-!xxx     rrfac = (reshape( refine_li ,    (/ncube,ncube,6/) ) + 1)*  1.
-!xxx     WRITE(*,*) "Read in refinement control from: "
-!xxx     write(*,*) rrfactor_fname
-!xxx  else
+  if (lregional_refinement) then
+    !--- remap rrfac to cube
+    !-----------------------------------------------------------------
+    do counti=1,jall
+      i    = weights_lgr_index_all(counti)!!
+      !
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+      !
+      ! convert to 1D indexing of cubed-sphere
+      !
+      ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+      !
+      wt = weights_all(counti,1)
+      !
+      rrfac(ix,iy,ip) = rrfac(ix,iy,ip) + wt*(target_rrfac(i))/dA(ix,iy)
+    end do
+  else
      rrfac(:,:,:) = 1.
      write(*,*) " NO refinement: RRFAC = 1. everywhere "
-!xxx  endif
-  write(*,*) "MINMAX RRFAC ",minval(rrfac),maxval(rrfac)
-
+  endif
+  write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
+!---ARH
 
 
 
@@ -242,13 +281,9 @@ program convterr
          if (luse_prefilter) then
             proctag$ = trim(proctag$)//'_PF'
          end if
+
          if (lregional_refinement) then
-            !proctag$ = trim(proctag$)//'_RR'
-!            if (trim(output_grid) == 'conus_30_x8' ) then 
-!               proctag$ = trim(proctag$)//'_CONUS'
-!            else 
-               proctag$ = trim(proctag$)//'_nullRR'
-!            endif
+            proctag$ = trim(proctag$)//'_RR'
          end if
 
          write( smoothprm$ , &
@@ -275,6 +310,7 @@ program convterr
          rdglist_fname = './inputdata/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
          output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.nc'
+
 !         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
 !         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.nc'
 
@@ -301,6 +337,29 @@ program convterr
       ! This routine writes out an f77 unf file containing terr,terr_sm, and terr_dev
 
       if (NSCL_c > 0) then
+!+++ARH
+         if (lregional_refinement) then
+           !Use 4X larger smoothing radius than that used for topography
+           NSCL_c = 4*2*ncube_sph_smooth_coarse
+           nhalo  = NSCL_c
+
+           allocate( rrfac_tmp(ncube,ncube,6)  )
+           rrfac_tmp(:,:,:) = rrfac(:,:,:)
+           call  smooth_intermediate_topo_wrap (rrfac_tmp, da, ncube,nhalo, NSCL_f,NSCL_c, &
+                                          rrfac, terr_dev , &
+                                          smooth_fname, &
+                                          lread_smooth_topofile, &
+                                          lsmooth_on_cubed_sphere, &
+                                          luse_multigrid, &
+                                          luse_prefilter, &
+                                          lstop_after_smoothing, &
+                                          lb4b_with_cesm2 , &
+                                          rrfac_tmp )
+           write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
+         end if
+         NSCL_c = 2*ncube_sph_smooth_coarse
+         nhalo  = NSCL_c 
+!---ARH
          call  smooth_intermediate_topo_wrap (terr_2, da, ncube,nhalo, NSCL_f,NSCL_c, & 
                                         terr_sm, terr_dev , &
                                         smooth_fname, &
@@ -335,12 +394,6 @@ program convterr
 
       write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
 
-
-      ! Read in target grid
-      !------------------------------------------------------------------------------------------------
-      call read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
-
-
       if(lfind_ridges) then
         ! Guessing NSW should be ~1/SQRT(2.)
         ! of smoothing radius
@@ -365,54 +418,13 @@ program convterr
  
       endif
 
-!--jtb
-
-
-  ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
-  ! in the 'exchange grid'
-
-   jall_anticipated = ncube*ncube*12*10 !anticipated number of weights (can be tweaked)
-
-!   if (nrank == 1) then
-!     da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
-!     da_min_target = MAXVAL(target_area)
-!     if (da_min_target==0) then !bug with MPAS files
-!        jmax_segments = 100000
-!     else
-!        jmax_segments = ncorner*NINT(da_min_target/da_min_ncube)
-!     end if
-!!     write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
-!!     write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
-!   else
-!     jmax_segments = 100000   !can be tweaked
-!   end if
-   jmax_segments = 100000   !can be tweaked xxx
-   write(*,*) "jmax_segments",jmax_segments !,da_min_target,da_min_ncube   
-   nreconstruction = 1
-   allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
-   allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
-   allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
-   jall=jall_anticipated
-
-
-
-   write(*,*) "Compute overlap weights: "
-   CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-        jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
-   deallocate(target_corner_lon,target_corner_lat)
-
-
- ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
-
-   
   !*********************************************************
   !
   ! Begin actual remapping calculations
   !
   !*********************************************************
  
-   call allocate_target_vars(ntarget)
-  
+   call allocate_target_vars(ntarget)  
 
   !*********************************************************************
   !      In the following loops "counti" is the index of a piece of 
@@ -541,7 +553,7 @@ program convterr
   WRITE(*,*) "volume of input cubed-sphere terrain           :",vol_source
   WRITE(*,*) "average elevation of input cubed-sphere terrain:",vol_source/(4.0D0*pi)
   WRITE(*,*) "average elevation of input cubed-sphere terrain over land:",vol_source/area_source
-  
+
   DEALLOCATE(dA)
   deallocate(landfrac)
   !
@@ -573,12 +585,12 @@ program convterr
     WRITE(*,*) "if ocean mask PHIS=0.0"
   end if
 
-
   !!! if(lsmooth_on_cubed_sphere ) terr_target=0.0 ???
   terr_target=0.0
   sgh_target=0.0
   sgh_uf_target=0.0
   do counti=1,jall
+
     i    = weights_lgr_index_all(counti)!!
     !
     ix  = weights_eul_index_all(counti,1)
@@ -590,8 +602,7 @@ program convterr
     ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
     
     wt = weights_all(counti,1)
-    
-
+   
     ! Get rid of this ridiculous if.not. crap !!
     !if( .not.(lsmooth_on_cubed_sphere) ) then
     !  if (lzero_out_ocean_point_phis.AND.landfrac_target(i).lt.0.01_r8) then
@@ -608,7 +619,6 @@ program convterr
     sgh_uf_target(i) = sgh_uf_target(i)+wt*((terr_uf_target(i)-terr(ii))**2)/area_target(i)
 
   end do
-
 
   if( (lfind_ridges) ) then
 
@@ -662,9 +672,6 @@ program convterr
   WRITE(*,*) "min/max of var30_target                  : ",MINVAL(sgh30_target   ),MAXVAL(sgh30_target   )
   WRITE(*,*) "min/max of var_target                    : ",MINVAL(sgh_target   ),MAXVAL(sgh_target   )
 
-  DEALLOCATE(weights_all,weights_eul_index_all,terr)
-
-  
   write(*,*) " Model topo output file ",trim(output_fname)
   IF (ltarget_latlon) THEN
     CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
@@ -672,8 +679,33 @@ program convterr
   ELSE
     CALL wrtncdf_unstructured(ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
          landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges)
+!+++ARH
+    rrfac_limit = 0.0D0
+    !---limiter
+    !-------------------------------------------------------------------
+    do counti=1,jall
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+
+      rrfac_limit = MAX(rrfac_limit,rrfac(ix,iy,ip))
+    end do
+    rrfac_limit = REAL(FLOOR(rrfac_limit))
+    !
+    do counti=1,jall
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+
+      rrfac(ix,iy,ip) = MIN(rrfac_limit,rrfac(ix,iy,ip))
+    end do
+    !
+    rrfac = REAL(NINT(rrfac))
+    write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
+!---ARH
   END IF
   DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
+  DEALLOCATE(weights_all,weights_eul_index_all,terr)
  
 end program convterr
 !
@@ -770,11 +802,9 @@ subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,a
   
   latdim(1) = latvid
   status = nf_def_var (foutid,'lon', NF_DOUBLE, 1, nid(1), lonvid)!xxxx
-
   !status = nf_def_var (foutid,'lat', NF_DOUBLE, 1, latdim, latvid)!xxx
 
   if (status .ne. NF_NOERR) call handle_err(status)
-
 
   if (Lfind_ridges) then 
 
@@ -931,7 +961,6 @@ subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,a
   status = nf_put_var_double (foutid, lonvid, lon)
   if (status .ne. NF_NOERR) call handle_err(status)
   print*,"done writing lon data"
-
 
   if (Lfind_ridges) then 
      print*,"writing MXDIS data",MINVAL(mxdis_target),MAXVAL(mxdis_target)
@@ -1549,9 +1578,161 @@ subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,lan
   if (status .ne. NF_NOERR) call handle_err(status)
 end subroutine wrtncdf_rll
 
+!+++ARH
+!
+! write netCDF file
+!
+subroutine wrt_cube(ncube,terr_cube,rrfac_cube,output_file)
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  use shared_vars
+  implicit none
+#     include         <netcdf.inc>
+
+  !
+  ! Dummy arguments
+  !
+  integer, intent(in) :: ncube
+  real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,rrfac_cube
+  character(len=1024) :: output_file, tmp_string
+  !
+  ! Local variables
+  !
+  !-----------------------------------------------------------------------
+  !
+  !     grid coordinates and masks
+  !
+  !-----------------------------------------------------------------------
+
+  real (r8), dimension(6*ncube*ncube) :: grid_center_lat  ! lat/lon coordinates for
+  real (r8), dimension(6*ncube*ncube) :: grid_center_lon  ! each grid center in degrees
+
+  integer  :: ncstat             ! general netCDF status variable
+  integer  :: nc_grid_id         ! netCDF grid dataset id
+  integer  :: nc_gridsize_id     ! netCDF grid size dim id
+  integer  :: nc_gridrank_id     ! netCDF grid rank dim id
+  integer  :: nc_griddims_id     ! netCDF grid dimension size id
+  integer  :: nc_grdcntrlat_id   ! netCDF grid center lat id
+  integer  :: nc_grdcntrlon_id   ! netCDF grid center lon id
+  integer  :: nc_terr_id
+  integer  :: nc_rrfac_id
+
+  integer :: grid_dims
+
+  character(90), parameter :: grid_name = 'equi-angular gnomonic cubed sphere grid'
+
+  integer            :: status    ! return value for error control of netcdf routin
+  integer            :: i,j,k
+  character (len=8)  :: datestring
+
+  integer  :: atm_add,n
+  real(r8) :: xgno_ce,lon,ygno_ce,lat
+  real(r8) :: da
+
+  grid_dims = 6*ncube*ncube
+
+  da = pi / DBLE(2*ncube)
+  atm_add = 1
+  do k=1,6
+    do j=1,ncube
+      ygno_ce = -piq + da * (DBLE(j-1)+0.5) !center of cell
+      do i=1,ncube
+        xgno_ce = -piq + da * (DBLE(i-1)+0.5)
+        call CubedSphereRLLFromABP(xgno_ce, ygno_ce, k, lon, lat)
+        grid_center_lon(atm_add  ) = lon*rad2deg
+        grid_center_lat(atm_add  ) = lat*rad2deg
+        atm_add = atm_add+1
+      end do
+    end do
+  end do
+
+  WRITE(*,*) "Create NetCDF file for output: ", TRIM(output_file)
+  ncstat = nf_create (TRIM(output_file), NF_64BIT_OFFSET,nc_grid_id)
+  call handle_err(ncstat)
+
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
+  call handle_err(ncstat)
+
+  call DATE_AND_TIME(DATE=datestring)
+  tmp_string = 'Written on date: ' // datestring
+  status = nf_put_att_text (nc_grid_id,NF_GLOBAL,'history',len_trim(tmp_string), TRIM(tmp_string))
+  call handle_err(ncstat)
+
+  tmp_string='Peter Hjort Lauritzen (NCAR)'
+  ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'author',len_trim(tmp_string), TRIM(tmp_string))
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define grid size dimension"
+  ncstat = nf_def_dim (nc_grid_id, 'grid_size', 6*ncube*ncube, nc_gridsize_id)
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define grid rank dimension"
+  ncstat = nf_def_dim (nc_grid_id, 'grid_rank', 1, nc_gridrank_id)
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define grid dimension size array"
+  ncstat = nf_def_var (nc_grid_id, 'grid_dims', NF_INT,1, nc_gridrank_id, nc_griddims_id)
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define grid center latitude array"
+  ncstat = nf_def_var (nc_grid_id, 'lat', NF_DOUBLE,1, nc_gridsize_id, nc_grdcntrlat_id)
+  call handle_err(ncstat)
+  ncstat = nf_put_att_text (nc_grid_id, nc_grdcntrlat_id, 'units',13, 'degrees_north')
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define grid center longitude array"
+  ncstat = nf_def_var (nc_grid_id, 'lon', NF_DOUBLE,1, nc_gridsize_id, nc_grdcntrlon_id)
+  call handle_err(ncstat)
+  ncstat = nf_put_att_text (nc_grid_id, nc_grdcntrlon_id, 'units',12, 'degrees_east')
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define terr_cube array"
+  ncstat = nf_def_var (nc_grid_id, 'terr', NF_DOUBLE,1, nc_gridsize_id, nc_terr_id)
+  call handle_err(ncstat)
+  ncstat = nf_put_att_text (nc_grid_id, nc_terr_id, 'units',1, 'm')
+  call handle_err(ncstat)
+
+  WRITE(*,*) "define rrfac_cube array"
+  ncstat = nf_def_var (nc_grid_id, 'rrfac_cube', NF_DOUBLE,1, nc_gridsize_id, nc_rrfac_id)
+  call handle_err(ncstat)
+  ncstat = nf_put_att_text (nc_grid_id, nc_rrfac_id, 'units',1, 'neXX/ne30')
+  call handle_err(ncstat)
+
+  WRITE(*,*) "end definition stage"
+  ncstat = nf_enddef(nc_grid_id)
+  call handle_err(ncstat)
+
+  !-----------------------------------------------------------------------
+  !
+  !     write grid data
+  !
+  !-----------------------------------------------------------------------
 
 
+  WRITE(*,*) "write grid data"
+  ncstat = nf_put_var_int(nc_grid_id, nc_griddims_id, grid_dims)
+  call handle_err(ncstat)
 
+  WRITE(*,*) "write lat data"
+  ncstat = nf_put_var_double(nc_grid_id, nc_grdcntrlat_id, grid_center_lat)
+  call handle_err(ncstat)
+
+  WRITE(*,*) "write lon data"
+  ncstat = nf_put_var_double(nc_grid_id, nc_grdcntrlon_id, grid_center_lon)
+  call handle_err(ncstat)
+!
+!  WRITE(*,*) "write terr data"
+!  ncstat = nf_put_var_double(nc_grid_id, nc_terr_id, terr_cube)
+!  call handle_err(ncstat)
+!
+  WRITE(*,*) "write rrfac data"
+  ncstat = nf_put_var_double(nc_grid_id, nc_rrfac_id, rrfac_cube)
+  call handle_err(ncstat)
+
+  WRITE(*,*) "Close output file"
+  ncstat = nf_close(nc_grid_id)
+  call handle_err(ncstat)
+end subroutine wrt_cube
+!---ARH
 
 !************************************************************************
 !!handle_err
@@ -1675,14 +1856,17 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
   
   INTEGER, INTENT(INOUT) :: jall !anticipated number of weights
   INTEGER, INTENT(IN)    :: ncube, ngauss, ntarget, jmax_segments, ncorner, nreconstruction
-  
+!!+++ARH
+!  REAL(R8), DIMENSION(ntarget), INTENT(IN) :: target_center_lon,target_center_lat
+!!---ARH  
   INTEGER, DIMENSION(jall,3), INTENT(OUT) :: weights_eul_index_all
   REAL(R8), DIMENSION(jall,nreconstruction)  , INTENT(OUT) :: weights_all
   INTEGER, DIMENSION(jall)  , INTENT(OUT) :: weights_lgr_index_all
   
   REAL(R8), DIMENSION(ncorner,ntarget), INTENT(INOUT) :: target_corner_lon, target_corner_lat
   
-  INTEGER,  DIMENSION(ncorner+1) :: ipanel_array, ipanel_tmp
+!xxx  INTEGER,  DIMENSION(ncorner+1) :: ipanel_array, ipanel_tmp
+  INTEGER,  DIMENSION(9*(ncorner+1)) :: ipanel_tmp,ipanel_array
   REAL(R8), DIMENSION(ncorner)  :: lat, lon
   REAL(R8), DIMENSION(0:ncube+2):: xgno, ygno
   REAL(R8), DIMENSION(0:ncorner+1) :: xcell, ycell
@@ -1692,22 +1876,25 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
   REAL(R8) :: da, tmp, alpha, beta
   REAL    (r8):: pi,piq,pih
   INTEGER :: i, j,ncorner_this_cell,k,ip,ipanel,ii,jx,jy,jcollect
-  integer :: alloc_error
+  integer :: alloc_error, ilon,ilat
   
   REAL    (r8) :: rad2deg
+  REAL    (r8) :: deps
   
   real(r8), allocatable, dimension(:,:) :: weights
   integer , allocatable, dimension(:,:) :: weights_eul_index
   
   
-  LOGICAL:: ldbg = .FAlSE.
+  LOGICAL:: ldbg = .FALSE.
   
-  INTEGER :: jall_anticipated
+  INTEGER :: jall_anticipated, count
 
   pi = 4.D0*DATAN(1.D0)
   piq = pi/4.D0
   pih = pi*0.5D0
   rad2deg = 180.D0/pi
+
+  deps = 10.0D0*pi/180.0_r8
   
   jall_anticipated = jall
   
@@ -1740,8 +1927,15 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     !
     CALL remove_duplicates_latlon(ncorner,target_corner_lon(:,i),target_corner_lat(:,i),&
          ncorner_this_cell,lon,lat,1.0E-10)
-    
+  
+!+++ARH
+!      ldbg = .FALSE.
+!      IF (i.eq.17427) ldbg = .TRUE.
+!---ARH
+ 
     IF (ldbg) THEN
+      !WRITE(*,*) "itarget",i
+      !WRITE(*,*) "cell center ",target_center_lon(i),target_center_lat(i)
       WRITE(*,*) "number of vertices ",ncorner_this_cell
       WRITE(*,*) "vertices locations lon,",lon(1:ncorner_this_cell)*rad2deg
       WRITE(*,*) "vertices locations lat,",lat(1:ncorner_this_cell)*rad2deg
@@ -1757,6 +1951,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     !
     !---------------------------------------------------          
     !
+#ifdef old    
     DO j=1,ncorner_this_cell
       CALL CubedSphereABPFromRLL(lon(j), lat(j), alpha, beta, ipanel_tmp(j), .TRUE.)
       IF (ldbg) WRITE(*,*) "ipanel for corner ",j," is ",ipanel_tmp(j)
@@ -1773,11 +1968,27 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
       ipanel_tmp(ncorner_this_cell+1) = 6
       IF (ldbg) WRITE(*,*)  "add panel 6 to search"
     END IF
+    CALL remove_duplicates_integer(ncorner_this_cell+1,ipanel_tmp(1:ncorner_this_cell+1),&
+         k,ipanel_array(1:ncorner_this_cell+1))
+#endif
+    !
+    ! make sure to include possible overlap areas not on the face the vertices are located
+    ! For example, a cell could be on panel 3 and 5 but have overlap area on panel 2
+    count = 0
+    do ilat=-1,1
+      do ilon=-1,1
+        DO j=1,ncorner_this_cell
+          count=count+1
+          CALL CubedSphereABPFromRLL(lon(j)+ilon*deps, lat(j)+ilat*deps, alpha, beta, ipanel_tmp(count), .TRUE.)
+        END DO
+      end do
+    end do
+    
     !
     ! remove duplicates in ipanel_tmp
     !
-    CALL remove_duplicates_integer(ncorner_this_cell+1,ipanel_tmp(1:ncorner_this_cell+1),&
-         k,ipanel_array(1:ncorner_this_cell+1))
+    CALL remove_duplicates_integer(count,ipanel_tmp(1:count),&
+         k,ipanel_array(1:count))
     !
     !---------------------------------------------------
     !

@@ -3,17 +3,22 @@ MODULE shared_vars
 
   real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat
   real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area
+!+++ARH
+  real(r8), allocatable, dimension(:)  :: target_rrfac
+!---ARH
   real(r8), allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30, refine_l
   integer,  allocatable, dimension(:) :: refine_li
 
   real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
   real(r8), allocatable, dimension(:) :: landm_coslat_target, area_target
-
+!+++ARH
+  real(r8), allocatable, dimension(:) :: sumwgts_target
+!---ARH
   real(r8), allocatable, dimension(:) :: terr_uf_target, sgh_uf_target
 
   real(r8) , allocatable, dimension(:,:,:) :: terr_sm, terr_dev
 
-  REAL    (r8):: pi, piq, pih, deg2rad, rotate_cube
+  REAL    (r8):: pi, piq, pih, deg2rad, rad2deg, rotate_cube
 
   contains 
     subroutine set_constants
@@ -22,6 +27,7 @@ MODULE shared_vars
       piq         = 0.25*pi
       pih         = 0.50*pi
       deg2rad     = pi/180.0
+      rad2deg     = 180.0/pi
       rotate_cube = 0.0D0 !default is 0
     end subroutine set_constants
 
@@ -145,7 +151,13 @@ subroutine allocate_target_vars(ntarget)
     print*,'Program could not allocate space for sgh_uf_target'
     stop
   end if
-
+!+++ARH
+  allocate (sumwgts_target(ntarget),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for sgh_target'
+    stop
+  end if
+!---ARH
   allocate (area_target(ntarget),stat=alloc_error )
 
   area_target = 0.0
@@ -280,16 +292,20 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
 end subroutine read_intermediate_cubed_sphere_grid
 
 
-subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
+subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: grid_descriptor_fname
+  logical, intent(in) :: lregional_refinement
   logical, intent(out) :: lpole, ltarget_latlon
   integer, intent(out) :: nlat,nlon,ntarget,ncorner,nrank
   integer :: ncid,status
   integer :: ntarget_id, ncorner_id, nrank_id
   integer :: alloc_error
   integer :: lonid, latid
+!+++ARH
+  integer :: rrfacid
+!---ARH
   !
   !*********************************************************
   !
@@ -345,14 +361,20 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
      status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
      status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
      IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
-
+!+++ARH
+     if (lregional_refinement) then
+       allocate ( target_rrfac(ntarget),stat=alloc_error)
+       status = NF_INQ_VARID(ncid, 'rrfac', rrfacid)
+       status = NF_GET_VAR_DOUBLE(ncid, rrfacid,target_rrfac)
+     end if
+!---ARH
      !
      ! for writing remapped data on file at the end of the program
      !
      allocate ( target_center_lon(ntarget),stat=alloc_error)
      allocate ( target_center_lat(ntarget),stat=alloc_error)
      allocate ( target_area      (ntarget),stat=alloc_error)
-     
+
      status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
      status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
      
@@ -361,7 +383,7 @@ subroutine read_target_grid(grid_descriptor_fname,ltarget_latlon,lpole,nlat,nlon
      
      status = NF_INQ_VARID(ncid, 'grid_area', latid)
      status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
-     
+
      status = nf_close (ncid)
      if (status .ne. NF_NOERR) call handle_err(status)          
   else

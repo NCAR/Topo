@@ -17,7 +17,7 @@ include machine_settings.make
 raw_data=gmted2010_modis
 
 #ncube=0540
-intermediate_cubed_sphere_file=$(PWD)/bin_to_cube/gmted2010_modis-ncube$(ncube)$(stitch).nc
+intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
 #MulG=''
@@ -29,7 +29,7 @@ case_name=nc$(ncube)_Co$(ncube_sph_smooth_coarse)_Fi$(ncube_sph_smooth_fine)$(Mu
 ifeq ($(smooth_topo_file_dir),)
   smooth_topo_file_dir=cube_to_target/inputdata/smooth_topo_cube
 endif
-ifeq ($(rdgwin),"_NoAniso")
+ifeq ($(rdgwin),_NoAniso)
   lfind_ridges=.false.
 else
   lfind_ridges=.true.
@@ -100,8 +100,9 @@ $(topo_file_nl):
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_file_nl)
 	echo "luse_multigrid = .true." 		 	>> $(topo_file_nl)
 	echo "luse_prefilter = .true." 		 	>> $(topo_file_nl)
+	echo "lregional_refinement=$(lregional_refinement)"				>> $(topo_file_nl)
 	echo "lstop_after_smoothing = .false." 		 				>> $(topo_file_nl)
-	echo "lread_smooth_topofile = .true." 		 				>> $(topo_file_nl)
+	echo "lread_smooth_topofile = .false." 		 				>> $(topo_file_nl)
 	echo "lfind_ridges=$(lfind_ridges)" 		 				>> $(topo_file_nl)
 	echo "nwindow_halfwidth=$(nwindow_halfwidth)" 		 			>>  $(topo_file_nl)
 	echo '/' >>  $(topo_file_nl)

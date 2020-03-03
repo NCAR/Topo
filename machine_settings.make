@@ -1,9 +1,9 @@
 #
 # set machine
 #
-machine=thorodin
-#export machine=cheyenne
-export machine=thorodin
+#machine=thorodin
+export machine=cheyenne
+#export machine=thorodin
 ifeq ($(machine),thorodin)
   export module_gnu="compiler/gnu/8.1.0"
   export module_python="lang/python/3.7.0"
