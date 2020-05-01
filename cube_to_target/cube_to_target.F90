@@ -335,6 +335,7 @@ program convterr
       write(*,*) " SMOOTHING on CUBED SPHERE 10/7/15 "
 
       ! This routine writes out an f77 unf file containing terr,terr_sm, and terr_dev
+      ! File also contains rr_factor for possible use by ridge finder
 
       if (NSCL_c > 0) then
 !+++ARH

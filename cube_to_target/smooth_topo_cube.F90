@@ -43,7 +43,7 @@ CONTAINS
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_sm
     REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN)    :: rr_factor
+            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: rr_factor
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube) :: terr_face,da_face,terr_face2
     REAL (KIND=dbl_kind), &
@@ -94,11 +94,12 @@ CONTAINS
        READ(711) terr
        READ(711) terr_sm
        READ(711) terr_dev
-
+       READ(711) rr_factor
        close(711)
 
        write(*,*) " Read precomputed filtered topography from "
        write(*,*) ofname
+STOP
 
        ! return to main program after
        ! reading topography variables
@@ -220,6 +221,7 @@ CONTAINS
       WRITE(711) terr
       WRITE(711) terr_sm
       WRITE(711) terr_dev
+      WRITE(711) rr_factor
       close(711)
 
       if (stop_after_smoothing) STOP

@@ -17,7 +17,7 @@ include machine_settings.make
 raw_data=gmted2010_modis
 
 #ncube=0540
-intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
+intermediate_cubed_sphere_file=/project/amp/juliob/topo-data/gmted2010_modis-ncube3000-stitch.nc
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
 #MulG=''
@@ -48,7 +48,7 @@ topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #********************************
 #
 all: load_modules $(smooth_topo_file) $(topo_file_nl)
-	(cd cube_to_target; rm nlmain.nl;  ln -s $(topo_file_nl_subdir) nlmain.nl;  make; ./cube_to_target)
+	(cd cube_to_target; rm -f nlmain.nl;  ln -s $(topo_file_nl_subdir) nlmain.nl;  make; ./cube_to_target)
 #
 # load appropriate modules (machine specific)
 #
@@ -86,7 +86,7 @@ $(topo_smooth_nl):
 $(smooth_topo_file): $(topo_smooth_nl) $(intermediate_cubed_sphere_file)
 	echo "Here we go ..."
 	echo "Creating "$(smooth_topo_file)
-	test -f $(smooth_topo_file) || (cd cube_to_target; rm nlmain.nl;  ln -s $(topo_smooth_nl_subdir) nlmain.nl;  make; ./cube_to_target)
+	test -f $(smooth_topo_file) || (cd cube_to_target; rm -f nlmain.nl;  ln -s $(topo_smooth_nl_subdir) nlmain.nl;  make; ./cube_to_target)
 
 $(topo_file_nl):
 	echo 'Namelist file does not exist - creating ...'$(topo_file_nl)
@@ -128,4 +128,4 @@ create_netCDF_from_rawdata/gmted2010/mea.nc:
 	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010; chmod +x unpack.sh; ./unpack.sh)
 
 clean:
-	rm modules_loaded.txt
+	rm -f modules_loaded.txt
