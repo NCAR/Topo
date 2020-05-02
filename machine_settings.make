@@ -9,7 +9,7 @@ ifeq ($(machine),thorodin)
   export module_python="lang/python/3.7.0"
 endif
 ifeq ($(machine),cheyenne)
-  export module_gnu="gnu/8.1.0"
+  export module_gnu="gnu/8.3.0"
   export module_python="python/3.6.8"
 #  module spider gdal
 endif

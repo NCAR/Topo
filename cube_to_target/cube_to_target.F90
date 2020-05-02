@@ -357,6 +357,28 @@ program convterr
                                           lb4b_with_cesm2 , &
                                           rrfac_tmp )
            write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
+           !
+           !---rrfac limiter
+           rrfac_limit = 0.0D0
+           do counti=1,jall
+             ix  = weights_eul_index_all(counti,1)
+             iy  = weights_eul_index_all(counti,2)
+             ip  = weights_eul_index_all(counti,3)
+             !
+             rrfac_limit = MAX(rrfac_limit,rrfac(ix,iy,ip))
+           end do
+           rrfac_limit = REAL(FLOOR(rrfac_limit))
+           !
+           do counti=1,jall
+             ix  = weights_eul_index_all(counti,1)
+             iy  = weights_eul_index_all(counti,2)
+             ip  = weights_eul_index_all(counti,3)
+             !
+             rrfac(ix,iy,ip) = MIN(rrfac_limit,rrfac(ix,iy,ip))
+           end do
+           !
+           rrfac = REAL(NINT(rrfac))
+           write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
          end if
          NSCL_c = 2*ncube_sph_smooth_coarse
          nhalo  = NSCL_c 
@@ -680,30 +702,6 @@ program convterr
   ELSE
     CALL wrtncdf_unstructured(ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
          landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges)
-!+++ARH
-    rrfac_limit = 0.0D0
-    !---limiter
-    !-------------------------------------------------------------------
-    do counti=1,jall
-      ix  = weights_eul_index_all(counti,1)
-      iy  = weights_eul_index_all(counti,2)
-      ip  = weights_eul_index_all(counti,3)
-
-      rrfac_limit = MAX(rrfac_limit,rrfac(ix,iy,ip))
-    end do
-    rrfac_limit = REAL(FLOOR(rrfac_limit))
-    !
-    do counti=1,jall
-      ix  = weights_eul_index_all(counti,1)
-      iy  = weights_eul_index_all(counti,2)
-      ip  = weights_eul_index_all(counti,3)
-
-      rrfac(ix,iy,ip) = MIN(rrfac_limit,rrfac(ix,iy,ip))
-    end do
-    !
-    rrfac = REAL(NINT(rrfac))
-    write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
-!---ARH
   END IF
   DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
   DEALLOCATE(weights_all,weights_eul_index_all,terr)

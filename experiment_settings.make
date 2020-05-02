@@ -54,8 +54,9 @@
 #export case=fv_0.23x0.31_Co0015_ridge
 #export case=conus_30_x8_Co0008_ridge
 #export case=ne30np4_Co0060_ridge
-export case=ARCTIC_30_x4_C0060
-#export case=ARCTICGRIS_30_x8_C0060
+export case=CONUS_30_x8_Co0060_ridge
+#export case=ARCTIC_30_x4_C0060_ridge
+#export case=ARCTICGRIS_30_x8_C0060_ridge
 
 case_found=False
 export nwindow_halfwidth=-1
@@ -127,19 +128,6 @@ endif
 #
 # Experimental setup
 #
-
-ifeq ($(case),conus_30_x8_Co0060_ridge)
-  export ncube_sph_smooth_coarse=060
-  export output_grid=conus_30_x8
-  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ne0np4CONUS.ne30x8.nc
-  export nwindow_halfwidth=42
-  export rdgwin=_NoAniso
-  export stitch=-stitch
-  export ncube=3000
-  export lregional_refinement=.true.
-  case_found=
-endif
-
 ifeq ($(case),conus_30_x8_Co0008_ridge)
   export ncube_sph_smooth_coarse=008
   export output_grid=conus_30_x8
@@ -369,12 +357,14 @@ ifeq ($(case),fv3_C384_Co0015_ridge)
   export ncube=3000
   case_found=
 endif
-
-ifeq ($(case),ARCTIC_30_x4_C0060)
+#
+# Functionally supported VR-grids
+#
+ifeq ($(case),CONUS_30_x8_Co0060_ridge)
   export ncube_sph_smooth_coarse=060
-  export output_grid=ARCTIC_30_x4
-  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ARCTIC_ne30x4_np4.nc
-  export nwindow_halfwidth=042
+  export output_grid=CONUS_30_x8
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ne0np4CONUS.ne30x8.nc
+  export nwindow_halfwidth=42
   export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
@@ -382,7 +372,19 @@ ifeq ($(case),ARCTIC_30_x4_C0060)
   case_found=
 endif
 
-ifeq ($(case),ARCTICGRIS_30_x8_C0060)
+ifeq ($(case),ARCTIC_30_x4_C0060_ridge)
+  export ncube_sph_smooth_coarse=060
+  export output_grid=ARCTIC_30_x4
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ARCTIC_ne30x4_np4.nc
+  export nwindow_halfwidth=042
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  export lregional_refinement=.true.
+  case_found=
+endif
+
+ifeq ($(case),ARCTICGRIS_30_x8_C0060_ridge)
   export ncube_sph_smooth_coarse=60
   export output_grid=ARCTICGRIS_30_x8
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ARCTICGRIS_ne30x8_np4.nc
