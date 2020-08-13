@@ -37,6 +37,7 @@
 #export case=fv_0.9x1.25_Co0120_NoAniso
 #export case=fv_0.47x0.63_Co0120_NoAniso
 #export case=fv_1.9x2.5_Co0120_ridge
+export case=fv_4x5_Co0240_ridge
 #export case=quick_test_fv
 #export case=ne30np4_Co0120_NoAnis
 #not run yet
@@ -46,7 +47,7 @@
 #not run yet
 #export case=ne60pg3_Co0120_NoAniso
 #no run yet
-#export case=ne120pg3_Co0120_NoAniso
+#export case=ne120pg3_Co0060_NoAniso
 #export case=fv3_C96_Co0060_ridge
 #export case=fv3_C384_Co0015_ridge
 #export case=conus_30_x8_Co0060_ridge
@@ -54,7 +55,7 @@
 #export case=fv_0.23x0.31_Co0015_ridge
 #export case=conus_30_x8_Co0008_ridge
 #export case=ne30np4_Co0060_ridge
-export case=CONUS_30_x8_Co0060_ridge
+#export case=CONUS_30_x8_Co0060_ridge
 #export case=ARCTIC_30_x4_C0060_ridge
 #export case=ARCTICGRIS_30_x8_C0060_ridge
 
@@ -203,11 +204,11 @@ ifeq ($(case),ne60pg3_Co0120_NoAniso)
   case_found=
 endif
 #
-# ne120pg3 smoothed to Co120 (recommended for ne30pg3 is Co020)
+# ne120pg3 smoothed to Co060
 # no ridges
 #
-ifeq ($(case),ne120pg3_Co0120_NoAniso)
-  export ncube_sph_smooth_coarse=120
+ifeq ($(case),ne120pg3_Co0060_NoAniso)
+  export ncube_sph_smooth_coarse=060
   export output_grid=ne120pg3
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
   export rdgwin=_NoAniso
@@ -240,6 +241,18 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   export ncube=3000
   case_found=
 endif
+
+ifeq ($(case),fv_4x5_Co240_ridge)
+  export ncube_sph_smooth_coarse=240
+  export output_grid=fv_0.9x1.25
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_4x5.nc
+  export nwindow_halfwidth=170
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+
 #
 # Standard 2 degree smoothing for FV: Co120
 # Map to fv_0.9x1.25 (i.e. extra smooth for 1 degree dycore)

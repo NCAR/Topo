@@ -17,8 +17,8 @@ include machine_settings.make
 raw_data=gmted2010_modis
 
 #ncube=0540
-#intermediate_cubed_sphere_file=/project/amp/juliob/topo-data/gmted2010_modis-ncube3000-stitch.nc
-intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
+intermediate_cubed_sphere_file=/project/amp/juliob/topo-data/gmted2010_modis-ncube3000-stitch.nc
+#intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
 #MulG=''

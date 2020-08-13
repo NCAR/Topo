@@ -1,8 +1,8 @@
 #
 # set machine
 #
-#machine=thorodin
-export machine=cheyenne
+machine=thorodin
+#export machine=cheyenne
 #export machine=thorodin
 ifeq ($(machine),thorodin)
   export module_gnu=compiler/gnu/8.2.0
