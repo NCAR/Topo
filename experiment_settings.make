@@ -242,7 +242,7 @@ ifeq ($(case),fv_1.9x2.5_Co0120_ridge)
   case_found=
 endif
 
-ifeq ($(case),fv_4x5_Co240_ridge)
+ifeq ($(case),fv_4x5_Co0240_ridge)
   export ncube_sph_smooth_coarse=240
   export output_grid=fv_0.9x1.25
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/fv_4x5.nc
