@@ -379,8 +379,8 @@ ifeq ($(case),ARCTIC_30_x4_C0060_ridge)
   export output_grid=ARCTIC_30_x4
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/SCRIP_ARCTIC_ne30x4_np4.nc
   export nwindow_halfwidth=042
-  #export rdgwin=_Nsw$(nwindow_halfwidth)
-  export rdgwin=_NoAniso
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  #export rdgwin=_NoAniso
   export stitch=-stitch
   export ncube=3000
   export lregional_refinement=.true.
