@@ -80,7 +80,6 @@ program convterr
 !  real(r8), allocatable, dimension(:,:) :: da_coarse,da
   real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:),rrfac_tmp(:,:,:)
 !  real(r8), allocatable, dimension(:,:) :: recons,centroids
-  real(r8) :: rrfac_limit
   integer :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
   real(r8) :: volterr, volterr_sm  
@@ -133,7 +132,10 @@ program convterr
   integer :: nridge_subsample = -1
   !
   logical :: lridgetiles = .FALSE.
+!+++ARH
   logical :: lregional_refinement = .FALSE.
+  integer :: rrfac_max = 1
+!---ARH
   !
   !
   ! For internal smoothing (experimental at this point)
@@ -172,7 +174,7 @@ program convterr
        output_fname, externally_smoothed_topo_file,&
        lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis, & 
        lsmooth_on_cubed_sphere,lfind_ridges,lridgetiles,lzero_negative_peaks, &
-       lregional_refinement, &
+       lregional_refinement,rrfac_max, &
        !
        ! variables for interal smoothing of topography
        !
@@ -344,6 +346,8 @@ program convterr
            NSCL_c = 4*2*ncube_sph_smooth_coarse
            nhalo  = NSCL_c
 
+           write(*,*) "rrfac_max",rrfac_max
+
            allocate( rrfac_tmp(ncube,ncube,6)  )
            rrfac_tmp(:,:,:) = rrfac(:,:,:)
            call  smooth_intermediate_topo_wrap (rrfac_tmp, da, ncube,nhalo, NSCL_f,NSCL_c, &
@@ -359,26 +363,14 @@ program convterr
            write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
            !
            !---rrfac limiter
-           rrfac_limit = 0.0D0
-           do counti=1,jall
-             ix  = weights_eul_index_all(counti,1)
-             iy  = weights_eul_index_all(counti,2)
-             ip  = weights_eul_index_all(counti,3)
-             !
-             rrfac_limit = MAX(rrfac_limit,rrfac(ix,iy,ip))
-           end do
-           rrfac_limit = REAL(FLOOR(rrfac_limit))
-           !
-           do counti=1,jall
-             ix  = weights_eul_index_all(counti,1)
-             iy  = weights_eul_index_all(counti,2)
-             ip  = weights_eul_index_all(counti,3)
-             !
-             rrfac(ix,iy,ip) = MIN(rrfac_limit,rrfac(ix,iy,ip))
-           end do
-           !
            rrfac = REAL(NINT(rrfac))
+           where (rrfac.gt.rrfac_max) rrfac = rrfac_max
+
            write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
+
+           !!cube_file = 'rrfac_HMA.nc'
+           !!CALL wrt_cube(ncube,terr,rrfac,cube_file)
+
          end if
          NSCL_c = 2*ncube_sph_smooth_coarse
          nhalo  = NSCL_c 

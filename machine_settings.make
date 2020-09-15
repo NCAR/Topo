@@ -1,15 +1,14 @@
 #
 # set machine
 #
-machine=thorodin
-#export machine=cheyenne
+export machine=cheyenne
 #export machine=thorodin
 ifeq ($(machine),thorodin)
   export module_gnu=compiler/gnu/8.2.0
   export module_python="lang/python/3.7.0"
 endif
 ifeq ($(machine),cheyenne)
-  export module_gnu="gnu/8.3.0"
+  export module_gnu="gnu/9.1.0"
   export module_python="python/3.6.8"
 #  module spider gdal
 endif
