@@ -48,3 +48,10 @@ git clone https://github.com/NCAR/Topo
 cd Topo
 # switch to branch
 git checkout TopoCESM2
+
+Izumi machine settings:
+
+module purge
+module load compiler/gnu/4.8.5
+module load tool/netcdf/4.6.1/gcc-4.8.5
+git checkout TopoCESM2

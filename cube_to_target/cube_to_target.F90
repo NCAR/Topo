@@ -215,7 +215,7 @@ program convterr
 
    jall_anticipated = ncube*ncube*12*10 !anticipated number of weights (can be tweaked)
 
-   jmax_segments = 100000   !can be tweaked xxx
+   jmax_segments = 1000000   !can be tweaked xxx
    write(*,*) "jmax_segments",jmax_segments !,da_min_target,da_min_ncube   
    nreconstruction = 1
    allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
@@ -703,7 +703,7 @@ end program convterr
 !
 !
 subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
-
+  use shared_vars, only : rad2deg
   use shr_kind_mod, only: r8 => shr_kind_r8
   use shared_vars, only : terr_uf_target, sgh_uf_target, area_target
   use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
@@ -746,6 +746,7 @@ subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,a
   integer, dimension(1) :: latdim
   character(len=1024) :: str
 
+  
   fout = trim(output_fname)
   !
   !  Create NetCDF file for output
@@ -944,12 +945,21 @@ subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,a
   print*,"done writing area data"
   
   print*,"writing lat data"
-  status = nf_put_var_double (foutid, latvid, lat)
+  if (maxval(lat)<45.0) then
+    status = nf_put_var_double (foutid, latvid, lat*rad2deg)
+  else
+    status = nf_put_var_double (foutid, latvid, lat)
+  endif
   if (status .ne. NF_NOERR) call handle_err(status)
   print*,"done writing lat data"
   
   print*,"writing lon data"
-  status = nf_put_var_double (foutid, lonvid, lon)
+  if (maxval(lon)<100.0) then
+    status = nf_put_var_double (foutid, lonvid, lon*rad2deg)    
+  else
+    status = nf_put_var_double (foutid, lonvid, lon)
+  end if
+
   if (status .ne. NF_NOERR) call handle_err(status)
   print*,"done writing lon data"
 

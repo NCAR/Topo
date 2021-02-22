@@ -56,6 +56,7 @@ load_modules:
 	module purge
 	module load $(module_gnu)
 	module load $(module_python)
+	module load $(module_netCDF)
 	touch modules_loaded.txt
 
 create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
