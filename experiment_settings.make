@@ -27,11 +27,12 @@
 #export case=ne30np4_Co0080_ridge
 #export case=ne30pg3_Co0070_ridge
 #export case=ne16pg3_Co0160_ridge
-#export case=ne30pg3_Co0080_ridge
+export case=ne30pg3_Co0060_ridge
 #export case=ne30pg2_Co0080_ridge
 #export case=ne60pg2_Co0040_ridge
 #export case=ne120np4_Co0015_ridge
-export case=ne480pg3_Co0008_ridge
+#export case=ne480pg3_Co0008_ridge
+#export case=ne480pg2_Co0008_ridge
 #export case=mpas_120_Co060_ridge
 #export case=mpas_480_Co240_ridge
 #
@@ -59,7 +60,7 @@ export case=ne480pg3_Co0008_ridge
 #export case=conus_30_x8_Co0008_ridge
 #export case=ne30np4_Co0060_ridge
 #export case=CONUS_30_x8_Co0060_ridge
-export case=ARCTIC_30_x4_C0060_ridge
+#export case=ARCTIC_30_x4_C0060_ridge
 #export case=ARCTICGRIS_30_x8_C0060_ridge
 
 case_found=False
@@ -79,11 +80,11 @@ ifeq ($(case),ne30np4_Co0060_ridge)
   export ncube=3000
   case_found=
 endif
-ifeq ($(case),ne30pg3_Co0080_ridge)
-  export ncube_sph_smooth_coarse=080
+ifeq ($(case),ne30pg3_Co0060_ridge)
+  export ncube_sph_smooth_coarse=060
   export output_grid=ne30pg3
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/$(output_grid).nc
-  export nwindow_halfwidth=057
+  export nwindow_halfwidth=042
   export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
@@ -133,6 +134,16 @@ ifeq ($(case),ne480pg3_Co0008_ridge)
   export ncube_sph_smooth_coarse=008
   export output_grid=ne480pg3
   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/ne480pg3_scrip_200108.nc
+  export nwindow_halfwidth=006
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  case_found=
+endif
+ifeq ($(case),ne480pg2_Co0008_ridge)
+  export ncube_sph_smooth_coarse=008
+  export output_grid=ne480pg2
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/ne480pg2_scrip_210402.nc
   export nwindow_halfwidth=006
   export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch

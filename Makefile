@@ -47,17 +47,20 @@ topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
 #********************************
 #
-all: load_modules $(smooth_topo_file) $(topo_file_nl)
-	(cd cube_to_target; rm -f nlmain.nl;  ln -s $(topo_file_nl_subdir) nlmain.nl;  make; ./cube_to_target)
+all: $(smooth_topo_file) $(topo_file_nl)
+#all: load_modules $(smooth_topo_file) $(topo_file_nl)
 #
 # load appropriate modules (machine specific)
 #
 load_modules:
-	module purge
-	module load $(module_gnu)
-	module load $(module_python)
-	module load $(module_netCDF)
-	touch modules_loaded.txt
+	echo "module purge"                 >  module_load.sh
+	echo "module load $(module_gnu)"    >> module_load.sh
+	echo "module load $(module_netCDF)" >> module_load.sh
+	source module_load.sh
+#	module purge
+#	module load $(module_gnu)
+#	module load $(module_netCDF)
+#	touch modules_loaded.txt
 
 create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
 	test -f $(create_netCDF_from_rawdata/$(raw_data)-rawdata.nc) ||(cd create_netCDF_from_rawdata; make)
@@ -75,6 +78,7 @@ $(topo_smooth_nl):
 	echo "&topoparams" 								>> $(topo_smooth_nl)
 	echo "intermediate_cubed_sphere_fname = '$(intermediate_cubed_sphere_file)'" 	>> $(topo_smooth_nl)
 	echo "lsmooth_on_cubed_sphere = .true."						>> $(topo_smooth_nl)
+	echo "grid_descriptor_fname = '$(grid_descriptor_fname)'"		 	>> $(topo_smooth_nl)
 	echo "ncube_sph_smooth_coarse = $(ncube_sph_smooth_coarse)"			>> $(topo_smooth_nl)
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_smooth_nl)
 	echo "lstop_after_smoothing = .true." 		 				>> $(topo_smooth_nl)
@@ -95,6 +99,7 @@ $(topo_file_nl):
 	echo "&topoparams" 								>> $(topo_file_nl)
 	echo "intermediate_cubed_sphere_fname = '$(intermediate_cubed_sphere_file)'" 	>> $(topo_file_nl)
 	echo "grid_descriptor_fname = '$(grid_descriptor_fname)'"		 	>> $(topo_file_nl)
+	echo 'asdfasdf'$(grid_descriptor_fname)
 	echo "output_grid='$(output_grid)'"						>> $(topo_file_nl)
 	echo "lsmooth_on_cubed_sphere = .true."						>> $(topo_file_nl)
 	echo "ncube_sph_smooth_coarse = $(ncube_sph_smooth_coarse)"			>> $(topo_file_nl)

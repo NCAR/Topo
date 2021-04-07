@@ -4,14 +4,13 @@
 export machine=cheyenne
 #export machine=thorodin
 ifeq ($(machine),thorodin)
-  export module="purge"
-  export module="load compiler/gnu/8.1.0"
-  export module="load tool/netcdf/4.6.1/gcc-8.1.0"
-  export module_python="lang/python/3.7.0"
+  export module_gnu=compiler/gnu/8.1.0
+  export module_netCDF=tool/netcdf/4.6.1/gcc-8.1.0
+#  export module_python="lang/python/3.7.0"
 endif
 ifeq ($(machine),cheyenne)
   export module_gnu="gnu/9.1.0"
-  export module_python="python/3.6.8"
+  export module_netCDF="netcdf/4.7.4"
 #  module spider gdal
 endif
 #
@@ -53,8 +52,10 @@ ifeq ($(FC),gfortran)
 #  endif
 #
   ifeq ($(machine),cheyenne)
-    LIB_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/lib
-    INC_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.1/gnu/8.1.0/include
+    LIB_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.3/gnu/9.1.0/lib
+    INC_NETCDF=/glade/u/apps/ch/opt/netcdf/4.6.3/gnu/9.1.0/include
+#    LIB_NETCDF=/glade/u/apps/ch/opt/netcdf/4.7.4/gnu/9.1.0/
+#    INC_NETCDF=/glade/u/apps/ch/opt/netcdf/4.7.4/gnu/9.1.0/include/
   endif
 
 
@@ -65,8 +66,8 @@ ifeq ($(FC),gfortran)
   # module purge
   # module load compiler/gnu/8.1.0
   #
-  LIB_NETCDF = $(NETCDF_PATH)/lib
-  INC_NETCDF = $(NETCDF_PATH)/include
+#  LIB_NETCDF = $(NETCDF_PATH)/lib
+#  INC_NETCDF = $(NETCDF_PATH)/include
   LDFLAGS= -L$(LIB_NETCDF) -lnetcdf -lnetcdff
   FFLAGS= -c  -fdollar-ok  -I$(INC_NETCDF)
 
