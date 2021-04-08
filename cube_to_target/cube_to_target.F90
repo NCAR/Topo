@@ -223,9 +223,11 @@ program convterr
    allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
    jall=jall_anticipated
 
-   write(*,*) "Compute overlap weights: "
-   CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-        jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+   if (.not.lstop_after_smoothing) then
+     write(*,*) "Compute overlap weights: "
+     CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
+          jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+   end if
    deallocate(target_corner_lon,target_corner_lat)
 
   ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 

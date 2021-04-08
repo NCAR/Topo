@@ -9,6 +9,9 @@ ifeq ($(machine),thorodin)
 #  export module_python="lang/python/3.7.0"
 endif
 ifeq ($(machine),cheyenne)
+#
+# can't get module load to work on Cheyenne
+#
   export module_gnu="gnu/9.1.0"
   export module_netCDF="netcdf/4.7.4"
 #  module spider gdal
