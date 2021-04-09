@@ -2,13 +2,12 @@ begin
 ;************************************************
 ; open netCDF file
 ;************************************************
-;  a = addfile("mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc","r")
-  a = addfile("ne480pg2_nc3000_Co008_Fi001_MulG_PF_Nsw006.nc","r")
+  a = addfile("ne30pg3_nc3000_Co060_Fi001_MulG_PF_Nsw042.nc","r")
   ;
   ; SCRIP file
   ;
-  sf =  addfile("../inputdata/grid-descriptor-file/ne480pg2_scrip_210402.nc","r")
-  cellfill = True  
+  sf =  addfile("../inputdata/grid-descriptor-file/ne30pg3.nc","r")
+  cellfill = True
 ;************************************************
 ; Read in Regression Coef
 ;************************************************
