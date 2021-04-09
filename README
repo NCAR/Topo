@@ -4,13 +4,65 @@ Peter H. Lauritzen, Julio T. Bacmeister, Patrick Callaghan and Mark A. Taylor, 2
 NCAR Global Model Topography Generation Software for Unstructured Grids. 
 Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
 
-Overview
-========
+and updated by Julio Bacmeister for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
+
+Get code:
+
+      git clone https://github.com/NCAR/Topo
+      cd Topo
+      # switch to branch
+      git checkout TopoCESM2
+
+Execute code:
+
+	The user does not need create_netCDF_from_rawdata/ and bin_to_cube/ steps unless wanting to change
+	base dataset. create_netCDF_from_rawdata is currently broken!
+	
+	The CESM2.2 inteermediate cubed-sphere dataset is located here:
+
+	intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
+
+	(if located elsewhere edit Makefile)
+
+Type "make"
+
+	Code will compute ne30pg3 dataset by default.
+
+Make new dataset:
+
+     	 1. Open "experiment_settings.make"
+	 2. Add new case name, e.g. ,
+
+	    export case=mpas_120_Co060_ridge
+     
+	 3. Add
+
+	 ifeq ($(case),mpas_120_Co060_ridge)
+	   export ncube_sph_smooth_coarse=060   #smoothing radius: CESM2.2 uses 60 1 degree, 40 for 0.5 degree, ...
+	   export output_grid=mpas_480          
+	   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/mpasa480_SCRIP_desc.200911.nc
+	   export nwindow_halfwidth=042         #typically ncube_sph_smooth_coarse/sqrt(2)
+	   export rdgwin=_Nsw$(nwindow_halfwidth)
+	   export stitch=-stitch
+	   export ncube=3000
+	   case_found=
+	 endif
+	 
+	 and edit for new dataset. See more documentation in "experiment_settings.make"
+
+	 For variable resolution grids contant Adam Herrington
+
+
+Overview of directories
+=======================
+
 
 0. make_rll_grid_descriptor_file:
 ---------------------------------
 
 Make grid-descriptor files for regular lat-lon grids
+(only needed for lat-lon grids)
+
 
 1. create_netCDF_from_rawdata
 -----------------------------
@@ -40,18 +92,4 @@ Remap elevation data to target grid and compute associated variables.
 -----------------------------
 
 Python script to add CESM meta data to topography data file (must be done manually: "make cesm_compliance")
-
-
-Commands:
-
-git clone https://github.com/NCAR/Topo
-cd Topo
-# switch to branch
-git checkout TopoCESM2
-
-Izumi machine settings:
-
-module purge
-module load compiler/gnu/4.8.5
-module load tool/netcdf/4.6.1/gcc-4.8.5
-git checkout TopoCESM2
+(currently broken)

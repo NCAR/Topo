@@ -64,8 +64,8 @@ create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
 $(intermediate_cubed_sphere_file): create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
 	test -f $(intermediate_cubed_sphere_file) || (cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
 
-#cesm_compliance:
-#	(cd cesm_meta_data_compliance; $(python_path) meta.py ../cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc $(model)_$(res)-$(r#aw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).metadata)	
+cesm_compliance:
+	(cd cesm_meta_data_compliance; $(python_path) meta.py ../cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc $(model)_$(res)-$(r#aw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).metadata)	
 
 
 $(smooth_topo_file): $(intermediate_cubed_sphere_file)
