@@ -127,4 +127,6 @@ create_netCDF_from_rawdata/gmted2010/mea.nc:
 	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010; chmod +x unpack.sh; ./unpack.sh)
 
 clean:
+	cd bin_to_cube; $(MAKE) clean
+	cd cube_to_target; $(MAKE) clean
 	rm -f modules_loaded.txt
