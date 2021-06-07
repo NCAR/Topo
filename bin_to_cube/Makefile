@@ -7,7 +7,7 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 .F90.o:
-	$(FC) $(FFLAGS) $<
+	$(FC) $(FFLAGS) $< $(LDFLAGS)
 
 #------------------------------------------------------------------------
 # Default rules and macros
