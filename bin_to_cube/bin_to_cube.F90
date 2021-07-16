@@ -27,12 +27,17 @@ program convterr
 !  integer,  parameter :: ncube = 540 !dimension of cubed-sphere grid - for debugging
   
   integer*2,  allocatable, dimension(:,:) :: terr               ! global 30-sec terrain data
-  integer*1,  allocatable, dimension(:,:) :: landfrac ! global 30-sec land fraction
+!+++ARH
+!  integer*1,  allocatable, dimension(:,:) :: landfrac ! global 30-sec land fraction
+!---ARH
   
   integer :: alloc_error,dealloc_error  
   integer :: i,j,n,k,index                                ! index
   integer*2, allocatable, dimension(:,:)  :: iterr        ! terrain data for 30-sec tile
+!+++ARH
+  !integer ncid,status, dimlatid,dimlonid, landid, topoid  ! for netCDF USGS data file
   integer ncid,status, dimlatid,dimlonid, landid, topoid  ! for netCDF USGS data file
+!---ARH
   integer :: srcid,dstid                                  ! for netCDF weight file
   
   real(r8), allocatable, dimension(:)   :: lon  , lat
@@ -50,7 +55,10 @@ program convterr
   
   real(r8) :: alpha, beta,da,wt,dlat
   integer  :: ipanel,icube,jcube
-  real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,landfrac_cube,var30_cube
+!+++ARH
+  !real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,landfrac_cube,var30_cube
+  real(r8), allocatable, dimension(:,:,:)   :: weight,terr_cube,var30_cube
+!---ARH
   real(r8), allocatable, dimension(:,:,:)   :: landm_coslat_cube
   integer , allocatable, dimension(:,:)     :: idx,idy,idp
   !
@@ -106,11 +114,13 @@ program convterr
   
   WRITE(*,*) "lon-lat dimensions: ",im,jm
   
-  allocate ( landfrac(im,jm),stat=alloc_error )
-  if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
-    stop
-  end if
+!+++ARH
+  !allocate ( landfrac(im,jm),stat=alloc_error )
+  !if( alloc_error /= 0 ) then
+  !  print*,'Program could not allocate space for landfrac'
+  !  stop
+  !end if
+!---ARH
   
   allocate ( terr(im,jm),stat=alloc_error )
   if( alloc_error /= 0 ) then
@@ -120,26 +130,27 @@ program convterr
   
   allocate ( lon(im),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
+    print*,'Program could not allocate space for lon'
     stop
   end if
   
   allocate ( lat(jm),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
+    print*,'Program could not allocate space for lat'
     stop
   end if
   
   terr = -9999
-  landfrac = -99.0
+!+++ARH
+  !landfrac = -99.0
+
+  !status = NF_INQ_VARID(ncid, 'landfract', landid)
+  !IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   
-  status = NF_INQ_VARID(ncid, 'landfract', landid)
-  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  
-  status = NF_GET_VAR_INT1(ncid, landid,landfrac)
-  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  WRITE(*,*) "min/max of 30sec land fraction",MINVAL(landfrac),MAXVAL(landfrac)
-  
+  !status = NF_GET_VAR_INT1(ncid, landid,landfrac)
+  !IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  !WRITE(*,*) "min/max of 30sec land fraction",MINVAL(landfrac),MAXVAL(landfrac)
+!---ARH  
   
   status = NF_INQ_VARID(ncid, 'htopo', topoid)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
@@ -208,19 +219,19 @@ program convterr
   
   allocate ( landm_coslat(im_landm,jm_landm),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
+    print*,'Program could not allocate space for smoothed landfrac'
     stop
   end if
   
   allocate ( lon_landm(im_landm),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
+    print*,'Program could not allocate space for smoothed landfrac'
     stop
   end if
   
   allocate ( lat_landm(jm_landm),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for landfrac'
+    print*,'Program could not allocate space for smoothed landfrac'
     stop
   end if
   
@@ -276,12 +287,14 @@ program convterr
     stop
   end if
   terr_cube = 0.0
-  allocate ( landfrac_cube(ncube,ncube,6),stat=alloc_error )
-  if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for terr_cube'
-    stop
-  end if
-  landfrac_cube = 0.0
+!+++ARH
+  !allocate ( landfrac_cube(ncube,ncube,6),stat=alloc_error )
+  !if( alloc_error /= 0 ) then
+  !  print*,'Program could not allocate space for terr_cube'
+  !  stop
+  !end if
+  !landfrac_cube = 0.0
+!---ARH
   allocate ( landm_coslat_cube(ncube,ncube,6),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for terr_cube'
@@ -334,7 +347,9 @@ program convterr
       weight(icube,jcube,ipanel) = weight(icube,jcube,ipanel)+wt
       !
       terr_cube    (icube,jcube,ipanel)     = terr_cube    (icube,jcube,ipanel)+wt*DBLE(terr(i,j))
-      landfrac_cube(icube,jcube,ipanel)     = landfrac_cube(icube,jcube,ipanel)+wt*DBLE(landfrac(i,j))
+!+++ARH
+      !landfrac_cube(icube,jcube,ipanel)     = landfrac_cube(icube,jcube,ipanel)+wt*DBLE(landfrac(i,j))
+!---ARH
       !
       ! save "index-association" for variance computation
       !
@@ -359,7 +374,9 @@ program convterr
 !          STOP
         ELSE
           terr_cube        (i,j,k) = terr_cube        (i,j,k)/weight(i,j,k)                
-          landfrac_cube    (i,j,k) = landfrac_cube    (i,j,k)/weight(i,j,k)                
+!+++ARH
+          !landfrac_cube    (i,j,k) = landfrac_cube    (i,j,k)/weight(i,j,k)                
+!---ARH
         END IF
         !
         ! linearly interpolate landm_coslat
@@ -488,8 +505,12 @@ program convterr
   !
   ! write data to NetCDF file
   !
-  CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
-  DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
+!+++ARH
+  !CALL wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
+  !DEALLOCATE(weight,terr,landfrac,idx,idy,idp,lat,lon)
+  CALL wrt_cube(ncube,terr_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
+  DEALLOCATE(weight,terr,idx,idy,idp,lat,lon)
+!---ARH
   WRITE(*,*) "done writing cubed sphere data"
 end program convterr
 
@@ -613,7 +634,10 @@ END SUBROUTINE CubedSphereABPFromRLL
 !
 ! write netCDF file
 ! 
-subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
+!+++ARH
+!subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
+subroutine wrt_cube(ncube,terr_cube,landm_coslat_cube,var30_cube,raw_latlon_data_file,output_file)
+!---ARH
   use shr_kind_mod, only: r8 => shr_kind_r8
   implicit none
 #     include         <netcdf.inc>
@@ -622,7 +646,10 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,r
   ! Dummy arguments
   !
   integer, intent(in) :: ncube
-  real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,var30_cube,landm_coslat_cube
+!+++ARH
+  !real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,landfrac_cube,var30_cube,landm_coslat_cube
+  real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,var30_cube,landm_coslat_cube
+!---ARH
   character(len=1024) :: raw_latlon_data_file, git_http, tmp_string, output_file
   !
   ! Local variables
@@ -645,7 +672,9 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,r
   integer  :: nc_grdcntrlon_id   ! netCDF grid center lon id
   integer  :: nc_terr_id
   integer  :: nc_terr_gmted2010_id
-  integer  :: nc_landfrac_id
+!+++ARH
+  !integer  :: nc_landfrac_id
+!---ARH
   integer  :: nc_landm_coslat_id
   integer  :: nc_var_id
   
@@ -753,14 +782,14 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,r
   call handle_err(ncstat)
   ncstat = nf_put_att_text (nc_grid_id, nc_terr_id, 'units',1, 'm')
   call handle_err(ncstat)
-  
-  WRITE(*,*) "define landfrac_cube array"
-  ncstat = nf_def_var (nc_grid_id, 'LANDFRAC', NF_DOUBLE,1, nc_gridsize_id, nc_landfrac_id)
-  call handle_err(ncstat)
-  ncstat = nf_put_att_text (nc_grid_id, nc_landfrac_id, 'long_name',70,&
-       'land ocean transition mask: ocean (0), continent (1), transition (0-1)')
-  call handle_err(ncstat)
-  
+!+++ARH 
+!  WRITE(*,*) "define landfrac_cube array"
+!  ncstat = nf_def_var (nc_grid_id, 'LANDFRAC', NF_DOUBLE,1, nc_gridsize_id, nc_landfrac_id)
+!  call handle_err(ncstat)
+!  ncstat = nf_put_att_text (nc_grid_id, nc_landfrac_id, 'long_name',70,&
+!       'land ocean transition mask: ocean (0), continent (1), transition (0-1)')
+!  call handle_err(ncstat)
+!---ARH  
   WRITE(*,*) "define landm_coslat_cube array"
   ncstat = nf_def_var (nc_grid_id, 'LANDM_COSLAT', NF_DOUBLE,1, nc_gridsize_id, nc_landm_coslat_id)
   call handle_err(ncstat)
@@ -800,10 +829,10 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,r
   
   ncstat = nf_put_var_double(nc_grid_id, nc_terr_id, terr_cube)
   call handle_err(ncstat)
-  
-  ncstat = nf_put_var_double(nc_grid_id, nc_landfrac_id, landfrac_cube)
-  call handle_err(ncstat)
-  
+!+++ARH  
+  !ncstat = nf_put_var_double(nc_grid_id, nc_landfrac_id, landfrac_cube)
+  !call handle_err(ncstat)
+!---ARH  
   ncstat = nf_put_var_double(nc_grid_id, nc_landm_coslat_id, landm_coslat_cube)
   call handle_err(ncstat)
   

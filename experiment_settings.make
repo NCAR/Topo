@@ -22,14 +22,14 @@
 #
 # 	smooth_topo_file_dir
 #
-#export case=fv_0.9x1.25_Co060_ridge
+export case=fv_0.9x1.25_Co060_ridge
 #export case=fv_1.9x2.5_Co0120_ridge
 #export case=fv_4x5_Co0240_ridge
 #export case=fv_10x15_Co0480_ridge
 #export case=ne30np4_Co0080_ridge
 #export case=ne30pg3_Co0070_ridge
 #export case=ne16pg3_Co0160_ridge
-export case=ne30pg3_Co0060_ridge
+#export case=ne30pg3_Co0060_ridge
 #export case=ne30pg2_Co0080_ridge
 #export case=ne60pg2_Co0040_ridge
 #export case=ne120np4_Co0015_ridge
@@ -62,7 +62,7 @@ export case=ne30pg3_Co0060_ridge
 #export case=conus_30_x8_Co0008_ridge
 #export case=ne30np4_Co0060_ridge
 #export case=CONUS_30_x8_Co0060_ridge
-export case=ARCTIC_30_x4_C0060_ridge
+#export case=ARCTIC_30_x4_C0060_ridge
 #export case=ARCTICGRIS_30_x8_C0060_ridge
 
 case_found=False
