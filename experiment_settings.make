@@ -22,7 +22,7 @@
 #
 # 	smooth_topo_file_dir
 #
-export case=fv_0.9x1.25_Co060_ridge
+#export case=fv_0.9x1.25_Co060_ridge
 #export case=fv_1.9x2.5_Co0120_ridge
 #export case=fv_4x5_Co0240_ridge
 #export case=fv_10x15_Co0480_ridge
@@ -37,6 +37,8 @@ export case=fv_0.9x1.25_Co060_ridge
 #export case=ne480pg2_Co0008_ridge
 #export case=mpas_120_Co060_ridge
 #export case=mpas_480_Co240_ridge
+#export case=mpas_60-3-cal_ridge
+export case=mpas_15-3-conus_Co009_ridge
 #
 # Experimental setups
 #
@@ -473,6 +475,32 @@ ifeq ($(case),mpas_480_Co240_ridge)
   export rdgwin=_Nsw$(nwindow_halfwidth)
   export stitch=-stitch
   export ncube=3000
+  case_found=
+endif
+
+ifeq ($(case),mpas_60-3-cal_ridge)
+  export ncube_sph_smooth_coarse=033
+  export output_grid=mpas_60_to_3
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/mpasa60-3.california.SCRIP.nc
+  export nwindow_halfwidth=023
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  export lregional_refinement=.true.
+  export rrfac_max=020
+  case_found=
+endif
+
+ifeq ($(case),mpas_15-3-conus_Co009_ridge)
+  export ncube_sph_smooth_coarse=009
+  export output_grid=mpas_15-3
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/mpasa15-3.conus.desc_SCRIP.210504.nc
+  export nwindow_halfwidth=006
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  export lregional_refinement=.true.
+  export rrfac_max=005
   case_found=
 endif
 
