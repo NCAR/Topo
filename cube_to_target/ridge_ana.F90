@@ -117,7 +117,7 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peak
     !REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
     REAL(KIND=dbl_kind)  :: thsh
 
-    CHARACTER(len=1024) :: ofile$,ve$
+    CHARACTER(len=1024) :: ofile,ve
 
 !---------------------------------------------------------------------------------------
 !  B E G I N   C A L C U L A T I O N S
@@ -200,7 +200,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 !===================================================================================================
 
 subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw,  & 
-                         ofile$, &
+                         ofile, &
                          lregional_refinement, rr_factor )
 !------------------------------------------------
 !  INPUTS.
@@ -220,7 +220,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw,  &
        INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo, nsb, nsw 
 
        LOGICAL, intent(IN), OPTIONAL ::  lregional_refinement
-       CHARACTER(len=1024), intent(IN)  :: ofile$
+       CHARACTER(len=1024), intent(IN)  :: ofile
 
        INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks
        INTEGER (KIND=int_kind) :: nswr,nsbr
@@ -250,7 +250,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw,  &
 
     REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
 
-    CHARACTER(len=1024) :: ve$
+    CHARACTER(len=1024) :: ve
 
 
     do_refine = .FALSE.
@@ -360,7 +360,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 #if 1
 
-    OPEN (unit = 31, file= trim(ofile$) ,form="UNFORMATTED" )
+    OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
 
     write(31) ncube,ncube_halo
     write(31) xv,yv
@@ -718,7 +718,7 @@ end subroutine ANISO_ANA
 !====================================
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
-         nreconstruction,ntarget,nhalo,nsb,nsw,nsmcoarse,nsmfine,ofile$, & 
+         nreconstruction,ntarget,nhalo,nsb,nsw,nsmcoarse,nsmfine,ofile, & 
          lzerovalley,luse_multigrid,luse_prefilter,lb4b_with_cesm2, &
          lregional_refinement,rr_factor )
 
@@ -731,7 +731,7 @@ end subroutine ANISO_ANA
       integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsb,nsw,nsmcoarse,nsmfine
       real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
       logical, intent(in)  :: lzerovalley,luse_multigrid,luse_prefilter,lb4b_with_cesm2
-      CHARACTER(len=1024),intent(in) :: ofile$
+      CHARACTER(len=1024),intent(in) :: ofile
 
         logical, optional, intent(in)  :: lregional_refinement
         real(r8) , optional, intent(in) :: rr_factor( ncube, ncube, 6 )
@@ -752,8 +752,8 @@ end subroutine ANISO_ANA
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA
 
-      character(len=8)  :: date$
-      character(len=10) :: time$
+      character(len=8)  :: date
+      character(len=10) :: time
       logical :: do_refine
 
 !----------------------------------------------------------------------------------------------------
@@ -1015,7 +1015,7 @@ end subroutine ANISO_ANA
 
      call latlonangles (target_center_lon,target_center_lat,ntarget)
 
-OPEN (unit = 911, file= trim(ofile$) ,form="UNFORMATTED" )
+OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
 
 write(911) ncube,npeaks
 write(911) mxdisC
@@ -1690,7 +1690,7 @@ subroutine paintridgeoncube ( ncube,nhalo,nsb,nsw , terr  )
      !bgnxg_tiles = -9999._r8
     end where
 
-    !OPEN (unit = 611, file= trim(tfile$) ,form="UNFORMATTED" )
+    !OPEN (unit = 611, file= trim(tfile) ,form="UNFORMATTED" )
     OPEN (unit = 611, file= 'RidgeTile.dat' ,form="UNFORMATTED" )
     write( 611 ) ntarget,ntiles
     write( 611 ) error_tiles

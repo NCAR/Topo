@@ -291,7 +291,7 @@ CONTAINS
 
     REAL(KIND=dbl_kind) :: RSM_scl, smoo,irho,volt0,volt1,volume_after,volume_before,wt1ps
 
-    CHARACTER(len=1024) :: ofile$
+    CHARACTER(len=1024) :: ofile
 
     write(*,*) " NCUBE !!! " , ncube
 

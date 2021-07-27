@@ -154,11 +154,11 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname,  externally_smoothed_topo_file
-  character(len=1024) :: output_grid, ofile$, proctag$, smooth_fname, remap_fname, smoothprm$, rdgwin$, rdglist_fname
+  character(len=1024) :: output_grid, ofile, proctag, smooth_fname, remap_fname, smoothprm, rdgwin, rdglist_fname
   character(len=1024) :: rrfactor_fname
 
-  character(len=8)  :: date$
-  character(len=10) :: time$
+  character(len=8)  :: date
+  character(len=10) :: time
 
 !+++ARH
   character(len=1024) :: cube_file
@@ -273,24 +273,24 @@ program convterr
          !----------------------------------------------------------------------
          !  Final gridded nc file 
          !---------------------------
-         call DATE_AND_TIME( DATE=date$,TIME=time$)
+         call DATE_AND_TIME( DATE=date,TIME=time)
 
-         proctag$=' '
+         proctag=' '
          if (lb4b_with_cesm2) then
-            proctag$ = trim(proctag$)//'_CESM2'
+            proctag = trim(proctag)//'_CESM2'
          end if
          if (luse_multigrid) then
-            proctag$ = trim(proctag$)//'_MulG'
+            proctag = trim(proctag)//'_MulG'
          end if
          if (luse_prefilter) then
-            proctag$ = trim(proctag$)//'_PF'
+            proctag = trim(proctag)//'_PF'
          end if
 
          if (lregional_refinement) then
-            proctag$ = trim(proctag$)//'_RR'
+            proctag = trim(proctag)//'_RR'
          end if
 
-         write( smoothprm$ , &
+         write( smoothprm , &
              "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3 )" ) & 
          ncube, ncube_sph_smooth_coarse, ncube_sph_smooth_fine
 
@@ -299,24 +299,24 @@ program convterr
              write(*,*) "nwindow_halfwidth must be >0",nwindow_halfwidth
              stop
            endif
-         write( rdgwin$ , &
+         write( rdgwin , &
              "('_Nsw',i0.3 )" ) nwindow_halfwidth  
          else
-           rdgwin$ = '_NoAniso'
+           rdgwin = '_NoAniso'
          end if  
          
-         write(*,*)" Smooth ", trim(smoothprm$)
-         write(*,*)" Procs  ", trim(proctag$)
-         write(*,*)" Ridge  ", trim(rdgwin$)
+         write(*,*)" Smooth ", trim(smoothprm)
+         write(*,*)" Procs  ", trim(proctag)
+         write(*,*)" Ridge  ", trim(rdgwin)
 
 
-         smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm$)//trim(proctag$)//'_v02.dat'
-         rdglist_fname = './inputdata/RdgList'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
-         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.dat'
-         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'.nc'
+         smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm)//trim(proctag)//'_v02.dat'
+         rdglist_fname = './inputdata/RdgList'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
+         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
+         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.nc'
 
-!         remap_fname   = './output/remap'//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.dat'
-!         output_fname  = './output/'//trim(output_grid)//trim(smoothprm$)//trim(proctag$)//trim(rdgwin$)//'_'//date$//'.nc'
+!         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.dat'
+!         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.nc'
 
 
 
