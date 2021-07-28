@@ -154,7 +154,7 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname,  externally_smoothed_topo_file
-  character(len=1024) :: output_grid, ofile, proctag, smooth_fname, remap_fname, smoothprm, rdgwin, rdglist_fname
+  character(len=1024) :: output_grid = 'none', ofile, proctag, smooth_fname, remap_fname, smoothprm, rdgwin, rdglist_fname
   character(len=1024) :: rrfactor_fname
 
   character(len=8)  :: date
@@ -311,19 +311,21 @@ program convterr
 
 
          smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm)//trim(proctag)//'_v02.dat'
-         rdglist_fname = './inputdata/RdgList'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
-         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
-         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.nc'
-
-!         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.dat'
-!         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.nc'
-
-
-
-
          write(*,*) " smoothed topo file ::  ",trim(smooth_fname)
+
+         rdglist_fname = './inputdata/RdgList'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
+         write(*,*) " rdglist fname::  ",trim(rdglist_fname)
+
+         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
          write(*,*) " remap to cube file ::  ",trim(remap_fname)
-         write(*,*) " Final output file  ::  ",trim(output_fname)
+
+         if (trim(output_grid) == 'none') then
+             output_fname = 'none'
+         else
+             output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.nc'
+             write(*,*) " Final output file  ::  ",trim(output_fname)
+         endif
+
 
 !++jtb
    !!!!  if (lsmooth_on_cubed_sphere) then
