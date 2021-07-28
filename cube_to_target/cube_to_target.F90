@@ -286,10 +286,6 @@ program convterr
             proctag = trim(proctag)//'_PF'
          end if
 
-         if (lregional_refinement) then
-            proctag = trim(proctag)//'_RR'
-         end if
-
          write( smoothprm , &
              "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3 )" ) & 
          ncube, ncube_sph_smooth_coarse, ncube_sph_smooth_fine
