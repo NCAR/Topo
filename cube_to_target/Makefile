@@ -13,7 +13,7 @@ RM = rm
 # Default rules and macros
 #------------------------------------------------------------------------
 
-OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_ana.o cube_to_target.o 
+OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_ana.o cube_to_target.o f90getopt.o
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
 	$(FC) -o $@ $(OBJS) $(LDFLAGS)
@@ -22,7 +22,7 @@ $(EXEDIR)/$(EXENAME): $(OBJS)
 clean:
 	$(RM) -f $(OBJS)  *.mod $(EXEDIR)/$(EXENAME) output/*.nl
 
-cube_to_target.o: shr_kind_mod.o remap.o reconstruct.o shared_vars.o
+cube_to_target.o: shr_kind_mod.o remap.o reconstruct.o shared_vars.o f90getopt.o
 reconstruct.o: remap.o 
 remap.o      : shr_kind_mod.o
 shared_vars.o: shr_kind_mod.o

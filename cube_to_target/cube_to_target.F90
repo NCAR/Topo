@@ -4,12 +4,20 @@
 !
 !  Author: Peter Hjort Lauritzen (pel@ucar.edu), AMP/CGD/NCAR 
 !
+!  JT: Added sample parameter functionality using f90getopt.
+! ex: ./cube_to_target --help to get list of long and short option names.
+!
+! ex: ./cube_to_target --intermediate_cs_name='/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc' \
+!                      --grid_descriptor_file='/glade/p/cgd/amp/jet/collections/TopoCESM2.121321/cube_to_target/inputdata/grid-descriptor-file/ne30pg3.nc' \
+!                       -l --fine_radius=001 --coarse_radius=060 -m -p -x
 program convterr
   use shr_kind_mod, only: r8 => shr_kind_r8
   use smooth_topo_cube_sph
   use ridge_ana
   use shared_vars
   use reconstruct
+  use f90getopt
+
   implicit none
 #     include         <netcdf.inc>
 
@@ -150,7 +158,7 @@ program convterr
   !
   INTEGER :: UNIT
 
-  INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget
+  INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget, ioptarg
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname,  externally_smoothed_topo_file
@@ -183,11 +191,121 @@ program convterr
        luse_multigrid,luse_prefilter,lstop_after_smoothing, &
        lb4b_with_cesm2 
  
-  UNIT=221
-  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
-  READ( UNIT=UNIT, NML=topoparams)
-  CLOSE(UNIT=UNIT)
-  
+  ! START For longopts only
+  type(option_s):: opts(28)
+  opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
+  opts(2) = option_s( "coarse_radius", .true., 'c' )
+  opts(3) = option_s( "externally_smoothed_topo_file", .true., 'e' )
+  opts(4) = option_s( "fine_radius",  .true.,  'f' )
+  opts(5) = option_s( "grid_descriptor_file", .true., 'g' )
+  opts(6) = option_s( "help", .false.,  'h')
+  opts(7) = option_s( "intermediate_cs_name", .true.,  'i')
+  opts(8) = option_s( "smooth_on_cs", .false.,  'l')
+  opts(9) = option_s( "use_multigrid", .false.,  'm')
+  opts(10) = option_s( "nwindow_halfwidth", .true.,  'n')
+  opts(11) = option_s( "output_grid", .true.,  'o')
+  opts(12) = option_s( "use_prefilter", .false.,  'p')
+  opts(13) = option_s( "find_ridges", .false.,  'r')
+  opts(14) = option_s( "regional_refinement", .false.,  's')
+  opts(15) = option_s( "external_smooth_terr",.false., 't')
+  opts(16) = option_s( "smooth_terr",.false., 'u')
+  opts(17) = option_s( "stop_after_smooth", .false.,  'x')
+  opts(18) = option_s( "rrfac_max",.true.,'y')
+  opts(19) = option_s( "zero_out_ocean_point_phis",.false.,'z')
+  opts(20) = option_s( "zero_negative_peaks",.false.,'0')
+  opts(21) = option_s( "ridge2tiles",.false.,'1')
+  opts(22) = option_s( "ncube_sph_smooth_iter",.true.,'2')
+  opts(23) = option_s( "read_smooth_topofile",.false.,'3')
+  opts(24) = option_s( "nridge_subsample",.true.,'4')
+  opts(25) = option_s( "ncube_coarse",.true.,'5')
+  opts(26) = option_s( "norder",.true.,'6')
+  opts(27) = option_s( "nmono",.true.,'7')
+  opts(28) = option_s( "npd",.true.,'8')
+
+  ! END longopts
+  ! If no options were committed
+  if (command_argument_count() .eq. 0 ) call print_help
+  ! Process options one by one
+  do
+!     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
+     case( char(0) )
+        exit
+     case( 'b' )
+        lb4b_with_cesm2 = .TRUE.
+     case( 'c' )
+        read (optarg, '(i3)') ioptarg
+        ncube_sph_smooth_coarse = ioptarg
+     case( 'e' )
+        externally_smoothed_topo_file = optarg
+     case( 'f' )
+        read (optarg, '(i3)') ioptarg
+        ncube_sph_smooth_fine = ioptarg
+     case( 'g' )
+        grid_descriptor_fname = optarg
+     case( 'h' )
+        call print_help
+     case( 'i' )
+        intermediate_cubed_sphere_fname = optarg
+     case( 'l' )
+        lsmooth_on_cubed_sphere = .TRUE.
+     case( 'm' )
+        luse_multigrid = .TRUE.
+     case( 'n' )
+        read (optarg, '(i3)') ioptarg
+        nwindow_halfwidth = ioptarg
+     case( 'o' )
+        output_grid = optarg
+     case( 'p' )
+        luse_prefilter=.TRUE.
+     case( 'r' )
+        lfind_ridges = .TRUE.
+     case( 's' )
+        lregional_refinement = .TRUE.
+     case( 't' )
+        lexternal_smooth_terr = .TRUE.
+     case( 'u' )
+        lsmooth_terr = .TRUE.
+     case( 'x' )
+        lstop_after_smoothing = .TRUE.
+     case( 'y' )
+        read (optarg, '(i3)') ioptarg
+        rrfac_max = ioptarg
+     case( 'z' )
+        lzero_out_ocean_point_phis = .TRUE.
+     case( '0' )
+        lzero_negative_peaks = .TRUE.
+     case( '1' )
+        lridgetiles = .TRUE.
+     case( '2' )
+        read (optarg, '(i3)') ioptarg
+        ncube_sph_smooth_iter = ioptarg
+     case( '3' )
+        lread_smooth_topofile = .TRUE.
+     case( '4' )
+        read (optarg, '(i3)') ioptarg
+        nridge_subsample = ioptarg
+     case( '5' )
+        read (optarg, '(i3)') ioptarg
+        ncube_coarse = ioptarg
+     case( '6' )
+        read (optarg, '(i3)') ioptarg
+        norder = ioptarg
+     case( '7' )
+        read (optarg, '(i3)') ioptarg
+        nmono = ioptarg
+     case( '8' )
+        read (optarg, '(i3)') ioptarg
+        npd = ioptarg
+     end select
+  end do
+
+
+!  UNIT=221
+!  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
+!  READ( UNIT=UNIT, NML=topoparams)
+!  CLOSE(UNIT=UNIT)
+
   call  set_constants
 
   !
@@ -722,6 +840,38 @@ program convterr
   DEALLOCATE(weights_all,weights_eul_index_all,terr)
  
 end program convterr
+
+subroutine print_help
+  write (6,*) "Usage: cube_to_target [options] ..."
+  write (6,*) "Options:"
+  write (6,*) "-c, --coarse_radius=<int>                      "
+  write (6,*) "-e, --externally_smoothed_topo_file=<string>   "
+  write (6,*) "-f, --fine_radius=<int>                        "
+  write (6,*) "-g, --grid_descriptor_file=<string>            "
+  write (6,*) "-i, --intermediate_cs_name=<string>            "
+  write (6,*) "-l, --smooth_on_cs             Enable [default:disabled]"
+  write (6,*) "-m, --use_multigrid            Enable [default:disabled]"
+  write (6,*) "-n, --nwindow_halfwidth=<int>                  "
+  write (6,*) "-o, --output_grid=<string>                     "
+  write (6,*) "-p, --use_prefilter            Enable [default:disabled]"
+  write (6,*) "-r, --find_ridges              Enable [default:disabled]"
+  write (6,*) "-s, --regional_refinement      Enable [default:disabled]"
+  write (6,*) "-t, --external_smooth_terr     Enable [default:disabled]"
+  write (6,*) "-u, --smooth_terr              Enable [default:disabled]"
+  write (6,*) "-x, --stop_after_smooth        Enable [default:disabled]"
+  write (6,*) "-y, --rrfac_max=<int>                          "
+  write (6,*) "-z, --zero_out_ocean_point_phis  Enable [default:disabled]"
+  write (6,*) "-0, --zero_negative_peaks        Enable [default:disabled]"
+  write (6,*) "-1, --ridge2tiles                Enable [default:disabled]"
+  write (6,*) "-2, --ncube_sph_smooth_iter=<int>             "
+  write (6,*) "-3, --read_smooth_topofile       Enable [default:disabled]"
+  write (6,*) "-4, --nridge_subsample=<int>             "
+  write (6,*) "-5, --ncube_coarse=<int>                 "
+  write (6,*) "-6, --norder=<int>                       "
+  write (6,*) "-7, --nmono=<int>                        "
+  write (6,*) "-8, --npdy=<int>                         "
+  stop
+end subroutine print_help
 !
 !
 !
