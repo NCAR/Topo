@@ -14,10 +14,10 @@ include machine_settings.make
 #
 #######################################################################################################
 #
-raw_data=gmted2010_modis
+raw_data=gmted2010_bedmachine
 
-#intermediate_cubed_sphere_file=/project/amp/juliob/topo-data/gmted2010_modis-ncube3000-stitch.nc
-intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc
+#intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc
+intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_bedmachine-ncube3000.nc
 
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''

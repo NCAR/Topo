@@ -30,7 +30,7 @@
 #export case=ne16pg3_Co0113_ridge
 #export case=ne30np4_Co0060_ridge
 #export case=ne30pg2_Co0060_ridge
-#export case=ne30pg3_Co0060_ridge
+export case=ne30pg3_Co0060_ridge
 #export case=ne60np4_Co0030_ridge
 #export case=ne60pg2_Co0030_ridge
 #export case=ne60pg3_Co0030_ridge
