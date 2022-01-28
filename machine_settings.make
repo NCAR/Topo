@@ -14,8 +14,6 @@ FFLAGS = -c $(shell nc-config --fflags)
 #------------------------------------------------------------------------
 ifeq ($(findstring gfortran, $(FC)),gfortran)
     ifneq ($(findstring pgfortran, $(FC)),pgfortran)
-      FFLAGS  += -fdollar-ok
-
       ifeq ($(DEBUG),TRUE)
         FFLAGS += -Wall -fbacktrace -fbounds-check -fno-range-check
       else
