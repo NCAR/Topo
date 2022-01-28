@@ -14,15 +14,15 @@ include machine_settings.make
 #
 #######################################################################################################
 #
-raw_data=gmted2010_modis
+raw_data=gmted2010_bedmachine
 
-#intermediate_cubed_sphere_file=/project/amp/juliob/topo-data/gmted2010_modis-ncube3000-stitch.nc
-intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc
+#intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc
+intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_bedmachine-ncube3000.nc
 
 ncube_sph_smooth_fine=001
 # MulG: valid options are '_MulG' or ''
-#MulG=''
-MulG=_MulG
+MulG=''
+#MulG=_MulG
 # PF  : valid options are '_PF' or ''
 PF=_PF
 #PF=''
@@ -73,7 +73,7 @@ $(smooth_topo_file): $(intermediate_cubed_sphere_file)
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_smooth_nl)
 	echo "lstop_after_smoothing = .true." 		 				>> $(topo_smooth_nl)
 	echo "lfind_ridges=.false."        		 				>> $(topo_smooth_nl)
-	echo "luse_multigrid = .true." 	                                	 	>> $(topo_smooth_nl)
+	echo "luse_multigrid = .false."                                 	 	>> $(topo_smooth_nl)
 	echo "luse_prefilter = .true."                          		 	>> $(topo_smooth_nl)
 	echo '/' >>  $(topo_smooth_nl)
 	test -f $(smooth_topo_file) || (echo "Creating "$(smooth_topo_file); cd cube_to_target; rm -f nlmain.nl;  ln -s $(topo_smooth_nl_subdir) nlmain.nl;  make; ./cube_to_target)
@@ -88,7 +88,7 @@ $(topo_file): $(smooth_topo_file)
 	echo "lsmooth_on_cubed_sphere = .true."						>> $(topo_file_nl)
 	echo "ncube_sph_smooth_coarse = $(ncube_sph_smooth_coarse)"			>> $(topo_file_nl)
 	echo "ncube_sph_smooth_fine = $(ncube_sph_smooth_fine)"				>> $(topo_file_nl)
-	echo "luse_multigrid = .true." 		 					>> $(topo_file_nl)
+	echo "luse_multigrid = .false." 	 					>> $(topo_file_nl)
 	echo "luse_prefilter = .true." 		 					>> $(topo_file_nl)
 	echo "lregional_refinement=$(lregional_refinement)"				>> $(topo_file_nl)
 	echo "rrfac_max=${rrfac_max}"							>> $(topo_file_nl)
