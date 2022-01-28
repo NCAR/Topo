@@ -30,10 +30,11 @@
 #export case=ne16pg3_Co0113_ridge
 #export case=ne30np4_Co0060_ridge
 #export case=ne30pg2_Co0060_ridge
-export case=ne30pg3_Co0060_ridge
+#export case=ne30pg3_Co0060_ridge
 #export case=ne60np4_Co0030_ridge
 #export case=ne60pg2_Co0030_ridge
 #export case=ne60pg3_Co0030_ridge
+
 #export case=ne120np4_Co0015_ridge
 #export case=ne120pg2_Co0015_ridge
 #export case=ne120pg3_Co0015_ridge
@@ -42,6 +43,17 @@ export case=ne30pg3_Co0060_ridge
 #export case=ne240pg3_Co0008_ridge
 #export case=ne480np4_Co0008_ridge
 #export case=ne480pg2_Co0008_ridge
+#export case=mpas_120_Co060_ridge
+#export case=mpas_480_Co240_ridge
+#export case=mpas_60-3-cal_ridge
+#export case=mpas_15-3-conus_Co009_ridge
+#
+# Experimental setups
+#
+#export case=fv_1.9x2.5_Co0120_NoAniso
+#export case=fv_0.9x1.25_Co0120_NoAniso
+#export case=fv_0.47x0.63_Co0120_NoAniso
+#export case=fv_1.9x2.5_Co0120_ridge
 #export case=ne480pg3_Co0008_ridge
 #export case=quick_test_fv
 #export case=fv_10x15_Co0480_ridge
@@ -528,9 +540,34 @@ ifeq ($(case),CONUS_30_x8_Co0060_ridge)
   export lread_smooth_topofile=.false.
   case_found=
 endif
-#
-#
-#
+
+ifeq ($(case),mpas_60-3-cal_ridge)
+  export ncube_sph_smooth_coarse=033
+  export output_grid=mpas_60_to_3
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/mpasa60-3.california.SCRIP.nc
+  export nwindow_halfwidth=023
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  export lregional_refinement=.true.
+  export rrfac_max=020
+  case_found=
+endif
+
+ifeq ($(case),mpas_15-3-conus_Co009_ridge)
+  export ncube_sph_smooth_coarse=009
+  export output_grid=mpas_15-3
+  export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/mpasa15-3.conus.desc_SCRIP.210504.nc
+  export nwindow_halfwidth=006
+  export rdgwin=_Nsw$(nwindow_halfwidth)
+  export stitch=-stitch
+  export ncube=3000
+  export lregional_refinement=.true.
+  export rrfac_max=005
+  case_found=
+endif
+
+
 ifeq ($(case_found),False)
   echo "CASE NOT FOUND - ABORT"
 endif
