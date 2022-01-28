@@ -213,16 +213,34 @@ program convterr
   ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
   ! in the 'exchange grid'
 
-   jall_anticipated = ncube*ncube*12*10 !anticipated number of weights (can be tweaked)
-
-   jmax_segments = 1000000   !can be tweaked xxx
-   write(*,*) "jmax_segments",jmax_segments !,da_min_target,da_min_ncube   
-   nreconstruction = 1
-   allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
-   allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
-   allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
-   jall=jall_anticipated
-
+  if (nrank == 1) then
+    da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
+    da_min_target = MAXVAL(target_area)
+    if (da_min_target==0) then !bug with MPAS files
+      jmax_segments = 100000
+    else
+      write(*,*) "using dynamic estimate for jmax_segments " 
+      !++ jtb : Increased by 4x. Needed for c1440 FV3
+      !jmax_segments = 10 * ncorner*NINT(da_min_target/da_min_ncube)!phl - FAILS for MPAS ~3km
+      jmax_segments = 4 * ncorner*NINT(da_min_target/da_min_ncube)
+    end if
+    write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
+    write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
+  else
+    jmax_segments = 100000   !can be tweaked
+  end if
+  jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
+  if (jall_anticipated<0) then
+    write(*,*) "anticipated number of overlaps likely not representable: jall_anticipated=", jall_anticipated
+    stop
+  end if
+  
+  nreconstruction = 1
+  allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
+  allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
+  allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
+  jall=jall_anticipated
+  
    if (.not.lstop_after_smoothing) then
      write(*,*) "Compute overlap weights: "
      CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
