@@ -23,7 +23,6 @@ CONTAINS
   SUBROUTINE smooth_intermediate_topo_wrap(terr, da, ncube,nhalo, NSCL_f,NSCL_c &
                                     , terr_sm,terr_dev,ofname  & 
                                     , lread_smooth_topofile  &
-                                    , lsmooth_topo_cubesph &
                                     , luse_multigrid &
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
@@ -49,7 +48,7 @@ CONTAINS
     REAL (KIND=dbl_kind), &
             DIMENSION(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo) :: t1_halo,t2_halo
 
-    LOGICAL, INTENT(IN)  :: lread_smooth_topofile , lsmooth_topo_cubesph
+    LOGICAL, INTENT(IN)  :: lread_smooth_topofile
     LOGICAL, INTENT(IN)  :: luse_multigrid, luse_prefilter, lstop_after_smoothing, lb4b_with_cesm2
     !!!LOGICAL, INTENT(IN), OPTIONAL  :: lregional_refinement
     CHARACTER(len=1024), INTENT(IN) :: ofname
@@ -82,7 +81,6 @@ CONTAINS
     use_prefilter = luse_prefilter 
     stop_after_smoothing = lstop_after_smoothing 
     b4b_with_cesm2 = lb4b_with_cesm2
-    smooth_topo_cubesph = lsmooth_topo_cubesph
 
 
     terr_in = terr
@@ -108,129 +106,125 @@ CONTAINS
 
     ! Smooth cubed sphere topography
     !--------------------------------------
-    IF (smooth_topo_cubesph) then
 
-      terr_sm = 0.
-      terr_dev = 0.
-
-
-      if (use_multigrid) then
-
-          write(*,*) "writing smooth topo to ",ofname
-
-         ncubex = ncube/4
-         nhalox = nhalo/4
-         NSCL_fx = NSCL_f/4
-         NSCL_cx = NSCL_c/4
-
-         if (use_prefilter) then
+     terr_sm = 0.
+     terr_dev = 0.
+     
+     
+     if (use_multigrid) then
+       
+       write(*,*) "writing smooth topo to ",ofname
+       
+       ncubex = ncube/4
+       nhalox = nhalo/4
+       NSCL_fx = NSCL_f/4
+       NSCL_cx = NSCL_c/4
+       
+       if (use_prefilter) then
          ! Need for consistency with CESM2 version. Also
          ! reduces number of searchable peaks which is good. 
-            rrfac1(:,:,:) = 1. ! disable refinement for pre-filter
-            call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, 2  &
-                                        , terr_sm,terr_dev,rrfac1  )
-            terr = terr_sm
-            terr_dev = 0.
-         endif 
-
-         do ip = 1,6 
-          terr_face = rr_factor(:,:,ip)
-          da_face   = da
-          call restrict2_consrv( terr_face , terr_face, da_face, da_face, ncube )
-          call restrict2_consrv( terr_face , terr_face,  da_face, da_face, ncube )
-          rrfacx(:,:,ip) = terr_face(1:ncubex,1:ncubex)
-         end do
-
-         do ip = 1,6 
-          terr_face = terr(:,:,ip)
-          da_face   = da
-          call restrict2_consrv( terr_face , terr_face, da_face, da_face, ncube )
-          call restrict2_consrv( terr_face , terr_face,  da_face, da_face, ncube )
-          terrx(:,:,ip) = terr_face(1:ncubex,1:ncubex)
-          dax(:,:)      = da_face(1:ncubex,1:ncubex)
-         end do
-
-           call smooth_intermediate_topo(terrx, dax, ncubex,nhalox, NSCL_fx,NSCL_cx &
-                                    , terr_smx,terr_devx , rrfacx )
-
-                !terr_smx = terrx
-         DO ip = 1, 6
-            CALL CubedSphereFillHalo(terr_smx, terr_smx_halo, ip, ncubex+1,nhalox)  
-         END DO
-
-                write(*,*) " now prolong "
-
-                !
-                !xxx ERROR in bounds: terr_smx_halo starts with 1-nhalo/4
-                !
-                !Got the following error with ne30pg3_Co0070_ridge:
-                !
-                ! At line 164 of file smooth_topo_cube.F90
-                ! Fortran runtime error: Array bound mismatch for dimension 1 of array 't1_halo' (3280/820)
-                !
-                !
-                !
-         do ip = 1,6 
-          t1_halo(1-nhalo: , 1-nhalo: ) = terr_smx_halo(: ,: , ip)
-          t2_halo(:,:)=0.
-          call prolong2( t1_halo(1-nhalo: , 1-nhalo:)  , t2_halo(1-nhalo: , 1-nhalo:), ncube+2*nhalo )
-          t1_halo = t2_halo
-          t2_halo=0.
-          call prolong2( t1_halo(1-nhalo: , 1-nhalo:) , t2_halo(1-nhalo: , 1-nhalo:), ncube+2*nhalo )
-          terr_sm(:,:,ip) = t2_halo(1:ncube,1:ncube)
-         end do
-
-         terr_dev = terr - terr_sm
-
-       else ! No Multigrid
-         if (.not.(b4b_with_cesm2)) then
-            write(*,*) "writing smooth topo to ",ofname
-            if (use_prefilter) then
-            ! Need for consistency with CESM2 version. Also
-            ! reduces number of searchable peaks which is good. 
-               call smooth_intermediate_topo(terr, da, ncube,nhalo, 1,NSCL_f &
-                                        , terr_sm,terr_dev,rr_factor  )
-               terr = terr_sm
-               terr_dev = 0.
-            end if 
-            call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, NSCL_c &
-                                    , terr_sm,terr_dev,rr_factor  )
-         else ! b4b w/ CESM2
-            call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, NSCL_c &
-                                    , terr_sm,terr_dev,rr_factor  )
-         end if   
-      endif
-
-
-      volterr_in=0.
-      volterr_sm=0.
-      do ip=1,6 
-         volterr_in =  volterr_in + sum( terr_in(:,:,ip) * da )
-         volterr_sm =  volterr_sm + sum( terr_sm(:,:,ip) * da )
-      end do
-      write(*,*) " Topo volume BEFORE smoother = ",volterr_in/(6*sum(da))
-      write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
-      write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
-
-  
-
-      
-      OPEN (unit = 711, file= trim(ofname) ,form="UNFORMATTED" )
-      write(711) ncube
-      WRITE(711) terr
-      WRITE(711) terr_sm
-      WRITE(711) terr_dev
-      WRITE(711) rr_factor
-      close(711)
-
-      if (stop_after_smoothing) STOP
-
-    endif ! (smooth_topo_cubesph)
-
-
+         rrfac1(:,:,:) = 1. ! disable refinement for pre-filter
+         call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, 2  &
+              , terr_sm,terr_dev,rrfac1  )
+         terr = terr_sm
+         terr_dev = 0.
+       endif
+       
+       do ip = 1,6 
+         terr_face = rr_factor(:,:,ip)
+         da_face   = da
+         call restrict2_consrv( terr_face , terr_face, da_face, da_face, ncube )
+         call restrict2_consrv( terr_face , terr_face,  da_face, da_face, ncube )
+         rrfacx(:,:,ip) = terr_face(1:ncubex,1:ncubex)
+       end do
+       
+       do ip = 1,6 
+         terr_face = terr(:,:,ip)
+         da_face   = da
+         call restrict2_consrv( terr_face , terr_face, da_face, da_face, ncube )
+         call restrict2_consrv( terr_face , terr_face,  da_face, da_face, ncube )
+         terrx(:,:,ip) = terr_face(1:ncubex,1:ncubex)
+         dax(:,:)      = da_face(1:ncubex,1:ncubex)
+       end do
+       
+       call smooth_intermediate_topo(terrx, dax, ncubex,nhalox, NSCL_fx,NSCL_cx &
+            , terr_smx,terr_devx , rrfacx )
+       
+       !terr_smx = terrx
+       DO ip = 1, 6
+         CALL CubedSphereFillHalo(terr_smx, terr_smx_halo, ip, ncubex+1,nhalox)  
+       END DO
+       
+       write(*,*) " now prolong "
+       
+       !
+       !xxx ERROR in bounds: terr_smx_halo starts with 1-nhalo/4
+       !
+       !Got the following error with ne30pg3_Co0070_ridge:
+       !
+       ! At line 164 of file smooth_topo_cube.F90
+       ! Fortran runtime error: Array bound mismatch for dimension 1 of array 't1_halo' (3280/820)
+       !
+       !
+       !
+       do ip = 1,6 
+         t1_halo(1-nhalo: , 1-nhalo: ) = terr_smx_halo(: ,: , ip)
+         t2_halo(:,:)=0.
+         call prolong2( t1_halo(1-nhalo: , 1-nhalo:)  , t2_halo(1-nhalo: , 1-nhalo:), ncube+2*nhalo )
+         t1_halo = t2_halo
+         t2_halo=0.
+         call prolong2( t1_halo(1-nhalo: , 1-nhalo:) , t2_halo(1-nhalo: , 1-nhalo:), ncube+2*nhalo )
+         terr_sm(:,:,ip) = t2_halo(1:ncube,1:ncube)
+       end do
+       
+       terr_dev = terr - terr_sm
+       
+     else ! No Multigrid
+       if (.not.(b4b_with_cesm2)) then
+         write(*,*) "writing smooth topo to ",ofname
+         if (use_prefilter) then
+           ! Need for consistency with CESM2 version. Also
+           ! reduces number of searchable peaks which is good. 
+           call smooth_intermediate_topo(terr, da, ncube,nhalo, 1,NSCL_f &
+                , terr_sm,terr_dev,rr_factor  )
+           terr = terr_sm
+           terr_dev = 0.
+         end if
+         call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, NSCL_c &
+              , terr_sm,terr_dev,rr_factor  )
+       else ! b4b w/ CESM2
+         call smooth_intermediate_topo(terr, da, ncube,nhalo, 1, NSCL_c &
+              , terr_sm,terr_dev,rr_factor  )
+       end if
+     endif
+     
+     
+     volterr_in=0.
+     volterr_sm=0.
+     do ip=1,6 
+       volterr_in =  volterr_in + sum( terr_in(:,:,ip) * da )
+       volterr_sm =  volterr_sm + sum( terr_sm(:,:,ip) * da )
+     end do
+     write(*,*) " Topo volume BEFORE smoother = ",volterr_in/(6*sum(da))
+     write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
+     write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
+     
+     
+     
+     
+     OPEN (unit = 711, file= trim(ofname) ,form="UNFORMATTED" )
+     write(711) ncube
+     WRITE(711) terr
+     WRITE(711) terr_sm
+     WRITE(711) terr_dev
+     WRITE(711) rr_factor
+     close(711)
+     
+     if (stop_after_smoothing) STOP
+     
   end SUBROUTINE smooth_intermediate_topo_wrap
    
-
+   
 
 !=============================================================================
   SUBROUTINE smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c &

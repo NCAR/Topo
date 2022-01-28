@@ -121,7 +121,6 @@ program convterr
   !--jtb
   !
   ! Cubed sphere terr is band-pass filtered using circular kernels
-  logical :: lsmooth_on_cubed_sphere = .FALSE.
 
   !                             *Radii* of smoothing circles
   integer :: ncube_sph_smooth_coarse = -1
@@ -181,7 +180,7 @@ program convterr
        grid_descriptor_fname,output_grid,intermediate_cubed_sphere_fname, &
        output_fname, externally_smoothed_topo_file,&
        lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis, & 
-       lsmooth_on_cubed_sphere,lfind_ridges,lridgetiles,lzero_negative_peaks, &
+       lfind_ridges,lridgetiles,lzero_negative_peaks, &
        lregional_refinement,rrfac_max, &
        !
        ! variables for interal smoothing of topography
@@ -247,8 +246,6 @@ program convterr
         call print_help
      case( 'i' )
         intermediate_cubed_sphere_fname = optarg
-     case( 'l' )
-        lsmooth_on_cubed_sphere = .TRUE.
      case( 'm' )
         luse_multigrid = .TRUE.
      case( 'n' )
@@ -417,6 +414,9 @@ program convterr
          end if
          if (luse_multigrid) then
             proctag = trim(proctag)//'_MulG'
+            write(*,*) "Using multi-grid option"
+          else
+            write(*,*) "NOT using multi-grid option (default)"
          end if
          if (luse_prefilter) then
             proctag = trim(proctag)//'_PF'
@@ -462,7 +462,6 @@ program convterr
          write(*,*) " Final output file  ::  ",trim(output_fname)
 
 !++jtb
-   !!!!  if (lsmooth_on_cubed_sphere) then
       NSCL_c = 2*ncube_sph_smooth_coarse
       NSCL_f = 2*ncube_sph_smooth_fine
       nhalo  = NSCL_c  !*ncube_sph_smooth_iter ! 120      
@@ -492,7 +491,6 @@ program convterr
                                           rrfac, terr_dev , &
                                           smooth_fname, &
                                           lread_smooth_topofile, &
-                                          lsmooth_on_cubed_sphere, &
                                           luse_multigrid, &
                                           luse_prefilter, &
                                           lstop_after_smoothing, &
@@ -517,7 +515,6 @@ program convterr
                                         terr_sm, terr_dev , &
                                         smooth_fname, &
                                         lread_smooth_topofile, & 
-                                        lsmooth_on_cubed_sphere, &
                                         luse_multigrid, &
                                         luse_prefilter, &
                                         lstop_after_smoothing, &
@@ -743,7 +740,6 @@ program convterr
     WRITE(*,*) "if ocean mask PHIS=0.0"
   end if
 
-  !!! if(lsmooth_on_cubed_sphere ) terr_target=0.0 ???
   terr_target=0.0
   sgh_target=0.0
   sgh_uf_target=0.0
@@ -761,17 +757,6 @@ program convterr
     
     wt = weights_all(counti,1)
    
-    ! Get rid of this ridiculous if.not. crap !!
-    !if( .not.(lsmooth_on_cubed_sphere) ) then
-    !  if (lzero_out_ocean_point_phis.AND.landfrac_target(i).lt.0.01_r8) then
-    !    terr_target(i) = 0.0_r8   !5*terr_target(i)
-    !  end if
-    !  sgh_target(i) = sgh_target(i)+wt*((terr_target(i)-terr(ii))**2)/area_target(i)
-    !else
-    !  sgh_target  (i) = sgh_target  (i) + wt*(terr_dev(ix,iy,ip))**2/area_target(i)
-    !  terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
-    !endif
-
     sgh_target  (i) = sgh_target  (i) + wt*(terr_dev(ix,iy,ip))**2/area_target(i)
     terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
     sgh_uf_target(i) = sgh_uf_target(i)+wt*((terr_uf_target(i)-terr(ii))**2)/area_target(i)
