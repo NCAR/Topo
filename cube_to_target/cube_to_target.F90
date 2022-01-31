@@ -105,7 +105,7 @@ program convterr
   !
   ! PHIS is smoothed by other software/dynamical core
   !
-  logical :: lexternal_smooth_terr = .TRUE. ! lexternal_smooth_terr = .FALSE. is NOT supported currently
+  logical :: lexternal_smooth_terr = .FALSE. ! lexternal_smooth_terr = .FALSE. is NOT supported currently
   !
   ! set PHIS=0.0 if LANDFRAC<0.01
   !
@@ -224,6 +224,8 @@ program convterr
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
+
+
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
@@ -297,7 +299,46 @@ program convterr
      end select
   end do
 
+  !
+  ! calculate some defaults if not provided
+  !
+  if (nwindow_halfwidth<0) then
+    nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+    if (nwindow_halfwidth<5) then
+      write(*,*) "nwindow_halfwidth can not be < 4"
+      write(*,*) "setting nwindow_halfwidth=4"
+      nwindow_halfwidth = 4
+    end if
+  end if
 
+  write(*,*) "Namelist settings"
+  write(*,*) "================="
+  write(*,*)
+  write(*,*) "lb4b_with_cesm2                 = ",lb4b_with_cesm2
+  write(*,*) "ncube_sph_smooth_coarse         = ",ncube_sph_smooth_coarse
+  write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
+  write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
+  write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
+  write(*,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
+  write(*,*) "luse_multigrid                  = ",luse_multigrid
+  write(*,*) "output_grid                     = ",trim(output_grid)
+  write(*,*) "luse_prefilter                  = ",luse_prefilter
+  write(*,*) "lfind_ridges                    = ",lfind_ridges
+  write(*,*) "lregional_refinement            = ",lregional_refinement
+  write(*,*) "rrfac_max                       = ",rrfac_max
+  write(*,*) "lzero_out_ocean_point_phis      = ",lzero_out_ocean_point_phis
+  write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
+  write(*,*) "lridgetiles                     = ",lridgetiles
+  write(*,*) "ncube_sph_smooth_iter           = ",ncube_sph_smooth_iter
+  !        lexternal_smooth_terr = .TRUE.
+  ! lsmooth_terr = .TRUE.
+  !        lread_smooth_topofile = .TRUE.
+  write(*,*) "nridge_subsample                = ",nridge_subsample
+  write(*,*) "ncube_coarse                    = ",ncube_coarse
+  write(*,*) "norder                          = ",norder
+  write(*,*) "nmono                           = ",nmono
+  write(*,*) "npd                             = ",npd
+  write(*,*) " "
 !  UNIT=221
 !  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
 !  READ( UNIT=UNIT, NML=topoparams)
