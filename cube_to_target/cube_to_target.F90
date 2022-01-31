@@ -98,15 +98,6 @@ program convterr
   ! namelist variables
   !
   !
-  ! if smoothed PHIS is available SGH needs to be recomputed  to account for the sub-grid-scale
-  ! variability introduced by the smoothing
-  !
-  logical :: lsmooth_terr = .FALSE. 
-  !
-  ! PHIS is smoothed by other software/dynamical core
-  !
-  logical :: lexternal_smooth_terr = .FALSE. ! lexternal_smooth_terr = .FALSE. is NOT supported currently
-  !
   ! set PHIS=0.0 if LANDFRAC<0.01
   !
   logical :: lzero_out_ocean_point_phis = .FALSE.
@@ -148,7 +139,7 @@ program convterr
   ! For internal smoothing (experimental at this point)
   ! ===================================================
   !
-  ! if smoothing is internal (lexternal_smooth_terr=.FALSE.) choose ncube_coarse
+  ! choose ncube_coarse
   !                                   
   integer :: ncube_coarse = 45
   integer :: norder = 3
@@ -179,7 +170,7 @@ program convterr
   namelist /topoparams/ &
        grid_descriptor_fname,output_grid,intermediate_cubed_sphere_fname, &
        output_fname, externally_smoothed_topo_file,&
-       lsmooth_terr, lexternal_smooth_terr,lzero_out_ocean_point_phis, & 
+       lzero_out_ocean_point_phis, & 
        lfind_ridges,lridgetiles,lzero_negative_peaks, &
        lregional_refinement,rrfac_max, &
        !
@@ -194,33 +185,27 @@ program convterr
   type(option_s):: opts(28)
   opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
   opts(2) = option_s( "coarse_radius", .true., 'c' )
-  opts(3) = option_s( "externally_smoothed_topo_file", .true., 'e' )
-  opts(4) = option_s( "fine_radius",  .true.,  'f' )
-  opts(5) = option_s( "grid_descriptor_file", .true., 'g' )
-  opts(6) = option_s( "help", .false.,  'h')
-  opts(7) = option_s( "intermediate_cs_name", .true.,  'i')
-  opts(8) = option_s( "smooth_on_cs", .false.,  'l')
-  opts(9) = option_s( "use_multigrid", .false.,  'm')
-  opts(10) = option_s( "nwindow_halfwidth", .true.,  'n')
-  opts(11) = option_s( "output_grid", .true.,  'o')
-  opts(12) = option_s( "use_prefilter", .false.,  'p')
-  opts(13) = option_s( "find_ridges", .false.,  'r')
-  opts(14) = option_s( "regional_refinement", .false.,  's')
-  opts(15) = option_s( "external_smooth_terr",.false., 't')
-  opts(16) = option_s( "smooth_terr",.false., 'u')
-  opts(17) = option_s( "stop_after_smooth", .false.,  'x')
-  opts(18) = option_s( "rrfac_max",.true.,'y')
-  opts(19) = option_s( "zero_out_ocean_point_phis",.false.,'z')
-  opts(20) = option_s( "zero_negative_peaks",.false.,'0')
-  opts(21) = option_s( "ridge2tiles",.false.,'1')
-  opts(22) = option_s( "ncube_sph_smooth_iter",.true.,'2')
-  opts(23) = option_s( "read_smooth_topofile",.false.,'3')
-  opts(24) = option_s( "nridge_subsample",.true.,'4')
-  opts(25) = option_s( "ncube_coarse",.true.,'5')
-  opts(26) = option_s( "norder",.true.,'6')
-  opts(27) = option_s( "nmono",.true.,'7')
-  opts(28) = option_s( "npd",.true.,'8')
-
+  opts(3) = option_s( "fine_radius",  .true.,  'f' )
+  opts(4) = option_s( "grid_descriptor_file", .true., 'g' )
+  opts(5) = option_s( "help", .false.,  'h')
+  opts(6) = option_s( "intermediate_cs_name", .true.,  'i')
+  opts(7) = option_s( "use_multigrid", .false.,  'm')
+  opts(8) = option_s( "nwindow_halfwidth", .true.,  'n')
+  opts(9) = option_s( "output_grid", .true.,  'o')
+  opts(10) = option_s( "use_prefilter", .false.,  'p')
+  opts(11) = option_s( "find_ridges", .false.,  'r')
+  opts(12) = option_s( "regional_refinement", .false.,  's')
+  opts(13) = option_s( "stop_after_smooth", .false.,  'x')
+  opts(14) = option_s( "rrfac_max",.true.,'y')
+  opts(15) = option_s( "zero_out_ocean_point_phis",.false.,'z')
+  opts(16) = option_s( "zero_negative_peaks",.false.,'0')
+  opts(17) = option_s( "ridge2tiles",.false.,'1')
+  opts(18) = option_s( "ncube_sph_smooth_iter",.true.,'2')
+  opts(19) = option_s( "nridge_subsample",.true.,'4')
+  opts(20) = option_s( "ncube_coarse",.true.,'5')
+  opts(21) = option_s( "norder",.true.,'6')
+  opts(22) = option_s( "nmono",.true.,'7')
+  opts(23) = option_s( "npd",.true.,'8')
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -229,7 +214,7 @@ program convterr
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "bc:f:g:hi:lmn:o:prsxy:z012:4:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
      case( 'b' )
@@ -237,8 +222,6 @@ program convterr
      case( 'c' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_coarse = ioptarg
-     case( 'e' )
-        externally_smoothed_topo_file = optarg
      case( 'f' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_fine = ioptarg
@@ -261,10 +244,6 @@ program convterr
         lfind_ridges = .TRUE.
      case( 's' )
         lregional_refinement = .TRUE.
-     case( 't' )
-        lexternal_smooth_terr = .TRUE.
-     case( 'u' )
-        lsmooth_terr = .TRUE.
      case( 'x' )
         lstop_after_smoothing = .TRUE.
      case( 'y' )
@@ -279,8 +258,6 @@ program convterr
      case( '2' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_iter = ioptarg
-     case( '3' )
-        lread_smooth_topofile = .TRUE.
      case( '4' )
         read (optarg, '(i3)') ioptarg
         nridge_subsample = ioptarg
@@ -330,9 +307,6 @@ program convterr
   write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
   write(*,*) "lridgetiles                     = ",lridgetiles
   write(*,*) "ncube_sph_smooth_iter           = ",ncube_sph_smooth_iter
-  !        lexternal_smooth_terr = .TRUE.
-  ! lsmooth_terr = .TRUE.
-  !        lread_smooth_topofile = .TRUE.
   write(*,*) "nridge_subsample                = ",nridge_subsample
   write(*,*) "ncube_coarse                    = ",ncube_coarse
   write(*,*) "norder                          = ",norder
@@ -757,11 +731,6 @@ program convterr
   !
   WRITE(*,*) "compute variance with respect to 3km cubed-sphere data: SGH"
   !  
-  IF (lsmooth_terr) THEN
-    call smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file,&
-         nlon,nlat)
-  END IF
-  !
   ! compute mean height (globally) of topography about sea-level for target grid filtered elevation
   !
   vol_target = 0.0
@@ -889,26 +858,21 @@ subroutine print_help
   write (6,*) "Usage: cube_to_target [options] ..."
   write (6,*) "Options:"
   write (6,*) "-c, --coarse_radius=<int>                      "
-  write (6,*) "-e, --externally_smoothed_topo_file=<string>   "
   write (6,*) "-f, --fine_radius=<int>                        "
   write (6,*) "-g, --grid_descriptor_file=<string>            "
   write (6,*) "-i, --intermediate_cs_name=<string>            "
-  write (6,*) "-l, --smooth_on_cs             Enable [default:disabled]"
   write (6,*) "-m, --use_multigrid            Enable [default:disabled]"
   write (6,*) "-n, --nwindow_halfwidth=<int>                  "
   write (6,*) "-o, --output_grid=<string>                     "
   write (6,*) "-p, --use_prefilter            Enable [default:disabled]"
   write (6,*) "-r, --find_ridges              Enable [default:disabled]"
   write (6,*) "-s, --regional_refinement      Enable [default:disabled]"
-  write (6,*) "-t, --external_smooth_terr     Enable [default:disabled]"
-  write (6,*) "-u, --smooth_terr              Enable [default:disabled]"
   write (6,*) "-x, --stop_after_smooth        Enable [default:disabled]"
   write (6,*) "-y, --rrfac_max=<int>                          "
   write (6,*) "-z, --zero_out_ocean_point_phis  Enable [default:disabled]"
   write (6,*) "-0, --zero_negative_peaks        Enable [default:disabled]"
   write (6,*) "-1, --ridge2tiles                Enable [default:disabled]"
   write (6,*) "-2, --ncube_sph_smooth_iter=<int>             "
-  write (6,*) "-3, --read_smooth_topofile       Enable [default:disabled]"
   write (6,*) "-4, --nridge_subsample=<int>             "
   write (6,*) "-5, --ncube_coarse=<int>                 "
   write (6,*) "-6, --norder=<int>                       "
