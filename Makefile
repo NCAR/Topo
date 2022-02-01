@@ -51,12 +51,6 @@ topo_file=cube_to_target/output/$(output_grid)_$(case_name).nc
 #
 all: $(smooth_topo_file) $(topo_file)
 
-create_netCDF_from_rawdata/$(raw_data)-rawdata.nc:
-	test -f $(create_netCDF_from_rawdata/$(raw_data)-rawdata.nc) ||(cd create_netCDF_from_rawdata; make)
-
-$(intermediate_cubed_sphere_file): create_netCDF_from_rawdata/$(raw_data)-rawdata.nc
-	test -f $(intermediate_cubed_sphere_file) || (cd bin_to_cube; make; chmod +x run.sh; ./run.sh $(raw_data) $(ncube))
-
 cesm_compliance:
 	(cd cesm_meta_data_compliance; $(python_path) meta.py ../cube_to_target/output/$(model)_$(res)-$(raw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).nc $(model)_$(res)-$(r#aw_data)-$(smoothing)-intermediate_ncube$(ncube)-$(aniso).metadata)	
 
@@ -114,10 +108,6 @@ namelists: $(topo_file_nl) $(topo_smooth_nl)
 	echo "  $(topo_file_nl)"
 	echo "  $(topo_smooth_nl)"
 
-# generate ~1km GMTED2010 data from source
-##
-create_netCDF_from_rawdata/gmted2010/mea.nc:
-	test -f create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc || (cd create_netCDF_from_rawdata/gmted2010; chmod +x unpack.sh; ./unpack.sh)
 
 clean:
 	cd bin_to_cube; $(MAKE) clean

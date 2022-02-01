@@ -11,8 +11,6 @@
 #	nwindow_halfwidth		: ??? (must be 3 digits, e.g., 085)
 #					  typically nwindow_halfwidth=ncube_sph_smooth_coarse/(sqrt(2))
 #	stitch				: use stitched data (stitch=-stitch) or not (stitch=)
-#       lread_smooth_topofile           : logical indicating if smoothed topography needs to be generated (false)
-#                                       : or read in from a .dat file (true)
 #
 #
 # OR SIMPLY SET A PRE-DEFINED CASE NAME FROM LIST BELOW
@@ -78,7 +76,6 @@ export case=ne30pg3_Co0060_ridge
 case_found=False
 export nwindow_halfwidth=-1
 export lregional_refinement=.false.
-export lread_smooth_topofile=.true.
 export scrip_repo=/glade/p/cesmdata/cseg/inputdata/atm/cam/coords
 #
 # Supported setups
@@ -507,7 +504,6 @@ ifeq ($(case),ARCTIC_30_x4_C0060_ridge)
   export ncube=3000
   export lregional_refinement=.true.
   export rrfac_max=4
-  export lread_smooth_topofile=.false.
   case_found=
 endif
 #
@@ -522,7 +518,6 @@ ifeq ($(case),ARCTICGRIS_30_x8_C0060_ridge)
   export ncube=3000
   export lregional_refinement=.true.
   export rrfac_max=8
-  export lread_smooth_topofile=.false.
   case_found=
 endif
 #
@@ -537,7 +532,6 @@ ifeq ($(case),CONUS_30_x8_Co0060_ridge)
   export ncube=3000
   export lregional_refinement=.true.
   export rrfac_max=8
-  export lread_smooth_topofile=.false.
   case_found=
 endif
 
