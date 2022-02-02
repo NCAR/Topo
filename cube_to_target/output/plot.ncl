@@ -2,7 +2,7 @@ begin
 ;************************************************
 ; open netCDF file
 ;************************************************
-  a = addfile("ne30pg3_nc3000_Co060_Fi001_NoAniso.nc","r")
+  a = addfile("diff.nc","r")
   ;
   ; SCRIP file
   ;

@@ -16,7 +16,7 @@ MODULE remap
        aa  = 1.0                       ,&
        tiny= 1.0E-9  ,&
        bignum = 1.0E20
-  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny!1.0E-12  !CAM-SE add           
+  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny!1.0E-12
 
   contains
 

@@ -1,15 +1,13 @@
-!  DATE CODED:   2011 to 2015
+!
 !  DESCRIPTION:  Remap topo data from cubed-sphere grid to target grid using rigorous remapping
 !                (Lauritzen, Nair and Ullrich, 2010, J. Comput. Phys.)
 !
 !  Author: Peter Hjort Lauritzen (pel@ucar.edu), AMP/CGD/NCAR 
+!          Julio Bacmeister, AMP/CGD/NCAR 
+!          Adam Herrington, AMP/CGD/NCAR
 !
-!  JT: Added sample parameter functionality using f90getopt.
 ! ex: ./cube_to_target --help to get list of long and short option names.
 !
-! ex: ./cube_to_target --intermediate_cs_name='/glade/p/cgd/amp/aherring/grids/topo/cubedata/gmted2010_modis-ncube3000-stitch.nc' \
-!                      --grid_descriptor_file='/glade/p/cgd/amp/jet/collections/TopoCESM2.121321/cube_to_target/inputdata/grid-descriptor-file/ne30pg3.nc' \
-!                       -l --fine_radius=001 --coarse_radius=060 -m -p -x
 program convterr
   use shr_kind_mod, only: r8 => shr_kind_r8
   use smooth_topo_cube_sph
@@ -81,26 +79,17 @@ program convterr
   !
   ! for internal filtering
   !
-!  real(r8), allocatable, dimension(:,:) :: weights_all_coarse
-!  integer , allocatable, dimension(:,:) :: weights_eul_index_all_coarse
-!  integer , allocatable, dimension(:)   :: weights_lgr_index_all_coarse
-!  real(r8), allocatable, dimension(:)   :: area_target_coarse
-!  real(r8), allocatable, dimension(:,:) :: da_coarse,da
   real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:),rrfac_tmp(:,:,:)
-!  real(r8), allocatable, dimension(:,:) :: recons,centroids
   integer :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
   real(r8) :: volterr, volterr_sm  
-!  
-!  integer :: jmax_segments_coarse,jall_coarse,ncube_coarse
-
   !
   ! namelist variables
   !
   !
   ! set PHIS=0.0 if LANDFRAC<0.01
   !
-  logical :: lzero_out_ocean_point_phis = .FALSE.
+  logical :: lzero_out_ocean_point_phis = .FALSE.! currently broken
   !
   !++jtb
   logical :: lzero_negative_peaks = .TRUE.
@@ -116,7 +105,7 @@ program convterr
   !                             *Radii* of smoothing circles
   integer :: ncube_sph_smooth_coarse = -1
   integer :: ncube_sph_smooth_fine   = -1
-  integer :: ncube_sph_smooth_iter   = -1
+  integer :: ncube_sph_smooth_iter   =  1
   !
   ! namelist variables for detection of sub-grid scale orientation
   ! i.e., "ridge finding"
@@ -136,23 +125,13 @@ program convterr
 !---ARH
   !
   !
-  ! For internal smoothing (experimental at this point)
-  ! ===================================================
-  !
-  ! choose ncube_coarse
-  !                                   
-  integer :: ncube_coarse = 45
-  integer :: norder = 3
-  integer :: nmono  = 1
-  integer :: npd    = 1
-  !
   INTEGER :: UNIT
 
   INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget, ioptarg
   integer, allocatable :: isg(:)
 
-  character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname,  externally_smoothed_topo_file
-  character(len=1024) :: output_grid, ofile, proctag, smooth_fname, remap_fname, smoothprm, rdgwin, rdglist_fname
+  character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
+  character(len=1024) :: output_grid, ofile
   character(len=1024) :: rrfactor_fname
 
   character(len=8)  :: date
@@ -167,22 +146,7 @@ program convterr
     integer :: npeaks
 #endif
 
-  namelist /topoparams/ &
-       grid_descriptor_fname,output_grid,intermediate_cubed_sphere_fname, &
-       output_fname, externally_smoothed_topo_file,&
-       lzero_out_ocean_point_phis, & 
-       lfind_ridges,lridgetiles,lzero_negative_peaks, &
-       lregional_refinement,rrfac_max, &
-       !
-       ! variables for interal smoothing of topography
-       !
-       ncube_coarse,norder,nmono,npd,ncube_sph_smooth_coarse,ncube_sph_smooth_fine, &
-       ncube_sph_smooth_iter,nwindow_halfwidth,nridge_subsample,lread_smooth_topofile, &
-       luse_multigrid,luse_prefilter,lstop_after_smoothing, &
-       lb4b_with_cesm2 
- 
-  ! START For longopts only
-  type(option_s):: opts(28)
+  type(option_s):: opts(19)
   opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
   opts(2) = option_s( "coarse_radius", .true., 'c' )
   opts(3) = option_s( "fine_radius",  .true.,  'f' )
@@ -202,10 +166,6 @@ program convterr
   opts(17) = option_s( "ridge2tiles",.false.,'1')
   opts(18) = option_s( "ncube_sph_smooth_iter",.true.,'2')
   opts(19) = option_s( "nridge_subsample",.true.,'4')
-  opts(20) = option_s( "ncube_coarse",.true.,'5')
-  opts(21) = option_s( "norder",.true.,'6')
-  opts(22) = option_s( "nmono",.true.,'7')
-  opts(23) = option_s( "npd",.true.,'8')
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -214,7 +174,7 @@ program convterr
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "bc:f:g:hi:lmn:o:prsxy:z012:4:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "bc:f:g:hi:lmn:o:prsxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
      case( 'b' )
@@ -251,6 +211,8 @@ program convterr
         rrfac_max = ioptarg
      case( 'z' )
         lzero_out_ocean_point_phis = .TRUE.
+        write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
+        STOP
      case( '0' )
         lzero_negative_peaks = .TRUE.
      case( '1' )
@@ -261,30 +223,33 @@ program convterr
      case( '4' )
         read (optarg, '(i3)') ioptarg
         nridge_subsample = ioptarg
-     case( '5' )
-        read (optarg, '(i3)') ioptarg
-        ncube_coarse = ioptarg
-     case( '6' )
-        read (optarg, '(i3)') ioptarg
-        norder = ioptarg
-     case( '7' )
-        read (optarg, '(i3)') ioptarg
-        nmono = ioptarg
-     case( '8' )
-        read (optarg, '(i3)') ioptarg
-        npd = ioptarg
      end select
   end do
 
   !
   ! calculate some defaults if not provided
   !
-  if (nwindow_halfwidth<0) then
-    nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
-    if (nwindow_halfwidth<5) then
-      write(*,*) "nwindow_halfwidth can not be < 4"
-      write(*,*) "setting nwindow_halfwidth=4"
-      nwindow_halfwidth = 4
+  !
+  ! calculate some defaults if not provided
+  !
+  if (lfind_ridges) then
+    if (nwindow_halfwidth<0) then
+      nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+      !
+      ! nwindow_halfwidth must be even
+      !
+      if (MOD(nwindow_halfwidth,2).ne.0) then
+        nwindow_halfwidth = nwindow_halfwidth-1
+      end if
+      if (nwindow_halfwidth<5) then
+        write(*,*) "nwindow_halfwidth can not be < 4"
+        write(*,*) "setting nwindow_halfwidth=4"
+        nwindow_halfwidth = 4
+      end if
+    end if
+    if (ncube_sph_smooth_coarse<5) then
+      write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
+      STOP
     end if
   end if
 
@@ -308,11 +273,8 @@ program convterr
   write(*,*) "lridgetiles                     = ",lridgetiles
   write(*,*) "ncube_sph_smooth_iter           = ",ncube_sph_smooth_iter
   write(*,*) "nridge_subsample                = ",nridge_subsample
-  write(*,*) "ncube_coarse                    = ",ncube_coarse
-  write(*,*) "norder                          = ",norder
-  write(*,*) "nmono                           = ",nmono
-  write(*,*) "npd                             = ",npd
   write(*,*) " "
+  write(*,*) "lread_smooth_topofile           = ",lread_smooth_topofile
 !  UNIT=221
 !  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
 !  READ( UNIT=UNIT, NML=topoparams)
@@ -416,172 +378,175 @@ program convterr
 !---ARH
 
 
-
-         !--- Make output filenames
-         !----------------------------------------------------------------------
-         !  Final gridded nc file 
-         !---------------------------
-         call DATE_AND_TIME( DATE=date,TIME=time)
-
-         proctag=' '
-         if (lb4b_with_cesm2) then
-            proctag = trim(proctag)//'_CESM2'
-         end if
-         if (luse_multigrid) then
-            proctag = trim(proctag)//'_MulG'
-            write(*,*) "Using multi-grid option"
-          else
-            write(*,*) "NOT using multi-grid option (default)"
-         end if
-         if (luse_prefilter) then
-            proctag = trim(proctag)//'_PF'
-         end if
-
-         if (lregional_refinement) then
-            proctag = trim(proctag)//'_RR'
-         end if
-
-         write( smoothprm , &
-             "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3 )" ) & 
-         ncube, ncube_sph_smooth_coarse, ncube_sph_smooth_fine
-
-         if(lfind_ridges) then
-           if (nwindow_halfwidth<1) then
-             write(*,*) "nwindow_halfwidth must be >0",nwindow_halfwidth
-             stop
-           endif
-         write( rdgwin , &
-             "('_Nsw',i0.3 )" ) nwindow_halfwidth  
-         else
-           rdgwin = '_NoAniso'
-         end if  
-         
-         write(*,*)" Smooth ", trim(smoothprm)
-         write(*,*)" Procs  ", trim(proctag)
-         write(*,*)" Ridge  ", trim(rdgwin)
-
-
-         smooth_fname  = './inputdata/smooth_topo_cube/topo_smooth'//trim(smoothprm)//trim(proctag)//'_v02.dat'
-         rdglist_fname = './inputdata/RdgList'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
-         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.dat'
-         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'.nc'
-
-!         remap_fname   = './output/remap'//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.dat'
-!         output_fname  = './output/'//trim(output_grid)//trim(smoothprm)//trim(proctag)//trim(rdgwin)//'_'//date//'.nc'
-
-
-
-
-         write(*,*) " smoothed topo file ::  ",trim(smooth_fname)
-         write(*,*) " remap to cube file ::  ",trim(remap_fname)
-         write(*,*) " Final output file  ::  ",trim(output_fname)
-
 !++jtb
-      NSCL_c = 2*ncube_sph_smooth_coarse
-      NSCL_f = 2*ncube_sph_smooth_fine
-      nhalo  = NSCL_c  !*ncube_sph_smooth_iter ! 120      
+  NSCL_c = 2*ncube_sph_smooth_coarse
+  NSCL_f = 2*ncube_sph_smooth_fine
+  nhalo  = NSCL_c  !*ncube_sph_smooth_iter ! 120      
+  
+  allocate( terr_sm(ncube,ncube,6)  )
+  allocate( terr_dev(ncube,ncube,6) )
+  allocate( terr_2(ncube,ncube,6)  )
+  terr_2 = reshape( terr,    (/ncube,ncube,6/) )
+  
+  write(*,*) " SMOOTHING on CUBED SPHERE 10/7/15 "
+  
+  ! This routine writes out an f77 unf file containing terr,terr_sm, and terr_dev
+  ! File also contains rr_factor for possible use by ridge finder
+  
+  if (NSCL_c > 0) then
+    !+++ARH
+    if (lregional_refinement) then
+      !Use 4X larger smoothing radius than that used for topography
+      NSCL_c = 4*2*ncube_sph_smooth_coarse
+      nhalo  = NSCL_c
+      
+      write(*,*) "rrfac_max",rrfac_max
+      
+      allocate( rrfac_tmp(ncube,ncube,6)  )
+      rrfac_tmp(:,:,:) = rrfac(:,:,:)
+      !
+      ! qqqq: ARH+JTB: double-check please
+      !
+      !      call  smooth_intermediate_topo_wrap (rrfac_tmp, da, ncube,nhalo, NSCL_f,NSCL_c, &
+      !           rrfac, terr_dev , &
+      !           smooth_fname, &
+      !           lread_smooth_topofile, &
+      !           luse_multigrid, &
+      !           luse_prefilter, &
+      !           lstop_after_smoothing, &
+      !           lb4b_with_cesm2 , &
+      !           rrfac_tmp )
+      call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter , & 
+           terr_sm, terr_dev,lread_smooth_topofile, rr_factor=rrfac_tmp)
+      
+      write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
+      !
+      !---rrfac limiter
+      rrfac = REAL(NINT(rrfac))
+      where (rrfac.gt.rrfac_max) rrfac = rrfac_max
+      
+      write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
+      
+      !!cube_file = 'rrfac_HMA.nc'
+      !!CALL wrt_cube(ncube,terr,rrfac,cube_file)
+    else
+      write(*,*) "qqq:", ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter,lread_smooth_topofile
+           
+      call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter , & 
+           terr_sm, terr_dev,lread_smooth_topofile)
+    end if
+!
+! qqqq: ARH+JTB: double-check please
+!
 
-      allocate( terr_sm(ncube,ncube,6)  )
-      allocate( terr_dev(ncube,ncube,6) )
-      allocate( terr_2(ncube,ncube,6)  )
-      terr_2 = reshape( terr,    (/ncube,ncube,6/) )
 
-      write(*,*) " SMOOTHING on CUBED SPHERE 10/7/15 "
-
-      ! This routine writes out an f77 unf file containing terr,terr_sm, and terr_dev
-      ! File also contains rr_factor for possible use by ridge finder
-
-      if (NSCL_c > 0) then
-!+++ARH
-         if (lregional_refinement) then
-           !Use 4X larger smoothing radius than that used for topography
-           NSCL_c = 4*2*ncube_sph_smooth_coarse
-           nhalo  = NSCL_c
-
-           write(*,*) "rrfac_max",rrfac_max
-
-           allocate( rrfac_tmp(ncube,ncube,6)  )
-           rrfac_tmp(:,:,:) = rrfac(:,:,:)
-           call  smooth_intermediate_topo_wrap (rrfac_tmp, da, ncube,nhalo, NSCL_f,NSCL_c, &
-                                          rrfac, terr_dev , &
-                                          smooth_fname, &
-                                          lread_smooth_topofile, &
-                                          luse_multigrid, &
-                                          luse_prefilter, &
-                                          lstop_after_smoothing, &
-                                          lb4b_with_cesm2 , &
-                                          rrfac_tmp )
-           write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
-           !
-           !---rrfac limiter
-           rrfac = REAL(NINT(rrfac))
-           where (rrfac.gt.rrfac_max) rrfac = rrfac_max
-
-           write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
-
-           !!cube_file = 'rrfac_HMA.nc'
-           !!CALL wrt_cube(ncube,terr,rrfac,cube_file)
-
-         end if
-         NSCL_c = 2*ncube_sph_smooth_coarse
-         nhalo  = NSCL_c 
-!---ARH
-         call  smooth_intermediate_topo_wrap (terr_2, da, ncube,nhalo, NSCL_f,NSCL_c, & 
-                                        terr_sm, terr_dev , &
-                                        smooth_fname, &
-                                        lread_smooth_topofile, & 
-                                        luse_multigrid, &
-                                        luse_prefilter, &
-                                        lstop_after_smoothing, &
-                                        lb4b_with_cesm2 , & 
-                                        rrfac )
-           write(*,*)" Out we goooo !!"
-      else
-         terr_dev = terr_2
-      endif
-
-      volterr=0.
-      volterr_sm=0.
-      do np=1,6 
-         volterr    =  volterr    + sum( terr_2(:,:,np) * da )
-         volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
-      end do
-
-      write(*,*) " Topo volume BEFORE smoother = ",volterr/(6*sum(da))
-      write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
-      write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
-
-      terr_sm = (volterr/volterr_sm)*terr_sm
-      volterr_sm=0.
-      do np=1,6 
-         volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
-      end do
-
-      write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
-
-      if(lfind_ridges) then
-        ! Guessing NSW should be ~1/SQRT(2.)
-        ! of smoothing radius
-        nsw = nwindow_halfwidth
-        ! following formula for nsb ensures
-        ! compatibilty with CESM2.0 Co60.  
-        ! Temporary fix (3/31/2017)
-        nsb = INT( nsw/6 )+1 !nridge_subsample
-        nhalo=2*nsw
-
-        call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) 
-        if(lregional_refinement) then
-          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
-                           , rdglist_fname & 
-                           , lregional_refinement=lregional_refinement &
-                           , rr_factor = rrfac  )
-        else
-          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
-                           , rdglist_fname )
-        end if
-
- 
-      endif
+!    NSCL_c = 2*ncube_sph_smooth_coarse
+!    nhalo  = NSCL_c 
+!    !---ARH
+!    call  smooth_intermediate_topo_wrap (terr_2, da, ncube,nhalo, NSCL_f,NSCL_c, & 
+!         terr_sm, terr_dev , &
+!         smooth_fname, &
+!         lread_smooth_topofile, & 
+!         luse_multigrid, &
+!         luse_prefilter, &
+!         lstop_after_smoothing, &
+!         lb4b_with_cesm2 , & 
+!         rrfac )
+!    write(*,*)" Out we goooo !!"
+  else
+    terr_dev = terr_2
+  endif
+  
+  volterr=0.
+  volterr_sm=0.
+  do np=1,6 
+    volterr    =  volterr    + sum( terr_2(:,:,np) * da )
+    volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
+  end do
+  
+  write(*,*) " Topo volume BEFORE smoother = ",volterr/(6*sum(da))
+  write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
+  write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
+  
+  terr_sm = (volterr/volterr_sm)*terr_sm
+  volterr_sm=0.
+  do np=1,6 
+    volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
+  end do
+  
+  write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
+  
+  !
+  ! TopoCESM2 original code
+  !
+  !      if(lfind_ridges) then
+  !        ! Guessing NSW should be ~1/SQRT(2.)
+  !        ! of smoothing radius
+  !        nsw = nwindow_halfwidth
+  !        ! following formula for nsb ensures
+  !        ! compatibilty with CESM2.0 Co60.  
+  !        ! Temporary fix (3/31/2017)
+  !        nsb = INT( nsw/6 )+1 !nridge_subsample
+  !        nhalo=2*nsw
+  !
+  !        call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) 
+  !        if(lregional_refinement) then
+  !          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
+  !                           , rdglist_fname & 
+  !                           , lregional_refinement=lregional_refinement &
+  !                           , rr_factor = rrfac  )
+  !        else
+  !          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
+  !                             ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
+  !        end if
+  !
+  ! 
+  !      endif
+  
+  if(lfind_ridges) then
+    nsw = nwindow_halfwidth
+    nsb = nridge_subsample
+    nhalo=2*nsw
+    
+    !--- Make output filename
+    !----------------------------------------------------------------------
+    call DATE_AND_TIME( DATE=date,TIME=time)
+    
+    write( ofile , &
+         "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
+         '_Co',i0.3,'_Fi',i0.3)" ) & 
+         ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
+    
+    if (.not.(lzero_negative_peaks) ) then
+      output_fname = './output/'//trim(output_grid)//trim(ofile)//'._test_v3.nc'
+    else
+      output_fname = './output/'//trim(output_grid)//trim(ofile)//'_'//date//'.nc'
+    end if
+    write(*,*) "Writing CESM forcing file for Aniso OGW to "
+    write(*,*) output_fname
+    !----------------------------------------------------------------------
+    
+    call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
+    if(lregional_refinement) then
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
+           ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
+           lregional_refinement=lregional_refinement,           &
+           rr_factor = rrfac  )
+    else
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
+           ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
+    endif
+    
+  else
+    call DATE_AND_TIME( DATE=date,TIME=time)
+    write( ofile , &
+         "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+         ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
+  endif
+  output_fname = './output/'//trim(output_grid)//trim(ofile)//'_'//date//'.nc'
+  write(*,*) "Writing CESM forcing WITHOUT Ridge data to "
+  write(*,*) output_fname
+    
 
   !*********************************************************
   !
@@ -773,33 +738,35 @@ program convterr
 
   end do
 
-  if( (lfind_ridges) ) then
-
-     if(lregional_refinement) then
-     call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-         weights_eul_index_all(1:jall,:), & 
-         weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-         nreconstruction,ntarget,nhalo,nsb,nsw, &
-         ncube_sph_smooth_coarse,ncube_sph_smooth_fine,remap_fname, &
-         lzero_negative_peaks,luse_multigrid,luse_prefilter,lb4b_with_cesm2 &
-                          , lregional_refinement=lregional_refinement &
-                          , rr_factor = rrfac  )
-     else
-     call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-         weights_eul_index_all(1:jall,:), & 
-         weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-         nreconstruction,ntarget,nhalo,nsb,nsw, &
-         ncube_sph_smooth_coarse,ncube_sph_smooth_fine,remap_fname, &
-         lzero_negative_peaks,luse_multigrid,luse_prefilter,lb4b_with_cesm2)
-     end if
-
-        if (lridgetiles) then 
-           call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
-                weights_eul_index_all(1:jall,:), & 
-                weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-                nreconstruction,ntarget,nhalo,nsb)
-        endif
-
+  if(lfind_ridges) then
+    if(lregional_refinement) then
+!
+! ! qqqq: ARH+JTB: merge not done
+!
+!      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
+!           weights_eul_index_all(1:jall,:), & 
+!           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+!           nreconstruction,ntarget,nhalo,nsb,nsw, &
+!           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+!           output_grid,&
+!           lregional_refinement=lregional_refinement, rr_factor = rrfac  )
+      write(*,*) "not merged"
+      stop
+    else
+      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
+           weights_eul_index_all(1:jall,:), & 
+           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+           nreconstruction,ntarget,nhalo,nsb,nsw, &
+           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           output_grid )
+    end if
+    
+    if (lridgetiles) then 
+      call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
+           weights_eul_index_all(1:jall,:), & 
+           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+           nreconstruction,ntarget,nhalo,nsb)
+    endif
   endif
 
   write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
@@ -874,10 +841,6 @@ subroutine print_help
   write (6,*) "-1, --ridge2tiles                Enable [default:disabled]"
   write (6,*) "-2, --ncube_sph_smooth_iter=<int>             "
   write (6,*) "-4, --nridge_subsample=<int>             "
-  write (6,*) "-5, --ncube_coarse=<int>                 "
-  write (6,*) "-6, --norder=<int>                       "
-  write (6,*) "-7, --nmono=<int>                        "
-  write (6,*) "-8, --npdy=<int>                         "
   stop
 end subroutine print_help
 !
@@ -2064,16 +2027,13 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
   
   INTEGER, INTENT(INOUT) :: jall !anticipated number of weights
   INTEGER, INTENT(IN)    :: ncube, ngauss, ntarget, jmax_segments, ncorner, nreconstruction
-!!+++ARH
-!  REAL(R8), DIMENSION(ntarget), INTENT(IN) :: target_center_lon,target_center_lat
-!!---ARH  
+
   INTEGER, DIMENSION(jall,3), INTENT(OUT) :: weights_eul_index_all
   REAL(R8), DIMENSION(jall,nreconstruction)  , INTENT(OUT) :: weights_all
   INTEGER, DIMENSION(jall)  , INTENT(OUT) :: weights_lgr_index_all
   
   REAL(R8), DIMENSION(ncorner,ntarget), INTENT(INOUT) :: target_corner_lon, target_corner_lat
   
-!xxx  INTEGER,  DIMENSION(ncorner+1) :: ipanel_array, ipanel_tmp
   INTEGER,  DIMENSION(9*(ncorner+1)) :: ipanel_tmp,ipanel_array
   REAL(R8), DIMENSION(ncorner)  :: lat, lon
   REAL(R8), DIMENSION(0:ncube+2):: xgno, ygno
@@ -2136,14 +2096,7 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
     CALL remove_duplicates_latlon(ncorner,target_corner_lon(:,i),target_corner_lat(:,i),&
          ncorner_this_cell,lon,lat,1.0E-10)
   
-!+++ARH
-!      ldbg = .FALSE.
-!      IF (i.eq.17427) ldbg = .TRUE.
-!---ARH
- 
     IF (ldbg) THEN
-      !WRITE(*,*) "itarget",i
-      !WRITE(*,*) "cell center ",target_center_lon(i),target_center_lat(i)
       WRITE(*,*) "number of vertices ",ncorner_this_cell
       WRITE(*,*) "vertices locations lon,",lon(1:ncorner_this_cell)*rad2deg
       WRITE(*,*) "vertices locations lat,",lat(1:ncorner_this_cell)*rad2deg
@@ -2271,134 +2224,6 @@ SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_a
 
 END SUBROUTINE overlap_weights
 
-SUBROUTINE overlap_weights_cube_to_cube(ncube_coarse,weights_lgr_index_all,weights_eul_index_all,weights_all,&
-     jall,ncube,ngauss,jmax_segments,nreconstruction)
-  use shr_kind_mod, only: r8 => shr_kind_r8
-  use remap
-  IMPLICIT NONE
-  
-  INTEGER, PARAMETER :: ncorner = 4
-  INTEGER, INTENT(INOUT) :: jall !anticipated number of weights
-  INTEGER, INTENT(IN)    :: ncube, ncube_coarse,ngauss, jmax_segments,  nreconstruction
-  
-  INTEGER, DIMENSION(jall,2), INTENT(OUT) :: weights_eul_index_all
-  REAL(R8), DIMENSION(jall,nreconstruction)  , INTENT(OUT) :: weights_all
-  INTEGER, DIMENSION(jall,2)  , INTENT(OUT) :: weights_lgr_index_all
-  
-  
-  REAL(R8), DIMENSION(0:ncube+2):: xgno, ygno
-  REAL(R8), DIMENSION(ncube_coarse+1):: xgno_coarse, ygno_coarse
-  REAL(R8), DIMENSION(0:ncorner+1) :: xcell, ycell
-  
-  REAL(R8), DIMENSION(ngauss) :: gauss_weights, abscissae
-  
-  REAL(R8) :: da, tmp, da_coarse
-  REAL(R8) :: percentage_complete
-  REAL(r8) :: pi,pih,piq
-  REAL    (r8)            :: area_sphere_wt
-  INTEGER :: i, j,jx,jy,jcollect
-  integer :: alloc_error,count
-  
-!  REAL    (r8), PARAMETER :: rad2deg   = 180.0/pi
-  
-  real(r8), allocatable, dimension(:,:) :: weights
-  integer , allocatable, dimension(:,:) :: weights_eul_index
-  
-  
-  LOGICAL:: ldbg = .FAlSE.
-  
-  INTEGER :: jall_anticipated
-
-  pi=4.D0*DATAN(1.D0)
-  pih=pi/2.D0
-  piq=pi/4.D0
-  
-  jall_anticipated = jall
-  
-  !
-  da = pih/DBLE(ncube)
-  xgno(0) = -bignum
-  DO i=1,ncube+1
-    xgno(i) = TAN(-piq+(i-1)*da)
-  END DO
-  xgno(ncube+2) = bignum
-  ygno = xgno
-
-  da_coarse = pih/DBLE(ncube_coarse)
-  DO i=1,ncube_coarse+1
-    xgno_coarse(i) = TAN(-piq+(i-1)*da_coarse)
-  END DO
-  ygno_coarse = xgno_coarse
-  
-  CALL glwp(ngauss,gauss_weights,abscissae)
-
-  allocate (weights(jmax_segments,nreconstruction),stat=alloc_error )
-  allocate (weights_eul_index(jmax_segments,2),stat=alloc_error )
-  
-  tmp = 0.0
-  jall = 1
-  count=0
-  area_sphere_wt = 0.0D0
-
-  DO j=1,ncube_coarse
-    DO i=1,ncube_coarse
-      count = count+1
-      percentage_complete = DBLE(100*count)/DBLE((ncube_coarse)*(ncube_coarse))
-      !        call sleep(1)       ! On most Unix systems
-      call progress_bar(" ", count, percentage_complete)
-      
-      xcell(1) = xgno_coarse(i  );ycell(1) = ygno_coarse(j  );
-      xcell(2) = xgno_coarse(i  );ycell(2) = ygno_coarse(j+1);
-      xcell(3) = xgno_coarse(i+1);ycell(3) = ygno_coarse(j+1);
-      xcell(4) = xgno_coarse(i+1);ycell(4) = ygno_coarse(j  );
-      xcell(5) = xcell(1)        ;ycell(5) = ycell(1);
-      xcell(0) = xcell(4)        ;ycell(0) = ycell(4);
-      
-      jx = CEILING((-piq+(i-1)*da_coarse+piq) / da)
-      jy = CEILING((-piq+(j-1)*da_coarse+piq) / da)
-      
-      CALL compute_weights_cell(xcell(0:ncorner+1),ycell(0:ncorner+1),&
-           jx,jy,nreconstruction,xgno,ygno,&
-           1, ncube+1, 1,ncube+1, tmp,&
-           ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
-           ncube,0,ncorner,ldbg,i+(j-1)*ncube_coarse)
-      
-      weights_all(jall:jall+jcollect-1,1:nreconstruction)  = weights(1:jcollect,1:nreconstruction)
-      area_sphere_wt = area_sphere_wt + tmp
-      
-      weights_eul_index_all(jall:jall+jcollect-1,:) = weights_eul_index(1:jcollect,:)
-
-      weights_lgr_index_all(jall:jall+jcollect-1,  1) = i
-      weights_lgr_index_all(jall:jall+jcollect-1,  2) = j
-      
-      jall = jall+jcollect
-      IF (jall>jall_anticipated) THEN
-          WRITE(*,*) "more weights than anticipated"
-          WRITE(*,*) "increase jall"
-          STOP
-        END IF
-        IF (ldbg) WRITE(*,*) "jcollect",jcollect
-      END DO
-    END DO
-  jall = jall-1
-  WRITE(*,*) "actual number of weights",jall
-  WRITE(*,*) "anticipated number of weights",jall_anticipated
-  IF (jall>jall_anticipated) THEN
-    WRITE(*,*) "anticipated number of weights < actual number of weights"
-    WRITE(*,*) "increase jall!"
-    STOP
-  END IF
-  WRITE(*,*) MINVAL(weights_all(1:jall,1)),MAXVAL(weights_all(1:jall,1))
-  IF (ABS((area_sphere_wt-(4.D0*pi/6.D0))/area_sphere_wt)>0.001) THEN
-    WRITE(*,*) "sum of all weights does not match the surface area of the sphere"
-    WRITE(*,*) "sum of all weights is : ",area_sphere_wt
-    WRITE(*,*) "surface area of sphere: ",4.0*pi/6.0
-    STOP
-  ELSE
-    WRITE(*,*) "Absolute error in spanning surface area of panel:",(area_sphere_wt-(4.D0*pi/6.D0))/((4.D0*pi/6.D0))
-    WRITE(*,*) "MIN/MAX of area weight                          :",MINVAL(weights_all(1:jall,1)),MAXVAL(weights_all(1:jall,1))
-  END IF
-END SUBROUTINE overlap_weights_cube_to_cube
 
 
 !------------------------------------------------------------------------------
@@ -2754,246 +2579,6 @@ SUBROUTINE remove_duplicates_latlon(n_in,lon_in,lat_in,n_out,lon_out,lat_out,tin
   n_out = k
 END SUBROUTINE remove_duplicates_latlon
 
-SUBROUTINE internally_smooth(terr,terr_smooth,n,ncube_coarse,norder,nmono,npd,jmax_segments,ngauss)
-  use shr_kind_mod, only: r8 => shr_kind_r8
-  use reconstruct
-
-  IMPLICIT NONE
-  integer               , intent(in) :: ncube_coarse,norder,n,nmono,npd,jmax_segments,ngauss
-  real(r8), dimension(n), intent(in) :: terr
-  real(r8), dimension(n), intent(out) :: terr_smooth
-
-  real(r8), allocatable, dimension(:,:)   :: weights_all_coarse
-  integer , allocatable, dimension(:,:)   :: weights_eul_index_all_coarse
-  integer , allocatable, dimension(:,:)   :: weights_lgr_index_all_coarse
-  real(r8), allocatable, dimension(:,:,:) :: area_target_coarse
-  real(r8), allocatable, dimension(:,:)   :: da_coarse,da
-  real(r8), allocatable, dimension(:,:,:)  :: centroids
-  real(r8), allocatable, dimension(:,:,:,:) :: recons
-  real(r8), allocatable, dimension(:,:,:) :: terr_coarse !for internal smoothing
-  
-  integer :: ncoarse,nreconstruction,ncube,alloc_error,status,i
-  integer :: jall_coarse,ii,jp,jx,jy,count
-  integer :: jx_coarse,jy_coarse
-  real(r8) :: vol_tmp, wt
-  REAL    (r8) :: pi
-
-
-  pi = 4.D0*DATAN(1.D0)
-
-  nreconstruction = 1
-  IF (norder>1) THEN
-    IF (norder == 2) THEN
-      nreconstruction = 3
-    ELSEIF (norder == 3) THEN
-      nreconstruction = 6
-    END IF
-  END IF
-  !      WRITE(*,*) "untested software - uncomment this line of you know what you are doing!"
-  !      STOP
-  !
-  !*****************************************************
-  !
-  ! smoothing topography internally
-  !
-  !*****************************************************
-  !
-  WRITE(*,*) "internally smoothing orography"
-  !
-  ! smooth topography internally
-  !            
-  ncube = INT(SQRT(DBLE(n/6)))
-  ncoarse = ncube_coarse*ncube_coarse*6
-  WRITE(*,*) "resolution of coarse grid", 90.0/ncube_coarse
-  allocate ( terr_coarse(ncube_coarse,ncube_coarse,6),stat=alloc_error )
-  if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for terr'
-    stop
-  end if
-  allocate ( area_target_coarse(ncube_coarse,ncube_coarse,6),stat=alloc_error)
-  
-  jall_coarse = (ncube*ncube*7) !anticipated number of weights
-  WRITE(*,*) "anticipated",jall_coarse
-  allocate (weights_all_coarse(jall_coarse,nreconstruction),stat=alloc_error )
-  allocate (weights_eul_index_all_coarse(jall_coarse,2),stat=alloc_error )
-  allocate (weights_lgr_index_all_coarse(jall_coarse,2),stat=alloc_error )
-
-      !
-  !
-  !
-  write(*,*) "computing weights",ncube_coarse,ncube
-  CALL overlap_weights_cube_to_cube(ncube_coarse,weights_lgr_index_all_coarse,&
-       weights_eul_index_all_coarse,weights_all_coarse,&
-       jall_coarse,ncube,ngauss,jmax_segments,nreconstruction)  
-  write(*,*) "done computing weights",jall_coarse
-
-  allocate ( dA_coarse(ncube_coarse,ncube_coarse),stat=alloc_error )
-  CALL EquiangularAllAreas(ncube_coarse, dA_coarse)
-  !
-  ! coarsen
-  !
-  terr_coarse = 0.D0
-  do jp=1,6
-    do count=1,jall_coarse
-      jx_coarse   = weights_lgr_index_all_coarse(count,1)
-      jy_coarse   = weights_lgr_index_all_coarse(count,2)
-      !
-      jx  = weights_eul_index_all_coarse(count,1)
-      jy  = weights_eul_index_all_coarse(count,2)
-      !
-      ii = (jp-1)*ncube*ncube+(jy-1)*ncube+jx
-      wt = weights_all_coarse(count,1)
-      
-      terr_coarse(jx_coarse,jy_coarse,jp) = terr_coarse(jx_coarse,jy_coarse,jp)+&
-           wt*terr(ii)/dA_coarse(jx_coarse,jy_coarse) 
-    end do
-  end do
-  !
-  ! Check volume of coarsened topography
-  !
-  vol_tmp     = 0.D0
-  DO jp=1,6
-    DO jy=1,ncube_coarse
-      DO jx=1,ncube_coarse
-        vol_tmp = vol_tmp+terr_coarse(jx,jy,jp)*dA_coarse(jx,jy)
-      END DO
-    END DO
-  END DO
-  WRITE(*,*) "Volume of coarsened cubed-sphere terrain           :",vol_tmp
-
-
-  IF (norder>1) THEN
-    ALLOCATE(recons   (nreconstruction-1, ncube_coarse,ncube_coarse,6), STAT=status)
-    ALLOCATE(centroids(nreconstruction-1, ncube_coarse,ncube_coarse), STAT=status)
-    CALL get_reconstruction(terr_coarse,norder, nmono, recons, npd,da_coarse,&
-         ncube_coarse,nreconstruction,centroids)
-    SELECT CASE (nmono) 
-    CASE (0)
-      WRITE(*,*) "coarse grid reconstructions are not filtered with shape-preserving filter"
-    CASE (1)
-      WRITE(*,*) "coarse grid reconstructions are filtered with shape-preserving filter"
-    CASE DEFAULT
-      WRITE(*,*) "nmono out of range: ",nmono
-      STOP
-    END SELECT
-    SELECT CASE (0)
-    CASE (0)
-      WRITE(*,*) "coarse grid reconstructions are not filtered with positive definite filter"
-    CASE (1)
-      WRITE(*,*) "coarse grid reconstructions filtered with positive definite filter"
-    CASE DEFAULT
-      WRITE(*,*) "npd out of range: ",npd
-      STOP
-    END SELECT
-  END IF
-  DEALLOCATE(dA_coarse)
-  
-  
-  ! 
-  ! do mapping
-  !
-  allocate ( dA(ncube,ncube),stat=alloc_error )
-  CALL EquiangularAllAreas(ncube, dA)
-  terr_smooth = 0.D0
-!  recons = 0.0
-  do jp=1,6
-    do count=1,jall_coarse
-      jx_coarse   = weights_lgr_index_all_coarse(count,1)
-      jy_coarse   = weights_lgr_index_all_coarse(count,2)
-      !
-      jx  = weights_eul_index_all_coarse(count,1)
-      jy  = weights_eul_index_all_coarse(count,2)
-      !
-      i  = (jp-1)*ncube_coarse*ncube_coarse+(jy_coarse-1)*ncube_coarse+jx_coarse
-      ii = (jp-1)*ncube*ncube+(jy-1)*ncube+jx
-      !
-
-      
-      if (norder==1) then
-        wt = weights_all_coarse(count,1)
-        terr_smooth(ii) = terr_smooth(ii) + wt*terr_coarse(jx_coarse,jy_coarse,jp)/dA(jx,jy)
-      end if
-      if (norder==2) then
-        terr_smooth(ii) = terr_smooth(ii) + (weights_all_coarse(count,1)*(&
-             !
-             ! all constant terms 
-             !
-             terr_coarse(jx_coarse,jy_coarse,jp) &
-             - recons(1,jx_coarse,jy_coarse,jp)*centroids(1,jx_coarse,jy_coarse) &
-             - recons(2,jx_coarse,jy_coarse,jp)*centroids(2,jx_coarse,jy_coarse) &
-             )+&
-             !
-             ! linear terms
-             !
-             weights_all_coarse(count,2)*recons(1,jx_coarse,jy_coarse,jp)+&
-             weights_all_coarse(count,3)*recons(2,jx_coarse,jy_coarse,jp)&
-             )/dA(jx,jy)
-      end if
-      if (norder==3) then
-        terr_smooth(ii) = terr_smooth(ii) + (weights_all_coarse(count,1)*(&
-             !
-             ! all constant terms 
-             !
-             terr_coarse(jx_coarse,jy_coarse,jp) &
-             - recons(1,jx_coarse,jy_coarse,jp)*centroids(1,jx_coarse,jy_coarse) &
-             - recons(2,jx_coarse,jy_coarse,jp)*centroids(2,jx_coarse,jy_coarse) &
-             !
-             + recons(3,jx_coarse,jy_coarse,jp)*(2.D0*centroids(1,jx_coarse,jy_coarse)**2-centroids(3,jx_coarse,jy_coarse))&
-             + recons(4,jx_coarse,jy_coarse,jp)*(2.D0*centroids(2,jx_coarse,jy_coarse)**2-centroids(4,jx_coarse,jy_coarse))&
-             !
-             + recons(5,jx_coarse,jy_coarse,jp)*(2.D0*centroids(1,jx_coarse,jy_coarse)*centroids(2,jx_coarse,jy_coarse)&
-             -centroids(5,jx_coarse,jy_coarse))&
-             )+&
-             !
-             ! linear terms
-             !
-             weights_all_coarse(count,2)*(&
-             
-             recons(1,jx_coarse,jy_coarse,jp)&
-             
-            - recons(3,jx_coarse,jy_coarse,jp)*2.D0*centroids(1,jx_coarse,jy_coarse)&
-             - recons(5,jx_coarse,jy_coarse,jp)*    centroids(2,jx_coarse,jy_coarse)&
-             )+&
-             !
-             weights_all_coarse(count,3)*(&
-             recons(2,jx_coarse,jy_coarse,jp)&
-             !
-             - recons(4,jx_coarse,jy_coarse,jp)*2.D0*centroids(2,jx_coarse,jy_coarse)&
-             - recons(5,jx_coarse,jy_coarse,jp)*    centroids(1,jx_coarse,jy_coarse)&
-             )+&
-             !
-               ! quadratic terms
-             !
-             weights_all_coarse(count,4)*recons(3,jx_coarse,jy_coarse,jp)+&
-             weights_all_coarse(count,5)*recons(4,jx_coarse,jy_coarse,jp)+&
-             weights_all_coarse(count,6)*recons(5,jx_coarse,jy_coarse,jp))/dA(jx,jy)
-      end if
-
-    end do
-  end do
-  if (norder>1) then
-    DEALLOCATE(centroids)
-    DEALLOCATE(recons)
-  end if
-  DEALLOCATE(weights_all_coarse)
-  !
-  ! Check volume of smoothed topography
-  !
-  write(*,*) "start data"
-  vol_tmp     = 0.D0
-  DO jp=1,6
-    DO jy=1,ncube
-      DO jx=1,ncube
-        ii = (jp-1)*ncube*ncube+(jy-1)*ncube+jx
-        vol_tmp = vol_tmp+terr_smooth(ii)*dA(jx,jy)
-      END DO
-    END DO
-  END DO
-  WRITE(*,*) "Volume of smoothed cubed-sphere terrain           :",vol_tmp
-  write(*,*) "end data"
-  deallocate(da)
-
-    END SUBROUTINE internally_smooth
 
 
 
