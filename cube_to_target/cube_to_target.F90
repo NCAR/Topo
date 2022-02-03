@@ -116,7 +116,8 @@ program convterr
   integer :: nwindow_halfwidth = -1
   !                             
   !                             for backwards compat with CESM2.0
-  integer :: nridge_subsample = -1
+  !                             Not used, 0 here for naming
+  integer :: nridge_subsample = 0 !-1
   !
   logical :: lridgetiles = .FALSE.
 !+++ARH
