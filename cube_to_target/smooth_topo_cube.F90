@@ -147,10 +147,10 @@ CONTAINS
        daxx(:,:,np) = da
     end do                                
     DO np = 1, 6
-     !CALL CubedSphereFillHalo_Linear_extended(terr, terr_halo(:,:,np), np, ncube+1,nhalo)  
-     !CALL CubedSphereFillHalo_Linear_extended(daxx, da_halo(:,:,np), np, ncube+1,nhalo)  
-     CALL CubedSphereFillHalo(terr, terr_halo, np, ncube+1,nhalo)  
-     CALL CubedSphereFillHalo(daxx, da_halo, np, ncube+1,nhalo)  
+     CALL CubedSphereFillHalo_Linear_extended(terr, terr_halo(:,:,np), np, ncube+1,nhalo)  
+     CALL CubedSphereFillHalo_Linear_extended(daxx, da_halo(:,:,np), np, ncube+1,nhalo)  
+     !CALL CubedSphereFillHalo(terr, terr_halo, np, ncube+1,nhalo)  
+     !CALL CubedSphereFillHalo(daxx, da_halo, np, ncube+1,nhalo)  
     END DO
     deallocate( daxx )
 
@@ -185,177 +185,179 @@ CONTAINS
     terr_halo_rw = terr_halo
 
 
-      if (NSCL_f > 1 ) then
+    if (NSCL_f > 1 ) then
       NSM=NSCL_f
       NS2=NSM/2
-
-       write(*,*)" smoothing fine scle w/" ,NSCL_f
-
+      
+      write(*,*)" smoothing fine scle w/" ,NSCL_f
+      
       allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
       allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
-
+      
       i00 = ncube/2
       dalp   = alph(i00+ns2 )-alph(i00)
       diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
-
+      
       terr_halo_fx = 0.0
-
+      
 #ifdef DEBUGRIDGE
       DO np=4,4
         DO j=2500,3000
-        DO i=550,1350
+          DO i=550,1350
 #else
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
-        DO i=1-nhalo+ns2,ncube+nhalo-ns2
+          DO i=1-nhalo+ns2,ncube+nhalo-ns2
 #endif
-           volt0  = terr_halo(i,j,np)*da_halo(i,j,np)
-           volt1 = 0.
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              dalp = alph(iix)-alph(i)
-              dbet = beta(jjx)-beta(j)
-              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-              wt1p(i2,j2) = da_halo(iix,jjx,np)
-              terr_patch(i2,j2) = terr_halo(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
-              if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
-                terr_patch(i2,j2)=0.
-                wt1p(i2,j2)      =0.
-              end if
-              volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
-           end do
-           end do
-
-           if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
-
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              terr_halo_fx(iix,jjx,np) = terr_halo_fx(iix,jjx,np) + terr_patch(i2,j2)
-           end do
-           end do
-        END DO
+            volt0  = terr_halo(i,j,np)*da_halo(i,j,np)
+            volt1 = 0.
+            do j2=-ns2,ns2
+              do i2=-ns2,ns2
+                jjx = j+j2
+                iix = i+i2
+                dalp = alph(iix)-alph(i)
+                dbet = beta(jjx)-beta(j)
+                diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
+                wt1p(i2,j2) = da_halo(iix,jjx,np)
+                terr_patch(i2,j2) = terr_halo(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
+                if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
+                  terr_patch(i2,j2)=0.
+                  wt1p(i2,j2)      =0.
+                end if
+                volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
+              end do
+            end do
+            
+            if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
+            
+            do j2=-ns2,ns2
+              do i2=-ns2,ns2
+                jjx = j+j2
+                iix = i+i2
+                terr_halo_fx(iix,jjx,np) = terr_halo_fx(iix,jjx,np) + terr_patch(i2,j2)
+              end do
+            end do
+          END DO
         END DO
       END DO
-
+      
       deallocate( wt1p )
       deallocate( terr_patch )
+      
+    else
+      write(*,*)" No fine scale smoother "
+      terr_halo_fx  = terr_halo
+    endif
+    
+    
+    
+    NSM=NSCL_c
+    NS2=NSM/2
+    
+    allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
+    allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
+    
+    i00 = ncube/2
+    dalp   = alph(i00+ns2 )-alph(i00)
+    diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
+    
+    !terr_halo_sm    = 0.0
+    terr_halo_fx_sv = terr_halo_fx
 
-      else
-       write(*,*)" No fine scale smoother "
-       terr_halo_fx  = terr_halo
-      endif
-
-
-
-      NSM=NSCL_c
-      NS2=NSM/2
-
-      allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
-      allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
-
-      i00 = ncube/2
-      dalp   = alph(i00+ns2 )-alph(i00)
-      diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
-
-      !terr_halo_sm    = 0.0
-      terr_halo_fx_sv = terr_halo_fx
-
-write(*,*) "LIMITS in smoother "
-write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
-
-
-      do ismi = 1,SMITER
+    write(*,*) "LIMITS in smoother "
+    write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
+    
+    
+    do ismi = 1,SMITER
       terr_halo_sm =  0.0
 #ifdef DEBUGRIDGE
       DO np=4,4
         DO j=2500,3000
-        DO i=300,1100
+          DO i=300,1100
 #else
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
-        DO i=1-nhalo+ns2,ncube+nhalo-ns2
+          DO i=1-nhalo+ns2,ncube+nhalo-ns2
 #endif
-
-
-           volt0  = terr_halo_fx(i,j,np)*da_halo(i,j,np)
-           volt1 = 0.
-
+                  
+            
+            volt0  = terr_halo_fx(i,j,np)*da_halo(i,j,np)
+            volt1 = 0.
+            
 #ifdef USELATFAC   
-              call CubedSphereRLLFromABP(alph(i), beta(j) , np , lon_ij, lat_ij ) ! Results in radians 
-              latfactor = 1. / cos( lat_ij )
-              latfactor = min(latfactor, 3.0 )
+            call CubedSphereRLLFromABP(alph(i), beta(j) , np , lon_ij, lat_ij ) ! Results in radians 
+            latfactor = 1. / cos( lat_ij )
+            latfactor = min(latfactor, 3.0 )
 #endif
-
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              dalp = alph(iix)-alph(i)
-              dbet = beta(jjx)-beta(j)
-              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-              wt1p(i2,j2) = da_halo(iix,jjx,np)
+                  
+            do j2=-ns2,ns2
+              do i2=-ns2,ns2
+                jjx = j+j2
+                iix = i+i2
+                dalp = alph(iix)-alph(i)
+                dbet = beta(jjx)-beta(j)
+                diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
+                wt1p(i2,j2) = da_halo(iix,jjx,np)
 #ifdef USELATFAC   
-              terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - latfactor * diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
+                terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - latfactor * diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
 #else
-              terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
+                terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
 #endif
-              if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
-                terr_patch(i2,j2)=0.
-                wt1p(i2,j2)      =0.
-              end if
-              volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
-           end do
-           end do
-
-           if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
-
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              terr_halo_sm(iix,jjx,np) = terr_halo_sm(iix,jjx,np) + terr_patch(i2,j2)
-           end do
-           end do
-        END DO
-                if (mod(j,1) ==0 ) write(*,*) "Crs Sm J = ",J, " Panel=",np," iter=",ismi
+                if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
+                  terr_patch(i2,j2)=0.
+                  wt1p(i2,j2)      =0.
+                end if
+                volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
+              end do
+            end do
+            
+            if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
+            
+            do j2=-ns2,ns2
+              do i2=-ns2,ns2
+                jjx = j+j2
+                iix = i+i2
+                terr_halo_sm(iix,jjx,np) = terr_halo_sm(iix,jjx,np) + terr_patch(i2,j2)
+              end do
+            end do
+          END DO
+          if (mod(j,1) ==0 ) write(*,*) "Crs Sm J = ",J, " Panel=",np," iter=",ismi
         END DO
       END DO
       !terr_halo_fx =  terr_halo_sm
-          do np=1,6 
-             terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
-          end do
-          do np=1,6 
-             CALL CubedSphereFillHalo(terr_sm, terr_halo_fx, np, ncube+1,nhalo)  
-          end do
+      do np=1,6 
+        terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
       end do
-
-      deallocate( wt1p )
-      deallocate( terr_patch )
-
-
-  do np=1,6
-    terr_dev(1:ncube,1:ncube,np) = terr_halo_fx_sv(1:ncube,1:ncube,np ) - terr_halo_sm(1:ncube,1:ncube,np )
-    terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
-  end do
-
-
-
-       OPEN (unit = 711, file= trim(ofile) ,form="UNFORMATTED" )
-       write(711) ncube
-       WRITE(711) terr
-       WRITE(711) terr_sm
-       WRITE(711) terr_dev
-
-       close(711)
-   
-!       STOP
-
-
-END SUBROUTINE smooth_intermediate_topo
-
+      if (ismi.ne.SMITER) then
+        do np=1,6 
+          CALL CubedSphereFillHalo_Linear_extended(terr_sm, terr_halo_fx(:,:,np), np, ncube+1,nhalo)  
+        end do
+      end if
+    end do
+    
+    deallocate( wt1p )
+    deallocate( terr_patch )
+    
+    
+    do np=1,6
+      terr_dev(1:ncube,1:ncube,np) = terr_halo_fx_sv(1:ncube,1:ncube,np ) - terr_halo_sm(1:ncube,1:ncube,np )
+      terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
+    end do
+    
+    
+    
+    OPEN (unit = 711, file= trim(ofile) ,form="UNFORMATTED" )
+    write(711) ncube
+    WRITE(711) terr
+    WRITE(711) terr_sm
+    WRITE(711) terr_dev
+    
+    close(711)
+    
+    !       STOP
+          
+    
+  END SUBROUTINE smooth_intermediate_topo
+  
 
 END MODULE smooth_topo_cube_sph

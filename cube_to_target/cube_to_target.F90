@@ -925,77 +925,145 @@ subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,outpu
   !
   print *,"Create variable for output"
   status = nf_def_var (foutid,'PHIS', NF_DOUBLE, 1, nid(1), terrid)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "PHIS error"
+  end if
 !+++ARH  
   !status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 1, nid(1), landfracid)
   !if (status .ne. NF_NOERR) call handle_err(status)
 !---ARH  
   status = nf_def_var (foutid,'SGH', NF_DOUBLE, 1, nid(1), sghid)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "SGH error"
+  end if
   
   status = nf_def_var (foutid,'SGH30', NF_DOUBLE, 1, nid(1), sgh30id)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "SGH30 error"
+  end if
   
   status = nf_def_var (foutid,'LANDM_COSLAT', NF_DOUBLE, 1, nid, landm_coslatid)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "LANDM_COSLAT error"
+  end if
   !
   status = nf_def_var (foutid,'area', NF_DOUBLE, 1, nid(1), areaid)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "area error"
+  end if
 
   status = nf_def_var (foutid,'lat', NF_DOUBLE, 1, nid(1), latvid)
-  if (status .ne. NF_NOERR) call handle_err(status)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "lat error"
+  end if
   
   latdim(1) = latvid
-  status = nf_def_var (foutid,'lon', NF_DOUBLE, 1, nid(1), lonvid)!xxxx
-  !status = nf_def_var (foutid,'lat', NF_DOUBLE, 1, latdim, latvid)!xxx
-
-  if (status .ne. NF_NOERR) call handle_err(status)
+  status = nf_def_var (foutid,'lon', NF_DOUBLE, 1, nid(1), lonvid)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "lon error"
+  end if
 
   if (Lfind_ridges) then 
 
      status = nf_def_var (foutid,'SGH_UF', NF_DOUBLE, 1, nid(1), sghufid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "SGH_UF error"
+     end if
      status = nf_def_var (foutid,'TERR_UF', NF_DOUBLE, 1, nid(1), terrufid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "TERR_UF error"
+     end if
      status = nf_def_var (foutid,'GBXAR', NF_DOUBLE, 1, nid(1), gbxarid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "GBXAR error"
+     end if
 
 
      status = nf_def_var (foutid,'MXDIS', NF_DOUBLE, 2, nid , mxdisid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "MXDIS error"
+     end if
      status = nf_def_var (foutid,'RISEQ', NF_DOUBLE, 2, nid , riseqid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "RISEQ error"
+     end if
      status = nf_def_var (foutid,'FALLQ', NF_DOUBLE, 2, nid , fallqid)
-     if (status .ne. NF_NOERR) call handle_err(status)
-
-
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "FALLQ error"
+     endif
 
      status = nf_def_var (foutid,'MXVRX', NF_DOUBLE, 2, nid , mxvrxid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "MXVRX error"
+     end if
+
      status = nf_def_var (foutid,'MXVRY', NF_DOUBLE, 2, nid , mxvryid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "MXVRY"
+     end if
 
      status = nf_def_var (foutid,'ANGLL', NF_DOUBLE, 2, nid , ang22id)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "ANGLL error"
+     end if
      status = nf_def_var (foutid,'ANGLX', NF_DOUBLE, 2, nid , anglxid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "ANGLX error"
+     endif
 
      status = nf_def_var (foutid,'ANISO', NF_DOUBLE, 2, nid , anisoid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "ANISO error"
+     end if
      status = nf_def_var (foutid,'ANIXY', NF_DOUBLE, 2, nid , anixyid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "ANIXY error"
+     end if
 
      status = nf_def_var (foutid,'HWDTH', NF_DOUBLE, 2, nid , hwdthid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "HWDTH error"
+     end if
      status = nf_def_var (foutid,'WGHTS', NF_DOUBLE, 2, nid , wghtsid)
-     if (status .ne. NF_NOERR) call handle_err(status)
-
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "WGHTS error"
+     end if
      status = nf_def_var (foutid,'CWGHT', NF_DOUBLE, 2, nid , cwghtid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "CWGHT error"
+     end if
      status = nf_def_var (foutid,'CLNGT', NF_DOUBLE, 2, nid , clngtid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "CLNGT error"
+     end if
      status = nf_def_var (foutid,'COUNT', NF_DOUBLE, 2, nid , countid)
-     if (status .ne. NF_NOERR) call handle_err(status)
+     if (status .ne. NF_NOERR) then
+       call handle_err(status)
+       write(*,*) "COUNT error"
+     end if
 
   endif
 
