@@ -353,6 +353,7 @@ program convterr
 
   allocate( rrfac(ncube,ncube,6)  )
   if (lregional_refinement) then
+    rrfac = 0.0
     !--- remap rrfac to cube
     !-----------------------------------------------------------------
     do counti=1,jall
