@@ -247,7 +247,7 @@ program convterr
         nwindow_halfwidth = 4
       end if
     end if
-    if (ncube_sph_smooth_coarse<4) then
+    if (ncube_sph_smooth_coarse<5) then
       write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
       STOP
     end if
