@@ -87,7 +87,7 @@ CONTAINS
 
     REAL (KIND=dbl_kind), allocatable ::  daxx(:,:,:)
     REAL (KIND=dbl_kind), allocatable ::  wt1p(:,:),terr_patch(:,:)
-    REAL(KIND=dbl_kind)  :: cosll, dx, dy ,dbet,dalp,diss,diss00,lon_ij,lat_ij,latfactor
+    REAL(KIND=dbl_kind)  :: cosll, dx, dy ,dbet,dalp,diss,diss00,lon_ij,lat_ij,diss0r,wt1ps
 
     INTEGER :: NOCTV , isx0, isx1, jsy0, jsy1,i2,j2,iix,jjx,i00,ncube_in_file
 
@@ -258,7 +258,7 @@ CONTAINS
               dbet = beta(jjx)-beta(j)
               diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
 
-                 diss0r = diss00 * rr_fact_halo( i,j,np )
+                 diss0r = diss00 ! * rr_fact_halo( i,j,np )
                  wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
 
               if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
@@ -271,7 +271,7 @@ CONTAINS
            do i2=-ns2x,ns2x
               jjx = j+j2
               iix = i+i2
-              terr_halo_sm(i,j,np) = terr_halo_sm(i,j,np) + terr_halo_fx(iix,jjx,np)*wt1p(i2,j2)/wt1ps
+              terr_halo_fx(i,j,np) = terr_halo(i,j,np) + terr_halo(iix,jjx,np)*wt1p(i2,j2)/wt1ps
            end do
            end do
            ! end of smoothing with conical kernel
@@ -280,7 +280,8 @@ CONTAINS
            !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
 
         END DO  !  i-loop   
-        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
+         !!if (mod(j,1) ==0 ) write(*,*) "Crs Sm J = ",J, " Panel=",np
+         !!if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
         END DO  ! j-loop
       END DO  ! panel loop
 #endif
@@ -368,7 +369,7 @@ CONTAINS
               dbet = beta(jjx)-beta(j)
               diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
 
-                 diss0r = diss00 * rr_fact_halo( i,j,np )
+                 diss0r = diss00 ! * rr_fact_halo( i,j,np )
                  wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
 
               if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
@@ -390,7 +391,8 @@ CONTAINS
            !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
 
         END DO  !  i-loop   
-        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
+         if (mod(j,1) ==0 ) write(*,*) "Crs Sm J = ",J, " Panel=",np
+         !if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
         END DO  ! j-loop
      END DO  ! Panel loop
 #endif
@@ -419,7 +421,7 @@ CONTAINS
     
     close(711)
     
-    !       STOP
+           !STOP
           
     
   END SUBROUTINE smooth_intermediate_topo

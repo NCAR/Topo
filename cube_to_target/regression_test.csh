@@ -2,7 +2,7 @@
 
 
 
-set case = "regress" 
+set case = "regress-3" 
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
