@@ -34,7 +34,8 @@ CONTAINS
 
 !=============================================================================
   SUBROUTINE smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, SMITER &
-                                    , terr_sm,terr_dev, lread_smooth_topofile, rr_factor)
+                                    , terr_sm,terr_dev, lread_smooth_topofile, rr_factor & 
+                                    , smoothtopofile )
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -76,9 +77,12 @@ CONTAINS
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
     REAL (KIND=dbl_kind), &
          DIMENSION(ncube,ncube,6), OPTIONAL, INTENT(IN)    :: rr_factor
+    CHARACTER(len=1024),  & 
+                         OPTIONAL, INTENT(IN)              :: smoothtopofile
 
-    INTEGER (KIND=int_kind):: np,i,j, ncube_halo,norx,nory,ipanel,x0,&
-         x1,y0,y1,initd,ii0,ii1,jj0,jj1,nctest,NSM,NS2,ismi,NSB
+    INTEGER (KIND=int_kind):: np,i,j, ncube_halo,norx,nory,ipanel
+    INTEGER (KIND=int_kind):: x0,x1,y0,y1,initd,ii0,ii1,jj0,jj1
+    INTEGER (KIND=int_kind):: nctest,NSM,NS2,ismi,NSB,ns2x
 
 
     REAL (KIND=dbl_kind), allocatable ::  daxx(:,:,:)
@@ -104,11 +108,15 @@ CONTAINS
 
     IF (read_in_precomputed) then
 
+       IF (.NOT.( PRESENT(smoothtopofile) ) ) THEN
+          write( ofile , &
+          "('./output/topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
+          ncube, NSCL_c/2, NSCL_f/2
+          ofile= trim(ofile)//'.dat'
+       ELSE
+          ofile= trim(smoothtopofile)
+       END IF
 
-       write( ofile , &
-       "('./output/topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
-        ncube, NSCL_c/2, NSCL_f/2
-       ofile= trim(ofile)//'.dat'
 
        OPEN (unit = 711, file= trim(ofile) ,form="UNFORMATTED" )
        READ(711) ncube_in_file
@@ -131,11 +139,7 @@ CONTAINS
        "('./output/topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
         ncube, NSCL_c/2, NSCL_f/2
 
-#ifdef USELATFAC   
-       ofile= trim(ofile)//'_LATFACTOR.dat'
-#else 
        ofile= trim(ofile)//'.dat'
-#endif
 
        write(*,*) " Will do smoothing of topo on cubed sphere "
        write(*,*) " Output will go to:"
@@ -200,19 +204,15 @@ CONTAINS
       
       terr_halo_fx = 0.0
       
-#ifdef DEBUGRIDGE
-      DO np=4,4
-        DO j=2500,3000
-          DO i=550,1350
-#else
+#if 1
+      write(*,*) "Convoluted smoothing option "
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
           DO i=1-nhalo+ns2,ncube+nhalo-ns2
-#endif
             volt0  = terr_halo(i,j,np)*da_halo(i,j,np)
             volt1 = 0.
             do j2=-ns2,ns2
-              do i2=-ns2,ns2
+            do i2=-ns2,ns2
                 jjx = j+j2
                 iix = i+i2
                 dalp = alph(iix)-alph(i)
@@ -225,7 +225,7 @@ CONTAINS
                   wt1p(i2,j2)      =0.
                 end if
                 volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
-              end do
+            end do
             end do
             
             if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
@@ -240,6 +240,50 @@ CONTAINS
           END DO
         END DO
       END DO
+#else
+      write(*,*) "Direct smoothting option "
+      DO np=1,6
+        DO j=1-nhalo+ns2,ncube+nhalo-ns2
+        DO i=1-nhalo+ns2,ncube+nhalo-ns2
+           ! Smooth topography with Conical kernel
+           !----------------------------------------------
+           wt1p(:,:)=0.
+           wt1ps=0.
+           ns2x = ns2  !/rr_fact_halo( i,j,np )
+           do j2=-ns2x,ns2x
+           do i2=-ns2x,ns2x
+              jjx = j+j2
+              iix = i+i2
+              dalp = alph(iix)-alph(i)
+              dbet = beta(jjx)-beta(j)
+              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
+
+                 diss0r = diss00 * rr_fact_halo( i,j,np )
+                 wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
+
+              if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
+              wt1ps = wt1ps + wt1p(i2,j2)
+           end do
+           end do
+
+
+           do j2=-ns2x,ns2x
+           do i2=-ns2x,ns2x
+              jjx = j+j2
+              iix = i+i2
+              terr_halo_sm(i,j,np) = terr_halo_sm(i,j,np) + terr_halo_fx(iix,jjx,np)*wt1p(i2,j2)/wt1ps
+           end do
+           end do
+           ! end of smoothing with conical kernel
+           !---------------------------------------
+           ! Block above is functionally like the one-line smoothing command here:
+           !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
+
+        END DO  !  i-loop   
+        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
+        END DO  ! j-loop
+      END DO  ! panel loop
+#endif
       
       deallocate( wt1p )
       deallocate( terr_patch )
@@ -268,28 +312,14 @@ CONTAINS
     write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
     
     
-    do ismi = 1,SMITER
       terr_halo_sm =  0.0
-#ifdef DEBUGRIDGE
-      DO np=4,4
-        DO j=2500,3000
-          DO i=300,1100
-#else
+#if 1
+      write(*,*) "Convoluted smoothing option "
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
-          DO i=1-nhalo+ns2,ncube+nhalo-ns2
-#endif
-                  
-            
+          DO i=1-nhalo+ns2,ncube+nhalo-ns2                  
             volt0  = terr_halo_fx(i,j,np)*da_halo(i,j,np)
-            volt1 = 0.
-            
-#ifdef USELATFAC   
-            call CubedSphereRLLFromABP(alph(i), beta(j) , np , lon_ij, lat_ij ) ! Results in radians 
-            latfactor = 1. / cos( lat_ij )
-            latfactor = min(latfactor, 3.0 )
-#endif
-                  
+            volt1 = 0.                              
             do j2=-ns2,ns2
               do i2=-ns2,ns2
                 jjx = j+j2
@@ -298,11 +328,7 @@ CONTAINS
                 dbet = beta(jjx)-beta(j)
                 diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
                 wt1p(i2,j2) = da_halo(iix,jjx,np)
-#ifdef USELATFAC   
-                terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - latfactor * diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
-#else
                 terr_patch(i2,j2) = terr_halo_fx(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
-#endif
                 if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
                   terr_patch(i2,j2)=0.
                   wt1p(i2,j2)      =0.
@@ -323,17 +349,56 @@ CONTAINS
           END DO
           if (mod(j,1) ==0 ) write(*,*) "Crs Sm J = ",J, " Panel=",np," iter=",ismi
         END DO
-      END DO
+     END DO ! Panel loop
+#else
+      write(*,*) "Direct smoothting option "
+      DO np=1,6
+        DO j=1-nhalo+ns2,ncube+nhalo-ns2
+        DO i=1-nhalo+ns2,ncube+nhalo-ns2
+           ! Smooth topography with Conical kernel
+           !----------------------------------------------
+           wt1p(:,:)=0.
+           wt1ps=0.
+           ns2x = ns2   ! /rr_fact_halo( i,j,np )
+           do j2=-ns2x,ns2x
+           do i2=-ns2x,ns2x
+              jjx = j+j2
+              iix = i+i2
+              dalp = alph(iix)-alph(i)
+              dbet = beta(jjx)-beta(j)
+              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
+
+                 diss0r = diss00 * rr_fact_halo( i,j,np )
+                 wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
+
+              if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
+              wt1ps = wt1ps + wt1p(i2,j2)
+           end do
+           end do
+
+
+           do j2=-ns2x,ns2x
+           do i2=-ns2x,ns2x
+              jjx = j+j2
+              iix = i+i2
+              terr_halo_sm(i,j,np) = terr_halo_sm(i,j,np) + terr_halo_fx(iix,jjx,np)*wt1p(i2,j2)/wt1ps
+           end do
+           end do
+           ! end of smoothing with conical kernel
+           !---------------------------------------
+           ! Block above is functionally like the one-line smoothing command here:
+           !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
+
+        END DO  !  i-loop   
+        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
+        END DO  ! j-loop
+     END DO  ! Panel loop
+#endif
       !terr_halo_fx =  terr_halo_sm
       do np=1,6 
         terr_sm (1:ncube,1:ncube,np) = terr_halo_sm(1:ncube,1:ncube,np )
+        CALL CubedSphereFillHalo_Linear_extended(terr_sm, terr_halo_fx(:,:,np), np, ncube+1,nhalo)  
       end do
-      if (ismi.ne.SMITER) then
-        do np=1,6 
-          CALL CubedSphereFillHalo_Linear_extended(terr_sm, terr_halo_fx(:,:,np), np, ncube+1,nhalo)  
-        end do
-      end if
-    end do
     
     deallocate( wt1p )
     deallocate( terr_patch )
