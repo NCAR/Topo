@@ -321,10 +321,17 @@ program convterr
   else
     jmax_segments = 100000   !can be tweaked
   end if
-  jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
+  if (real(ntarget)*real(jmax_segments)>huge(jall_anticipated)) then
+    jall_anticipated = 1080000000 !huge(jmax_segments) !anticipated number of weights (can be tweaked)
+    write(*,*) "truncating jall_anticipated to ",jall_anticipated
+  else
+    jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
+  end if
   if (jall_anticipated<0) then
     write(*,*) "anticipated number of overlaps likely not representable: jall_anticipated=", jall_anticipated
     stop
+  else
+    write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
   end if
   
   nreconstruction = 1
