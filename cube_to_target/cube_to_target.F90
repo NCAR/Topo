@@ -132,7 +132,7 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
-  character(len=1024) :: output_grid, ofile
+  character(len=1024) :: output_grid, ofile,smooth_topo_fname
   character(len=1024) :: rrfactor_fname
 
   character(len=8)  :: date
@@ -396,9 +396,7 @@ program convterr
   
   if (NSCL_c > 0) then
     !+++ARH
-    if (lregional_refinement) then
-      !Use 4X larger smoothing radius than that used for topography
-      NSCL_c = 4*2*ncube_sph_smooth_coarse
+      !!NSCL_c = 4*2*ncube_sph_smooth_coarse
       nhalo  = NSCL_c
       
       write(*,*) "rrfac_max",rrfac_max
@@ -408,17 +406,21 @@ program convterr
       !
       ! qqqq: ARH+JTB: double-check please
       !
-      !      call  smooth_intermediate_topo_wrap (rrfac_tmp, da, ncube,nhalo, NSCL_f,NSCL_c, &
-      !           rrfac, terr_dev , &
-      !           smooth_fname, &
-      !           lread_smooth_topofile, &
-      !           luse_multigrid, &
-      !           luse_prefilter, &
-      !           lstop_after_smoothing, &
-      !           lb4b_with_cesm2 , &
+#if 1
+      call  smooth_intermediate_topo_wrap (terr, da, ncube,nhalo, NSCL_f,NSCL_c, &
+                 terr_sm, terr_dev , &
+                 smooth_topo_fname, &
+                 lread_smooth_topofile, &
+                 luse_multigrid, &
+                 luse_prefilter, &
+                 lstop_after_smoothing, &
+                 lb4b_with_cesm2   ) ! , &
       !           rrfac_tmp )
+#else
       call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter , & 
            terr_sm, terr_dev,lread_smooth_topofile, rr_factor=rrfac_tmp)
+#endif
+
       
       write(*,*) "MINMAX RRFAC SMOOTHED",minval(rrfac),maxval(rrfac)
       !
@@ -428,32 +430,6 @@ program convterr
       
       write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
       
-      !!cube_file = 'rrfac_HMA.nc'
-      !!CALL wrt_cube(ncube,terr,rrfac,cube_file)
-    else
-      write(*,*) "qqq:", ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter,lread_smooth_topofile
-           
-      call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter , & 
-           terr_sm, terr_dev,lread_smooth_topofile)
-    end if
-!
-! qqqq: ARH+JTB: double-check please
-!
-
-
-!    NSCL_c = 2*ncube_sph_smooth_coarse
-!    nhalo  = NSCL_c 
-!    !---ARH
-!    call  smooth_intermediate_topo_wrap (terr_2, da, ncube,nhalo, NSCL_f,NSCL_c, & 
-!         terr_sm, terr_dev , &
-!         smooth_fname, &
-!         lread_smooth_topofile, & 
-!         luse_multigrid, &
-!         luse_prefilter, &
-!         lstop_after_smoothing, &
-!         lb4b_with_cesm2 , & 
-!         rrfac )
-!    write(*,*)" Out we goooo !!"
   else
     terr_dev = terr_2
   endif
@@ -477,33 +453,7 @@ program convterr
   
   write(*,*) " Topo volume  AFTER smoother AND fixer = ",volterr_sm/(6*sum(da))
   
-  !
-  ! TopoCESM2 original code
-  !
-  !      if(lfind_ridges) then
-  !        ! Guessing NSW should be ~1/SQRT(2.)
-  !        ! of smoothing radius
-  !        nsw = nwindow_halfwidth
-  !        ! following formula for nsb ensures
-  !        ! compatibilty with CESM2.0 Co60.  
-  !        ! Temporary fix (3/31/2017)
-  !        nsb = INT( nsw/6 )+1 !nridge_subsample
-  !        nhalo=2*nsw
-  !
-  !        call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) 
-  !        if(lregional_refinement) then
-  !          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
-  !                           , rdglist_fname & 
-  !                           , lregional_refinement=lregional_refinement &
-  !                           , rr_factor = rrfac  )
-  !        else
-  !          call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw &
-  !                             ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
-  !        end if
-  !
-  ! 
-  !      endif
-  
+
   if(lfind_ridges) then
     nsw = nwindow_halfwidth
     nsb = nridge_subsample
