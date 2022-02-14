@@ -21,13 +21,15 @@ CONTAINS
 
 !=============================================================================
 !=============================================================================
-  SUBROUTINE smooth_intermediate_topo_wrap(terr, da, ncube,nhalo, NSCL_f,NSCL_c &
+  SUBROUTINE smooth_intermediate_topo_wrap(terr, rrfac, da &
+                                    , ncube,nhalo, NSCL_f,NSCL_c &
                                     , terr_sm,terr_dev,ofname  & 
                                     , lread_smooth_topofile  &
                                     , luse_multigrid &
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
-                                    , lb4b_with_cesm2 )   ! &
+                                    , lb4b_with_cesm2 &
+                                    , smooth_topo_fname )   ! &
                                     !! , rr_factor  )
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -42,8 +44,8 @@ CONTAINS
             DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_dev
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr_sm
-    !REAL (KIND=dbl_kind), &
-    !        DIMENSION(ncube,ncube,6), INTENT(INOUT) :: rr_factor
+    REAL (KIND=dbl_kind), &
+            DIMENSION(ncube,ncube,6), INTENT(IN)   :: rrfac
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube) :: terr_face,da_face,terr_face2
     REAL (KIND=dbl_kind), &
@@ -55,7 +57,7 @@ CONTAINS
     REAL (KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
     REAL (KIND=dbl_kind),                                            &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6) :: daxx
 
@@ -65,7 +67,8 @@ CONTAINS
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_multigrid, luse_prefilter, lstop_after_smoothing, lb4b_with_cesm2
     !!!LOGICAL, INTENT(IN), OPTIONAL  :: lregional_refinement
-    CHARACTER(len=1024), INTENT(INOUT) :: ofname
+    CHARACTER(len=1024), INTENT(  OUT) :: ofname
+    CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
 
     REAL (KIND=dbl_kind), &
@@ -99,7 +102,7 @@ CONTAINS
 
     IF (read_in_precomputed) then
 
-       OPEN (unit = 711, file= trim(ofname) ,form="UNFORMATTED" )
+       OPEN (unit = 711, file= trim(smooth_topo_fname) ,form="UNFORMATTED" )
        READ(711) ncube_in_file
        READ(711) terr
        READ(711) terr_sm
@@ -108,7 +111,7 @@ CONTAINS
        close(711)
 
        write(*,*) " Read precomputed filtered topography from "
-       write(*,*) ofname
+       write(*,*) trim(smooth_topo_fname)
 
        ! return to main program after
        ! reading topography variables
@@ -228,16 +231,23 @@ CONTAINS
          end if
 #else
          DO ip = 1, 6
-            CALL CubedSphereFillHalo_Linear_extended(terr, terr_halo(:,:,ip), ip, ncube+1,nhalo)  
-            CALL CubedSphereFillHalo_Linear_extended(daxx, da_halo(:,:,ip),   ip, ncube+1,nhalo)  
+            CALL CubedSphereFillHalo_Linear_extended(terr,  terr_halo(:,:,ip), ip, ncube+1,nhalo)  
+            CALL CubedSphereFillHalo_Linear_extended(daxx,  da_halo(:,:,ip),   ip, ncube+1,nhalo)  
+            CALL CubedSphereFillHalo_Linear_extended(rrfac, rr_halo(:,:,ip),   ip, ncube+1,nhalo)  
          end DO
+
+                    write(*,*) " MINVAL(abs(rr_halo) ) , MAXVAL(abs(rr_halo) ) "
+                    write(*,*) MINVAL(abs(rr_halo) ) , MAXVAL(abs(rr_halo) )
+                   write(*,*) " MINVAL(abs(rrfac) ) , MAXVAL(abs(rrfac) ) "
+                    write(*,*) MINVAL(abs(rrfac) ) , MAXVAL(abs(rrfac) )
+
          if (use_prefilter) then
-            call smooth_intermediate_topo_halo(terr_halo, da_halo, ncube,nhalo, 1,NSCL_f &
+            call smooth_intermediate_topo_halo(terr_halo, da_halo,rr_halo, ncube,nhalo, 1,NSCL_f &
                                          , terr_halo_sm  ) !,rr_factor  )
             terr_halo = terr_halo_sm
          end if
-         call smooth_intermediate_topo_halo(terr_halo, da_halo, ncube,nhalo, 1,NSCL_c &
-                                     , terr_halo_sm  ) !,rr_factor  )
+         call smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo, ncube,nhalo, 1,NSCL_c &
+                                     , terr_halo_sm  ) !  )
 
          terr_sm( 1:ncube , 1:ncube, :)  = terr_halo_sm( 1:ncube , 1:ncube, :) 
          terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
@@ -599,7 +609,8 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
 END SUBROUTINE smooth_intermediate_topo
 
 !=============================================================================
-SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, ncube,nhalo, NSCL_f,NSCL_c &
+SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
+                                       , ncube,nhalo, NSCL_f,NSCL_c &
                                        , terr_halo_sm   ) ! ,rr_factor )
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -611,9 +622,9 @@ SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, ncube,nhalo, NSCL_f
     REAL (KIND=dbl_kind), &
             DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: da_halo
     REAL (KIND=dbl_kind), &
+            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: rr_halo
+    REAL (KIND=dbl_kind), &
             DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(OUT) :: terr_halo_sm
-    !REAL (KIND=dbl_kind), &
-    !DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)    :: rr_factor
 
     !-----------------------------------------------------------------
     !Internal work arrays
@@ -639,13 +650,6 @@ SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, ncube,nhalo, NSCL_f
     CHARACTER(len=1024) :: ofile
 
     write(*,*) " NCUBE !!! " , ncube
-
-#if 0
-    DO np = 1, 6
-     !!CALL CubedSphereFillHalo(rr_factor, rr_fact_halo, np, ncube+1,nhalo)  
-     !!CALL CubedSphereFillHalo_Linear_extended(rr_factor, rr_fact_halo(:,:,np), np, ncube+1,nhalo)  
-    END DO
-#endif
 
     ncube_halo = size( terr_halo(:,:,1), 1 )
 
@@ -694,7 +698,7 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
 
   if (NSCL_c > 1 ) then
       terr_halo_sm(:,:,:) =  0.0
-#if 1
+#if 0
       write(*,*) "Convoluted smoothing option "
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
@@ -745,15 +749,23 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
         END DO  ! j-loop
      END DO  ! panel loop
 #else
-      write(*,*) "Direct smoothting option "
+      write(*,*) "Direct smoothing option "
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
         DO i=1-nhalo+ns2,ncube+nhalo-ns2
-           ! Smooth topography with Conical kernel
+           ! Smooth topography with Conical kernel.
+           !   i,j    :: Central point in smoothing window
+           !   i2,j2  :: Distal point in smoothing window
+           !   wt1p   :: Is a weighting array dim(-ns2:ns2,-ns2:ns2).
+           !   wt1ps  :: Is sum of weights wt1p for normalization
+           !   diss00 :: Is distance SQRT(g_aa*da*da) spanned by ns2
+           !             cells at center of panel. Could mod 
+           !             to be at i,j
+           !   diss   :: Is distance from (i2,j2) to (i,j)
            !----------------------------------------------
            wt1p(:,:)=0.
            wt1ps=0.
-           ns2x = ns2   !/rr_fact_halo( i,j,np )
+           ns2x = ns2 /rr_halo( i,j,np )
            do j2=-ns2x,ns2x
            do i2=-ns2x,ns2x
               jjx = j+j2
@@ -762,7 +774,7 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
               dbet = beta(jjx)-beta(j)
               diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
 
-                 diss0r = diss00 ! * rr_fact_halo( i,j,np )
+                 diss0r = diss00 * rr_halo( i,j,np )
                  wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
 
               if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.

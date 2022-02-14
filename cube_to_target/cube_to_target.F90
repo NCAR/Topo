@@ -124,6 +124,12 @@ program convterr
   logical :: lregional_refinement = .FALSE.
   integer :: rrfac_max = 1
 !---ARH
+
+!++JTB
+  logical :: lread_pre_smoothtopo = .FALSE.
+!--JTB
+
+
   !
   !
   INTEGER :: UNIT
@@ -147,7 +153,7 @@ program convterr
     integer :: npeaks
 #endif
 
-  type(option_s):: opts(19)
+  type(option_s):: opts(21)
   opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
   opts(2) = option_s( "coarse_radius", .true., 'c' )
   opts(3) = option_s( "fine_radius",  .true.,  'f' )
@@ -167,6 +173,8 @@ program convterr
   opts(17) = option_s( "ridge2tiles",.false.,'1')
   opts(18) = option_s( "ncube_sph_smooth_iter",.true.,'2')
   opts(19) = option_s( "nridge_subsample",.true.,'4')
+  opts(20) = option_s( "precomputed_smooth_topo", .false.,  'P')
+  opts(21) = option_s( "smooth_topo_file", .true.,  'S')
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -175,9 +183,13 @@ program convterr
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "bc:f:g:hi:lmn:o:prsxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "P:S:bc:f:g:hi:lmn:o:prsxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
+     case( 'P' )
+        lread_smooth_topofile = .TRUE.
+    case( 'S' )
+       smooth_topo_fname = optarg
      case( 'b' )
         lb4b_with_cesm2 = .TRUE.
      case( 'c' )
@@ -226,6 +238,12 @@ program convterr
         nridge_subsample = ioptarg
      end select
   end do
+  if ( lread_smooth_topofile ) then
+      write(*,*) " Use pre-computed smooth topo " 
+      write(*,*) " File = ", trim(smooth_topo_fname)
+  end if
+
+
 
   !
   ! calculate some defaults if not provided
@@ -407,14 +425,16 @@ program convterr
       ! qqqq: ARH+JTB: double-check please
       !
 #if 1
-      call  smooth_intermediate_topo_wrap (terr, da, ncube,nhalo, NSCL_f,NSCL_c, &
+      call  smooth_intermediate_topo_wrap (terr, rrfac, da,  & 
+                 ncube,nhalo, NSCL_f,NSCL_c, &
                  terr_sm, terr_dev , &
                  smooth_topo_fname, &
                  lread_smooth_topofile, &
                  luse_multigrid, &
                  luse_prefilter, &
                  lstop_after_smoothing, &
-                 lb4b_with_cesm2   ) ! , &
+                 lb4b_with_cesm2, &
+                 smooth_topo_fname=smooth_topo_fname ) ! , &
       !           rrfac_tmp )
 #else
       call  smooth_intermediate_topo(terr, da, ncube,nhalo, NSCL_f,NSCL_c, ncube_sph_smooth_iter , & 

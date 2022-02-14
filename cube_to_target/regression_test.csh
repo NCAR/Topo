@@ -2,7 +2,7 @@
 
 
 
-set case = "regress-14"
+set case = "test3"
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -39,6 +39,8 @@ set Nrs=00
 
 
 ./cube_to_target --grid_descriptor_file='../../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -p -r -2 1
+
+#./cube_to_target --grid_descriptor_file='../../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file='../regress-14/output/topo_smooth_nc0540_Co012_Fi001.dat' -p -r -2 1
 
 
 exit
