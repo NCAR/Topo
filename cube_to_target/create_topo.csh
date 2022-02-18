@@ -94,11 +94,19 @@ endif
 if ( $ogrid == 'ne30pg3' ) then
    set scrip='ne30pg3.nc'
 endif
+if ( $ogrid == 'Arctic' ) then
+   set scrip='ne0ARCTICne30x4_scrip_c191212.nc'
+endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
 set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis-ncube3000-stitch.nc'
+set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/topo_smooth_nc3000_Co060_Fi001.dat'
 
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -p -r -2 1
+echo $smtopo
+
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --nwindow_halfwidth=$Nsw -p -r
+
+# --rrfac_max=4 --use_prefilter --find_ridges --precomputed_smooth_topo  --regional_refinement
 
 
 exit

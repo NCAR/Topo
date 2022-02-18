@@ -1,4 +1,5 @@
-pro rdsmtopo,topofile=ftopo0,cube=cube,basedir=basedir
+pro rdsmtopo,topofile=ftopo0,cube=cube,basedir=basedir,varres=varres,rr=rr
+
 
 if not keyword_set(basedir) then begin
    dir$='../output/'
@@ -19,6 +20,11 @@ terr_dev=dblarr(nc,nc,6)
 readu,1,terr
 readu,1,terr_sm
 readu,1,terr_dev
+
+if keyword_set(varres) then begin
+   rr=dblarr(nc,nc,6)
+   readu,1,rr
+endif
 
 
 

@@ -2,7 +2,7 @@
 
 
 
-set case = "test3"
+set case = "xreg_01"
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
