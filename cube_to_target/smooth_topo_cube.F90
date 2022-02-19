@@ -24,7 +24,6 @@ CONTAINS
                                     , ncube,nhalo, NSCL_f,NSCL_c &
                                     , terr_sm,terr_dev,ofname  & 
                                     , lread_smooth_topofile  &
-                                    , luse_multigrid &
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
@@ -58,7 +57,7 @@ CONTAINS
 
 
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
-    LOGICAL, INTENT(IN)  :: luse_multigrid, luse_prefilter, lstop_after_smoothing
+    LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
     LOGICAL, INTENT(IN)  :: lregional_refinement
     CHARACTER(len=1024), INTENT(  OUT) :: ofname
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
@@ -69,14 +68,13 @@ CONTAINS
 
     INTEGER (KIND=int_kind)   :: ncube_in_file
 
-    logical ::     read_in_precomputed, use_multigrid, use_prefilter, stop_after_smoothing
+    logical ::     read_in_precomputed, use_prefilter, stop_after_smoothing
     logical ::     smooth_topo_cubesph, do_refine
     logical ::     read_in_and_refine, new_smooth_topo
 
 
     !read_in_precomputed = .FALSE.
     read_in_precomputed = lread_smooth_topofile  !.TRUE.
-    use_multigrid = luse_multigrid 
     use_prefilter = luse_prefilter 
     stop_after_smoothing = lstop_after_smoothing 
     smooth_topo_cubesph = .TRUE.  
