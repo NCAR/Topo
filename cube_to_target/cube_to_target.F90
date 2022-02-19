@@ -298,6 +298,8 @@ program convterr
   write(*,*) "nridge_subsample                = ",nridge_subsample
   write(*,*) " "
   write(*,*) "lread_smooth_topofile           = ",lread_smooth_topofile
+
+  if(lread_smooth_topofile) &
   write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
 !  UNIT=221
 !  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )

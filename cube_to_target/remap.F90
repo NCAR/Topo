@@ -16,7 +16,7 @@ MODULE remap
        aa  = 1.0                       ,&
        tiny= 1.0E-9  ,&
        bignum = 1.0E20
-  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny!1.0E-12
+  REAL (KIND=dbl_kind), parameter :: fuzzy_width = 10.0*tiny!1.0E-12  !CAM-SE add           
 
   contains
 
@@ -752,6 +752,7 @@ end function paint_sg_field
     
     integer (kind=int_kind) :: jx_eul, jy_eul, side_count,jdbg
     real (kind=real_kind), dimension(0:nvertex+2)  :: xcell,ycell
+    real (kind=real_kind), dimension(3)            :: xcell_tmp,ycell_tmp
     
     !
     !***********************************************
@@ -775,8 +776,41 @@ end function paint_sg_field
     ELSE             
       jx_eul = jx
       jy_eul = jy
-      CALL which_eul_cell(xcell(1:3),jx_eul,xgno)
-      CALL which_eul_cell(ycell(1:3),jy_eul,ygno)
+
+      if (xcell(1)==xcell(2).and.xcell(2)==xcell(3)) then
+        if (nvertex==3) then
+          write(*,*) "Only three vertices and xcell(1)=xcell(2)=xcell(3)!"
+          stop
+        end if
+        !
+        ! if three points are on a straight line in the gnomonic projection
+        ! (can happen with low res SE variable resolution)
+        !
+        xcell_tmp(1) = xcell(1)
+        xcell_tmp(2) = xcell(3)
+        xcell_tmp(3) = xcell(4)
+        CALL which_eul_cell(xcell_tmp,jx_eul,xgno)
+      else
+        xcell_tmp=xcell(1:3)
+      end if
+      if (ycell(1)==ycell(2).and.ycell(2)==ycell(3)) then
+        if (nvertex==3) then
+          write(*,*) "Only three vertices and ycell(1)=ycell(2)=ycell(3)!"
+          stop
+        end if
+        !
+        ! if three points are on a straight line in the gnomonic projection
+        ! (can happen with SE variable resolution)
+        !
+        ycell_tmp(1) = ycell(1)
+        ycell_tmp(2) = ycell(3)
+        ycell_tmp(3) = ycell(4)
+        CALL which_eul_cell(ycell_tmp,jx_eul,xgno)
+      else
+        ycell_tmp=ycell(1:3)
+      end if
+      CALL which_eul_cell(xcell_tmp,jx_eul,xgno)
+      CALL which_eul_cell(ycell_tmp,jy_eul,ygno)
      
       side_count = 1
       DO WHILE (side_count<nvertex+1)
