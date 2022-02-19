@@ -97,7 +97,6 @@ program convterr
   logical :: luse_multigrid = .FALSE.
   logical :: luse_prefilter = .FALSE.
   logical :: lstop_after_smoothing = .FALSE.
-  logical :: lb4b_with_cesm2 = .FALSE.
   !--jtb
   !
   ! Cubed sphere terr is band-pass filtered using circular kernels
@@ -153,28 +152,27 @@ program convterr
     integer :: npeaks
 #endif
 
-  type(option_s):: opts(21)
-  opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
-  opts(2) = option_s( "coarse_radius", .true., 'c' )
-  opts(3) = option_s( "fine_radius",  .true.,  'f' )
-  opts(4) = option_s( "grid_descriptor_file", .true., 'g' )
-  opts(5) = option_s( "help", .false.,  'h')
-  opts(6) = option_s( "intermediate_cs_name", .true.,  'i')
-  opts(7) = option_s( "use_multigrid", .false.,  'm')
-  opts(8) = option_s( "nwindow_halfwidth", .true.,  'n')
-  opts(9) = option_s( "output_grid", .true.,  'o')
-  opts(10) = option_s( "use_prefilter", .false.,  'p')
-  opts(11) = option_s( "find_ridges", .false.,  'r')
-  opts(12) = option_s( "regional_refinement", .false.,  's')
-  opts(13) = option_s( "stop_after_smooth", .false.,  'x')
-  opts(14) = option_s( "rrfac_max",.true.,'y')
-  opts(15) = option_s( "zero_out_ocean_point_phis",.false.,'z')
-  opts(16) = option_s( "zero_negative_peaks",.false.,'0')
-  opts(17) = option_s( "ridge2tiles",.false.,'1')
-  opts(18) = option_s( "ncube_sph_smooth_iter",.true.,'2')
-  opts(19) = option_s( "nridge_subsample",.true.,'4')
-  opts(20) = option_s( "precomputed_smooth_topo", .false.,  'q')
-  opts(21) = option_s( "smooth_topo_file", .true.,  't')
+  type(option_s):: opts(20)
+  opts(1) = option_s( "coarse_radius", .true., 'c' )
+  opts(2) = option_s( "fine_radius",  .true.,  'f' )
+  opts(3) = option_s( "grid_descriptor_file", .true., 'g' )
+  opts(4) = option_s( "help", .false.,  'h')
+  opts(5) = option_s( "intermediate_cs_name", .true.,  'i')
+  opts(6) = option_s( "use_multigrid", .false.,  'm')
+  opts(7) = option_s( "nwindow_halfwidth", .true.,  'n')
+  opts(8) = option_s( "output_grid", .true.,  'o')
+  opts(9) = option_s( "use_prefilter", .false.,  'p')
+  opts(10) = option_s( "find_ridges", .false.,  'r')
+  opts(11) = option_s( "regional_refinement", .false.,  's')
+  opts(12) = option_s( "stop_after_smooth", .false.,  'x')
+  opts(13) = option_s( "rrfac_max",.true.,'y')
+  opts(14) = option_s( "zero_out_ocean_point_phis",.false.,'z')
+  opts(15) = option_s( "zero_negative_peaks",.false.,'0')
+  opts(16) = option_s( "ridge2tiles",.false.,'1')
+  opts(17) = option_s( "ncube_sph_smooth_iter",.true.,'2')
+  opts(18) = option_s( "nridge_subsample",.true.,'4')
+  opts(19) = option_s( "precomputed_smooth_topo", .false.,  'q')
+  opts(20) = option_s( "smooth_topo_file", .true.,  't')
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -183,15 +181,13 @@ program convterr
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "bc:f:g:hi:lmn:o:pqrstxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "c:f:g:hi:lmn:o:pqrstxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
      !case( 'P' )
      !   lread_smooth_topofile = .TRUE.
      !case( 'S' )
      !  smooth_topo_fname = optarg
-     case( 'b' )
-        lb4b_with_cesm2 = .TRUE.
      case( 'c' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_coarse = ioptarg
@@ -279,7 +275,6 @@ program convterr
   write(*,*) "Namelist settings"
   write(*,*) "================="
   write(*,*)
-  write(*,*) "lb4b_with_cesm2                 = ",lb4b_with_cesm2
   write(*,*) "ncube_sph_smooth_coarse         = ",ncube_sph_smooth_coarse
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
@@ -459,7 +454,6 @@ program convterr
                  luse_multigrid, &
                  luse_prefilter, &
                  lstop_after_smoothing, &
-                 lb4b_with_cesm2, &
                  lregional_refinement, &
                  smooth_topo_fname=smooth_topo_fname )
             

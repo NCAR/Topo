@@ -27,7 +27,6 @@ CONTAINS
                                     , luse_multigrid &
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
-                                    , lb4b_with_cesm2 &
                                     , lregional_refinement &
                                     , smooth_topo_fname )
 
@@ -59,7 +58,7 @@ CONTAINS
 
 
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
-    LOGICAL, INTENT(IN)  :: luse_multigrid, luse_prefilter, lstop_after_smoothing, lb4b_with_cesm2
+    LOGICAL, INTENT(IN)  :: luse_multigrid, luse_prefilter, lstop_after_smoothing
     LOGICAL, INTENT(IN)  :: lregional_refinement
     CHARACTER(len=1024), INTENT(  OUT) :: ofname
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
@@ -71,7 +70,7 @@ CONTAINS
     INTEGER (KIND=int_kind)   :: ncube_in_file
 
     logical ::     read_in_precomputed, use_multigrid, use_prefilter, stop_after_smoothing
-    logical ::     b4b_with_cesm2, smooth_topo_cubesph, do_refine
+    logical ::     smooth_topo_cubesph, do_refine
     logical ::     read_in_and_refine, new_smooth_topo
 
 
@@ -80,7 +79,6 @@ CONTAINS
     use_multigrid = luse_multigrid 
     use_prefilter = luse_prefilter 
     stop_after_smoothing = lstop_after_smoothing 
-    b4b_with_cesm2 = lb4b_with_cesm2
     smooth_topo_cubesph = .TRUE.  
     read_in_and_refine=.FALSE.
 
