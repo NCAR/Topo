@@ -1,9 +1,0 @@
-*.o
-*.mod
-*.nl
-*.nc
-*.dat
-*.swp
-*.swo
-cube_to_target/cube_to_target
-bin_to_cube/bin_to_cube

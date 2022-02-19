@@ -94,10 +94,8 @@ program convterr
   !++jtb
   logical :: lzero_negative_peaks = .TRUE.
   logical :: lread_smooth_topofile = .FALSE.
-  logical :: luse_multigrid = .FALSE.
   logical :: luse_prefilter = .FALSE.
   logical :: lstop_after_smoothing = .FALSE.
-  logical :: lb4b_with_cesm2 = .FALSE.
   !--jtb
   !
   ! Cubed sphere terr is band-pass filtered using circular kernels
@@ -153,28 +151,26 @@ program convterr
     integer :: npeaks
 #endif
 
-  type(option_s):: opts(21)
-  opts(1) = option_s( "b4b_with_cesm2",.false., 'b' )
-  opts(2) = option_s( "coarse_radius", .true., 'c' )
-  opts(3) = option_s( "fine_radius",  .true.,  'f' )
-  opts(4) = option_s( "grid_descriptor_file", .true., 'g' )
-  opts(5) = option_s( "help", .false.,  'h')
-  opts(6) = option_s( "intermediate_cs_name", .true.,  'i')
-  opts(7) = option_s( "use_multigrid", .false.,  'm')
-  opts(8) = option_s( "nwindow_halfwidth", .true.,  'n')
-  opts(9) = option_s( "output_grid", .true.,  'o')
-  opts(10) = option_s( "use_prefilter", .false.,  'p')
-  opts(11) = option_s( "find_ridges", .false.,  'r')
-  opts(12) = option_s( "regional_refinement", .false.,  's')
-  opts(13) = option_s( "stop_after_smooth", .false.,  'x')
-  opts(14) = option_s( "rrfac_max",.true.,'y')
-  opts(15) = option_s( "zero_out_ocean_point_phis",.false.,'z')
-  opts(16) = option_s( "zero_negative_peaks",.false.,'0')
-  opts(17) = option_s( "ridge2tiles",.false.,'1')
-  opts(18) = option_s( "ncube_sph_smooth_iter",.true.,'2')
-  opts(19) = option_s( "nridge_subsample",.true.,'4')
-  opts(20) = option_s( "precomputed_smooth_topo", .false.,  'q')
-  opts(21) = option_s( "smooth_topo_file", .true.,  't')
+  type(option_s):: opts(20)
+  opts(1) = option_s( "coarse_radius", .true., 'c' )
+  opts(2) = option_s( "fine_radius",  .true.,  'f' )
+  opts(3) = option_s( "grid_descriptor_file", .true., 'g' )
+  opts(4) = option_s( "help", .false.,  'h')
+  opts(5) = option_s( "intermediate_cs_name", .true.,  'i')
+  opts(6) = option_s( "nwindow_halfwidth", .true.,  'n')
+  opts(7) = option_s( "output_grid", .true.,  'o')
+  opts(8) = option_s( "use_prefilter", .false.,  'p')
+  opts(9) = option_s( "find_ridges", .false.,  'r')
+  opts(10) = option_s( "regional_refinement", .false.,  's')
+  opts(11) = option_s( "stop_after_smooth", .false.,  'x')
+  opts(12) = option_s( "rrfac_max",.true.,'y')
+  opts(13) = option_s( "zero_out_ocean_point_phis",.false.,'z')
+  opts(14) = option_s( "zero_negative_peaks",.false.,'0')
+  opts(15) = option_s( "ridge2tiles",.false.,'1')
+  opts(16) = option_s( "ncube_sph_smooth_iter",.true.,'2')
+  opts(17) = option_s( "nridge_subsample",.true.,'4')
+  opts(18) = option_s( "precomputed_smooth_topo", .false.,  'q')
+  opts(19) = option_s( "smooth_topo_file", .true.,  't')
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -183,15 +179,13 @@ program convterr
   ! Process options one by one
   do
 !     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "bc:f:g:hi:lmn:o:pqrstxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "c:f:g:hi:ln:o:pqrstxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
      !case( 'P' )
      !   lread_smooth_topofile = .TRUE.
      !case( 'S' )
      !  smooth_topo_fname = optarg
-     case( 'b' )
-        lb4b_with_cesm2 = .TRUE.
      case( 'c' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_coarse = ioptarg
@@ -204,8 +198,6 @@ program convterr
         call print_help
      case( 'i' )
         intermediate_cubed_sphere_fname = optarg
-     case( 'm' )
-        luse_multigrid = .TRUE.
      case( 'n' )
         read (optarg, '(i3)') ioptarg
         nwindow_halfwidth = ioptarg
@@ -279,13 +271,11 @@ program convterr
   write(*,*) "Namelist settings"
   write(*,*) "================="
   write(*,*)
-  write(*,*) "lb4b_with_cesm2                 = ",lb4b_with_cesm2
   write(*,*) "ncube_sph_smooth_coarse         = ",ncube_sph_smooth_coarse
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(*,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
-  write(*,*) "luse_multigrid                  = ",luse_multigrid
   write(*,*) "output_grid                     = ",trim(output_grid)
   write(*,*) "luse_prefilter                  = ",luse_prefilter
   write(*,*) "lfind_ridges                    = ",lfind_ridges
@@ -301,11 +291,6 @@ program convterr
 
   if(lread_smooth_topofile) &
   write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
-!  UNIT=221
-!  OPEN( UNIT=UNIT, FILE="nlmain.nl" ) !, NML =  cntrls )
-!  READ( UNIT=UNIT, NML=topoparams)
-!  CLOSE(UNIT=UNIT)
-
 
   call  set_constants
 
@@ -348,10 +333,17 @@ program convterr
   else
     jmax_segments = 100000   !can be tweaked
   end if
-  jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
+  if (real(ntarget)*real(jmax_segments)>huge(jall_anticipated)) then
+    jall_anticipated = 1080000000 !huge(jmax_segments) !anticipated number of weights (can be tweaked)
+    write(*,*) "truncating jall_anticipated to ",jall_anticipated
+  else
+    jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
+  end if
   if (jall_anticipated<0) then
     write(*,*) "anticipated number of overlaps likely not representable: jall_anticipated=", jall_anticipated
     stop
+  else
+    write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
   end if
   
   jmax_segments = MIN( jmax_segments, 5000 )
@@ -382,6 +374,7 @@ program convterr
 
   allocate( rrfac(ncube,ncube,6)  )
   if (lregional_refinement) then
+    rrfac = 0.0
     !--- remap rrfac to cube
     !-----------------------------------------------------------------
     do counti=1,jall
@@ -450,10 +443,8 @@ program convterr
                  terr_sm, terr_dev , &
                  smooth_topo_fname, &
                  lread_smooth_topofile, &
-                 luse_multigrid, &
                  luse_prefilter, &
                  lstop_after_smoothing, &
-                 lb4b_with_cesm2, &
                  lregional_refinement, &
                  smooth_topo_fname=smooth_topo_fname )
             
@@ -806,7 +797,6 @@ subroutine print_help
   write (6,*) "-f, --fine_radius=<int>                        "
   write (6,*) "-g, --grid_descriptor_file=<string>            "
   write (6,*) "-i, --intermediate_cs_name=<string>            "
-  write (6,*) "-m, --use_multigrid            Enable [default:disabled]"
   write (6,*) "-n, --nwindow_halfwidth=<int>                  "
   write (6,*) "-o, --output_grid=<string>                     "
   write (6,*) "-p, --use_prefilter            Enable [default:disabled]"

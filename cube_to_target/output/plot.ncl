@@ -2,11 +2,11 @@ begin
 ;************************************************
 ; open netCDF file
 ;************************************************
-  a = addfile("diff.nc","r")
+  a = addfile("topo.nc","r")
   ;
   ; SCRIP file
   ;
-  sf =  addfile("../inputdata/grid-descriptor-file/ne30pg3.nc","r")
+  sf =  addfile("scrip.nc","r")
   cellfill = True
 ;************************************************
 ; Read in Regression Coef
