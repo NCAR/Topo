@@ -137,7 +137,7 @@ program convterr
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
   character(len=1024) :: output_grid, ofile,smooth_topo_fname
-  character(len=1024) :: rrfactor_fname
+  character(len=1024) :: rrfactor_fname, command_line_arguments, str
 
   character(len=8)  :: date
   character(len=10) :: time
@@ -175,6 +175,10 @@ program convterr
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
 
+  command_line_arguments = './cubed_to_target'
+  grid_descriptor_fname = ''
+
+  
 
   ! Process options one by one
   do
@@ -186,52 +190,85 @@ program convterr
      !   lread_smooth_topofile = .TRUE.
      !case( 'S' )
      !  smooth_topo_fname = optarg
+        !
+        ! TODO: add input/username of data creator!
+        !
      case( 'c' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_coarse = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -c '//TRIM(ADJUSTL(str))
      case( 'f' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_fine = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -f '//TRIM(ADJUSTL(str))
      case( 'g' )
         grid_descriptor_fname = optarg
+        write(str,*) "'"//TRIM(optarg)//"'"
+        command_line_arguments = TRIM(command_line_arguments)//' -g '//TRIM(ADJUSTL(str))
      case( 'h' )
         call print_help
      case( 'i' )
         intermediate_cubed_sphere_fname = optarg
+        write(str,*) "'"//TRIM(optarg)//"'"
+        command_line_arguments = TRIM(command_line_arguments)//' -i '//TRIM(ADJUSTL(str))
      case( 'n' )
         read (optarg, '(i3)') ioptarg
         nwindow_halfwidth = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -n '//TRIM(ADJUSTL(str))
      case( 'o' )
         output_grid = optarg
+        write(str,*) "'"//TRIM(optarg)//"'"
+        command_line_arguments = TRIM(command_line_arguments)//' -o '//TRIM(ADJUSTL(str))
      case( 'p' )
         luse_prefilter=.TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -p '
      case( 'q' )
         lread_smooth_topofile = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -q '
       case( 'r' )
         lfind_ridges = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -r '
      case( 's' )
         lregional_refinement = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -s '
      case( 't' )
         smooth_topo_fname = optarg
+        write(str,*) "'"//TRIM(optarg)//"'"
+        command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
      case( 'x' )
         lstop_after_smoothing = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -x '//TRIM(ADJUSTL(str))
      case( 'y' )
         read (optarg, '(i3)') ioptarg
         rrfac_max = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
      case( 'z' )
         lzero_out_ocean_point_phis = .TRUE.
         write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
         STOP
+        command_line_arguments = TRIM(command_line_arguments)//' -z '
      case( '0' )
         lzero_negative_peaks = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -0 '
+        write(*,*) "check support"
+        stop
      case( '1' )
         lridgetiles = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -1 '
      case( '2' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_iter = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -2 '//TRIM(ADJUSTL(str))
      case( '4' )
         read (optarg, '(i3)') ioptarg
         nridge_subsample = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -4 '//TRIM(ADJUSTL(str))
      end select
   end do
   if ( lread_smooth_topofile ) then
@@ -240,6 +277,10 @@ program convterr
   end if
 
 
+  if (LEN(TRIM(grid_descriptor_fname))==0) then
+    write(*,*) "argument -g grid_descriptor_fname not provided - ABORT"
+    stop
+  end if
 
   !
   ! calculate some defaults if not provided
@@ -779,7 +820,7 @@ program convterr
   
   ELSE
     CALL wrtncdf_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
-         landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges)
+         landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges, command_line_arguments)
   END IF
   !DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
   DEALLOCATE(terr_target,sgh30_target,sgh_target,landm_coslat_target)
@@ -814,7 +855,7 @@ end subroutine print_help
 !
 !+++ARH
 !subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
-subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
+subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments)
 !---ARH
   use shared_vars, only : rad2deg
   use shr_kind_mod, only: r8 => shr_kind_r8
@@ -839,7 +880,8 @@ subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,outpu
   real(r8),dimension(n)  , intent(in) :: terr,sgh,sgh30,lon,lat,landm_coslat,area
 !---ARH
   character(len=1024), intent(in) :: output_fname
-  logical, intent(in) :: lfind_ridges
+  logical,             intent(in) :: lfind_ridges
+  character(len=1024), intent(in) :: command_line_arguments
   !
   ! Local variables
   !
@@ -1089,8 +1131,45 @@ subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,outpu
   !        if (status .ne. NF_NOERR) call handle_err(status)
 
 
+  !
+  ! Meta data for CESM compliance
+  !
+  !-data_summary		|	Short paragraph about the data.
+  !-data_creator 		| 	Name and email of the person who created the dataset
+  !-cesm_contact    	        |     	The liaison of the relevant WG
+  !-creation_date    	        |     	Full date of dataset creation
+  !-update_date    	        |     	Full date of most recent modification
+  !-history    		        |     	Updates to changes made to the data.
+  !-data_script    	        |     	script to generate data (will be available in the SVN repository ?)
+  !-data_description_url 	|     	A web-page with a description if available  (this could be the climatedataguide webpage.)
+  !-data_source_url    	        |     	The web page where the raw data can be downloaded
+  !-data_reference    	        |     	Full reference for the dataset if available
+  !-data_doi    		|     	If doi of data exists
+  !-climo_years    	        |     	Year 1-year N of the climatological averaging period.
+  !-data_mods    		|     	Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CESM. 
+
+  str = 'Topo file for NCAR CAM'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_summary',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+
   call DATE_AND_TIME(DATE=datestring)
-  status = nf_put_att_text (foutid,NF_GLOBAL,'history',25, 'Written on date: ' // datestring )
+  status = nf_put_att_text (foutid,NF_GLOBAL,'creation_date',25, TRIM(datestring) )
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  str = 'Cecille Hannay'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'cesm_contact',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  str = 'https://github.com/NCAR/Topo.git'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_source',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_script',LEN(TRIM(command_line_arguments)), TRIM(command_line_arguments))
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
+       'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
   if (status .ne. NF_NOERR) call handle_err(status)
   !
   ! End define mode for output file
