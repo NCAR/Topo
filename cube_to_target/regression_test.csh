@@ -2,7 +2,7 @@
 
 
 
-set case = "xreg_03"
+set case = "xreg_04"
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -29,12 +29,12 @@ gmake
 set ogrid = "ne30pg3"
 set Co = "12"
 set Fi = "1"
-set Nsw = "8"
 
 
-
-# This is now used for all. Doesn't matter, will eliminate
-set Nrs=00
+# This is now calculated internally. Eliminate from inputs.
+#set Nsw = "-999"
+# This is no longer used. Doesn't matter. Eliminate
+#set Nrs=00
 
 
 

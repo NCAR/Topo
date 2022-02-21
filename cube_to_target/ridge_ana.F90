@@ -354,7 +354,6 @@ write(*,*) " SHAPE ", shape( peaks%i )
 900 format( a1, "  Analyzed Ridges ",i6," out of ",i6 )
 901 format(" Ridge coords ", i6,i6,i3 )
 
-!++11/8/21
        write( ofile, &
        "('./output/Ridge_list_nc',i0.4, '_Nsw',i0.3,  &
        '_Co',i0.3,'_Fi',i0.3 )" ) & 
@@ -410,13 +409,10 @@ write(31) clngth
 
 write(31) mxds2
 
-!++11/.../21
+
 write(31) rdg_profiles
 write(31) crst_profiles
 write(31) crst_silhous
-!write(31) rt_diag
-!write(31) rtx_diag
-
 write(31) isoht
 write(31) isowd
 write(31) isobs
@@ -449,10 +445,9 @@ close(32)
 end subroutine find_ridges
 !----------------------------------------------------------
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSW,IPK)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN)  ::  NSW,IPK
   !REAL,               intent(IN)  ::  AA(N,N),X(N),Y(N),AARAW(N,N)
   REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1),SUBX( 2*nsw+1),SUBY(2*nsw+1),SUBARW( 2*nsw+1, 2*nsw+1)
@@ -461,9 +456,7 @@ end subroutine find_ridges
   real, allocatable :: PKLC(:), RTY(:),RTRW(:,:),RTRWX(:),DERTX(:),DERTY(:),CUSP(:),face(:)
   real, allocatable :: silux(:), sillx(:), siluy(:), silly(:)
 
-!++ 11/1/21
   real, allocatable :: rdg_profile(:,:),crst_profile(:,:)
-!++ 11/16/21
   real, allocatable :: crst_silhouette(:,:)
 
   logical,allocatable :: lhgts(:),lflats(:),lsides(:)
@@ -484,7 +477,11 @@ end subroutine find_ridges
   real :: dex_dt(NANG)
 
 
-
+  !-----------------------------------------
+  ! Indices for most ridge scheme subarrays.
+  ! Note ns1-ns0 = nsw+1 always. Appears 
+  ! safe for any value of nsw.
+  !-----------------------------------------
   ns0=nsw/2+1
   ns1=ns0+nsw+1
  
@@ -493,12 +490,8 @@ end subroutine find_ridges
 
 ! Allocate work arrays for ridge analysis
 !-----------------------------------------
-  !allocate( suba( 2*nsw+1, 2*nsw+1 ) )
-  !allocate( subarw( 2*nsw+1, 2*nsw+1 ) )
   allocate( rt( 2*nsw+1, 2*nsw+1 ) )
   allocate( rtrw( 2*nsw+1, 2*nsw+1 ) )
-  !allocate( subx( 2*nsw+1  ) )
-  !allocate( suby( 2*nsw+1  ) )
   allocate( rtx( nsw+1  ) )
   allocate( rtx_dt( nsw+1  ) )
   allocate( rty( nsw+1  ) )
@@ -521,10 +514,8 @@ end subroutine find_ridges
   allocate( Lflats( nsw+1  ) )
   allocate( Lsides( nsw+1  ) )
 
-!++ 11/1/21
   allocate( rdg_profile(nsw+1,NANG) )
   allocate( crst_profile(nsw+1,NANG) )
-!++ 11/16/21
   allocate( crst_silhouette(nsw+1,NANG) )
 
 
@@ -597,7 +588,7 @@ end subroutine find_ridges
            nvlx(L)=sum(pklc)
 
 
-                ! Accumulate rising and falling segments
+           ! Accumulate rising and falling segments
            risex(L)=0.
            fallx(L)=0.
            do i2=2,nsw+1
@@ -610,7 +601,7 @@ end subroutine find_ridges
            end do
 
 
-                ! Record actual max and min elevations in RTX and Raw topo profile (RTRWX)
+           ! Record actual max and min elevations in RTX and Raw topo profile (RTRWX)
            pkht(L)=maxval(RTX)
            vldp(L)=minval(RTX)
            rwpk(L)=maxval(RTRWX)
@@ -646,7 +637,7 @@ end subroutine find_ridges
            ! Ideally ipkh=nsw/2, i.e, center of ridge profile. If ipkh=1 or nsw
            ! this feature could just be sloping terrain.  In practice it appears
            ! redundancy saves our a-- in paintridge2cube.  Here we provide some 
-           ! more protcetion against id'ing sloping terrain as a ridge:
+           ! more protection against id'ing sloping terrain as a ridge:
            !
            !      1 -- | ---       nsw/2      --- | -- nsw
            !      //////                          //////
@@ -678,8 +669,6 @@ end subroutine find_ridges
            xft0(L)  =  XRT( ift0(1) ) -XRT( ipkh(1) )
            xft1(L)  =  XRT( ift1(1) ) -XRT( ipkh(1) )
 
- !!        basmn  =  sum( sum( suba(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
- !!        basvar =  sum( sum( (suba(ns0:ns1-1,ns0:ns1-1)-basmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            rotmn  =  sum( sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            rotvar =  sum( sum( (rt(ns0:ns1-1,ns0:ns1-1)-rotmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            if (rotvar>0.) qual(L) = var/rotvar
@@ -710,8 +699,6 @@ end subroutine find_ridges
 
 
         end do ! LOOP over angles - index=L
-
-
 
         iorn       = MAXLOC( vvaa )
 

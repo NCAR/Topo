@@ -194,9 +194,12 @@ program convterr
         call print_help
      case( 'i' )
         intermediate_cubed_sphere_fname = optarg
+
+!! NOT used
      case( 'n' )
         read (optarg, '(i3)') ioptarg
         nwindow_halfwidth = ioptarg
+
      case( 'o' )
         output_grid = optarg
      case( 'p' )
@@ -222,13 +225,20 @@ program convterr
         lzero_negative_peaks = .TRUE.
      case( '1' )
         lridgetiles = .TRUE.
+
+!! NOT used
      case( '2' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_iter = ioptarg
+
+!! NOT used
      case( '4' )
         read (optarg, '(i3)') ioptarg
         nridge_subsample = ioptarg
+
      end select
+
+
   end do
   if ( lread_smooth_topofile ) then
       write(*,*) " Use pre-computed smooth topo " 
@@ -240,18 +250,21 @@ program convterr
   !
   ! calculate some defaults if not provided
   !
-  !
-  ! calculate some defaults if not provided
-  !
   if (lfind_ridges) then
     if (nwindow_halfwidth<0) then
       nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+
+#if 0
       !
-      ! nwindow_halfwidth must be even
-      !
+      ! nwindow_halfwidth must be even 
+      !  *** CHECKED THIS AND IS NOT
+      !      ACTUALLY THE CASE ****
+      !      (Feb. 21, 22 JTB)
       if (MOD(nwindow_halfwidth,2).ne.0) then
         nwindow_halfwidth = nwindow_halfwidth-1
       end if
+#endif
+
       if (nwindow_halfwidth<5) then
         write(*,*) "nwindow_halfwidth can not be < 4"
         write(*,*) "setting nwindow_halfwidth=4"
@@ -268,7 +281,7 @@ program convterr
   write(*,*) "================="
   write(*,*)
   write(*,*) "ncube_sph_smooth_coarse         = ",ncube_sph_smooth_coarse
-  write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
+  write(*,*) "nwindow_halfwidth (CALCULATED)  = ",nwindow_halfwidth
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(*,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
@@ -479,9 +492,9 @@ program convterr
     call DATE_AND_TIME( DATE=date,TIME=time)
     
     write( ofile , &
-         "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
+         "('_nc',i0.4,  &
          '_Co',i0.3,'_Fi',i0.3)" ) & 
-         ncube, nsw, nridge_subsample   ,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
+         ncube  ,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
     
     if (.not.(lzero_negative_peaks) ) then
       output_fname = './output/'//trim(output_grid)//trim(ofile)//'._test_v3.nc'
@@ -510,7 +523,7 @@ program convterr
          ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
   endif
   output_fname = './output/'//trim(output_grid)//trim(ofile)//'_'//date//'.nc'
-  write(*,*) "Writing CESM forcing WITHOUT Ridge data to "
+  write(*,*) "Writing CESM forcing data to "
   write(*,*) output_fname
     
 
