@@ -132,7 +132,7 @@ program convterr
   !
   INTEGER :: UNIT
 
-  INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget, ioptarg
+  INTEGER :: NSCL_f, NSCL_c, nhalo,nsw, i_in_sg, itarget, ioptarg
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
@@ -472,7 +472,6 @@ program convterr
 
   if(lfind_ridges) then
     nsw = nwindow_halfwidth
-    nsb = nridge_subsample
     nhalo=2*nsw
     
     !--- Make output filename
@@ -482,7 +481,7 @@ program convterr
     write( ofile , &
          "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
          '_Co',i0.3,'_Fi',i0.3)" ) & 
-         ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
+         ncube, nsw, nridge_subsample   ,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
     
     if (.not.(lzero_negative_peaks) ) then
       output_fname = './output/'//trim(output_grid)//trim(ofile)//'._test_v3.nc'
@@ -493,14 +492,14 @@ program convterr
     write(*,*) output_fname
     !----------------------------------------------------------------------
     
-    call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
+    call find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
     if(lregional_refinement) then
-      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
            ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
            lregional_refinement=lregional_refinement,           &
            rr_factor = rrfac  )
     else
-      call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
            ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
     endif
     
@@ -707,23 +706,13 @@ program convterr
 
   if(lfind_ridges) then
     if(lregional_refinement) then
-!
-! ! qqqq: ARH+JTB: merge not done
-!
-!      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-!           weights_eul_index_all(1:jall,:), & 
-!           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-!           nreconstruction,ntarget,nhalo,nsb,nsw, &
-!           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-!           output_grid,&
-!           lregional_refinement=lregional_refinement, rr_factor = rrfac  )
       write(*,*) "not merged"
       stop
     else
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-           nreconstruction,ntarget,nhalo,nsb,nsw, &
+           nreconstruction,ntarget,nhalo,nsw, &
            ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
            output_grid )
     end if
@@ -732,13 +721,11 @@ program convterr
       call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-           nreconstruction,ntarget,nhalo,nsb)
+           nreconstruction,ntarget,nhalo)
     endif
   endif
 
   write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
-
-       !!    if(lfind_ridges)  call paintridgeoncube ( ncube,nhalo,nsb,nsw , terr_dev )
 
   !
   ! zero out small values

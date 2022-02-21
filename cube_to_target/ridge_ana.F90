@@ -97,7 +97,7 @@ public peak_type
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
+subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
 !------------------------------------------------
 !  INPUTS.
 !      NSW = size of window used for ridge analysis
@@ -109,9 +109,9 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peak
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_dev
 
-       INTEGER (KIND=int_kind), INTENT(IN)  :: ncube, nhalo, nsb, nsw
+       INTEGER (KIND=int_kind), INTENT(IN)  :: ncube, nhalo, nsw
        !INTEGER (KIND=int_kind), INTENT(out) :: npeaks
-       INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nsb2,nhigher,npeaks
+       INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nhigher,npeaks
        INTEGER (KIND=int_kind) :: ipk,nblock
 
     REAL (KIND=dbl_kind), &
@@ -137,9 +137,6 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peak
 !  B E G I N   C A L C U L A T I O N S
 !---------------------------------------------------------------------------------------
 
-    !nsb2=nsb/2
-    !nsb2=nsb/4
-    nsb2=1    
     thsh = 0.
 
     DO np = 1, 6
@@ -216,7 +213,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 !===================================================================================================
 
-subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw,     & 
+subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     & 
 !                        ++ following used only for file name construction -11/8/21
                          ncube_sph_smooth_coarse, ncube_sph_smooth_fine, &
                          lregional_refinement, rr_factor )
@@ -242,7 +239,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsb, nsw,     &
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), optional, INTENT(IN) :: rr_factor
     LOGICAL, intent(IN), OPTIONAL ::  lregional_refinement
-    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo, nsb, nsw !, npeaks
+    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo, nsw !, npeaks
     !++ following used only for file name construction -11/8/21
     INTEGER (KIND=int_kind), INTENT(IN) ::ncube_sph_smooth_coarse,ncube_sph_smooth_fine
     
@@ -347,7 +344,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
         subarw  = terr_halo_r4( i-nsw:i+nsw , j-nsw:j+nsw, np )
         subx    = xv(i-nsw  :i+nsw )
         suby    = yv(j-nsw  :j+nsw )
-        call ANISO_ANA( suba , subarw , subX , subY ,NSB,NSW, ipk )
+        call ANISO_ANA( suba , subarw , subX , subY ,NSW, ipk )
         write(*,900,advance='no') achar(13) , ipk, npeaks
     end do
 
@@ -453,11 +450,10 @@ end subroutine find_ridges
 !----------------------------------------------------------
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !!subroutine ANISO_ANA( AA,AARAW,X,Y,N,NSB,NSW,IP)
-  subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSB,NSW,IPK)
+  subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSW,IPK)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  INTEGER,            intent(IN)  ::  NSB,NSW,IPK
+  INTEGER,            intent(IN)  ::  NSW,IPK
   !REAL,               intent(IN)  ::  AA(N,N),X(N),Y(N),AARAW(N,N)
   REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1),SUBX( 2*nsw+1),SUBY(2*nsw+1),SUBARW( 2*nsw+1, 2*nsw+1)
 
@@ -477,7 +473,7 @@ end subroutine find_ridges
   real :: THETRAD,PI,swt,ang,rotmn,rotvar,mnt,var,xmn,xvr,basmn,basvar,mn2,var2
   real :: dyr_crest
   integer :: i,j,l,m,n2,mini,maxi,minj,maxj,ns0,ns1,iorn(1),jj
-  integer :: ipkh(1),ivld(1),ift0(1),ift1(1),i2,ii,ipksv(1),nsb_x
+  integer :: ipkh(1),ivld(1),ift0(1),ift1(1),i2,ii,ipksv(1)
   integer :: ibad_left,ibad_rght
 
   real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00
@@ -544,8 +540,6 @@ end subroutine find_ridges
 
      ys(ipk)= sum( suby )/size(suby,1)
      xs(ipk)= sum( subx )/size(subx,1)
-
-        !!subarw = AARAW( i*nsb-nsw  :i*nsb+nsw ,  j*nsb-nsw  :j*nsb+nsw )
 
         basmn  =  sum( sum( suba(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
         basvar =  sum( sum( (suba(ns0:ns1-1,ns0:ns1-1)-basmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
@@ -661,10 +655,9 @@ end subroutine find_ridges
            ! If ipkh is /// region then we flag it as "bad".  Maybe this code 
            ! should be removed altogether ... 
            !====================================================================
-           nsb_x = nsb
            if (nsw>=8) then
-              ibad_left  = 1     ! 2     !nsw/2 - nsb_x
-              ibad_rght  = nsw   ! nsw-1 ! nsw/2 + nsb_x
+              ibad_left  = 1    
+              ibad_rght  = nsw 
            else
               ibad_left  = 1
               ibad_rght  = nsw
@@ -935,7 +928,7 @@ end subroutine ANISO_ANA
 !====================================
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
-         nreconstruction,ntarget,nhalo,nsb,nsw,nsmcoarse,nsmfine,lzerovalley, & 
+         nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
          output_grid )
 !==========================================
 ! Some key inputs
@@ -951,7 +944,7 @@ end subroutine ANISO_ANA
       implicit none
       real(r8), intent(in) :: weights_all(jall,nreconstruction)
       integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsb,nsw,nsmcoarse,nsmfine
+      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine
       real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
       logical, intent(in)  :: lzerovalley
       character(len=1024),intent(in)  :: output_grid
@@ -963,6 +956,7 @@ end subroutine ANISO_ANA
       integer :: alloc_error
 
       integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,iip,j,ipk,npeaks
+      integer :: nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
 !++11/3/21 Added profiC
@@ -1075,62 +1069,62 @@ end subroutine ANISO_ANA
      ! ridge lines 
      !---------------------------------------------------------------
      write(*,*) " painting UNIQID "
-     tmpx6 = paintridge2cube ( uniqid ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( uniqid ,  ncube,nhalo,nsw,lzerovalley )
      uniqidC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting MXDIS "
-     tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsw,lzerovalley )
      mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting HWDTH "
-     tmpx6 = paintridge2cube ( hwdth ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( hwdth ,  ncube,nhalo,nsw,lzerovalley )
      hwdthC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting CLNGT "
-     tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsw,lzerovalley )
      clngtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting ANGLX "
-     tmpx6 = paintridge2cube ( anglx ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( anglx ,  ncube,nhalo,nsw,lzerovalley )
      anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting ANISO "
-     tmpx6 = paintridge2cube ( aniso ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( aniso ,  ncube,nhalo,nsw,lzerovalley )
      anisoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting MXVRX "
-     tmpx6 = paintridge2cube ( mxvrx ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( mxvrx ,  ncube,nhalo,nsw,lzerovalley )
      mxvrxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting MXVRY "
-     tmpx6 = paintridge2cube ( mxvry ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( mxvry ,  ncube,nhalo,nsw,lzerovalley )
      mxvryC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
         ! The 'crest_weight' option simply forces paintridge2cube to paint 
         ! a value of 1 along the ridge.
      write(*,*) " painting CWGHT "
-     tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsb,nsw,lzerovalley, crest_weight=.true. )
+     tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsw,lzerovalley, crest_weight=.true. )
      cwghtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      bumpsC = 0.
 
      write(*,*) " painting ISOHT "
-     tmpx6 = paintridge2cube ( isoht ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( isoht ,  ncube,nhalo,nsw,lzerovalley )
      isohtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting ISOWD "
-     tmpx6 = paintridge2cube ( isowd ,  ncube,nhalo,nsb,nsw,lzerovalley )
+     tmpx6 = paintridge2cube ( isowd ,  ncube,nhalo,nsw,lzerovalley )
      isowdC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      !----------------------------------------------
      ! New approach to add volume ...
      !----------------------------------------------
      write(*,*) " fleshing out BLOCK "
-     tmpx6  = fleshout_block ( ncube,nhalo,nsb,nsw,mxdisC,hwdthC,anglxC )
+     tmpx6  = fleshout_block ( ncube,nhalo,nsw,mxdisC,hwdthC,anglxC )
      blockC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " fleshing out PROFI "
-     tmpx6  = fleshout_profi ( ncube,nhalo,nsb,nsw,mxdisC,anglxC,uniqidC )
+     tmpx6  = fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC )
      profiC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
                          
 
@@ -1242,14 +1236,14 @@ end subroutine ANISO_ANA
      isowdq_target  = SUM( isowd_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
      isohtq_target  = SUM( isoht_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
 
-
-
+ 
+       nrs_junk=0
        call DATE_AND_TIME( DATE=date,TIME=time)
 
        write( ofile , &
        "('./output/remap_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
        '_Co',i0.3,'_Fi',i0.3)" ) & 
-        ncube, nsw, nsb, nsmcoarse, nsmfine
+        ncube, nsw, nrs_junk, nsmcoarse, nsmfine
        ofile= trim(ofile)//'_vX_'//date//'_'//time(1:4)//'.dat'
 
        OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
@@ -1515,9 +1509,9 @@ end subroutine importancesort
 
 !======================================
 
-function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb ) result( axc )
+function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo ) result( axc )
    
-       integer, intent(in) :: norx,nory,ncube,nhalo,nsb
+       integer, intent(in) :: norx,nory,ncube,nhalo
        real, intent(in), dimension(norx,nory,6) :: a
        real, intent(in), dimension(norx) :: xs
        real, intent(in), dimension(nory) :: ys
@@ -1525,15 +1519,16 @@ function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb ) result( axc
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        integer:: i,j,x0,x1,y0,y1,ip
+       integer:: n_what ! not sure what this doing
 !---------------------------------------------------
-
+     n_what=1
      do ip=1,6
        do j=1,nory
-          y0 = int( ys(j) )+1 - NSB/2. 
-          y1 = int( ys(j) )  +  NSB/2. 
+          y0 = int( ys(j) )+1 - n_what
+          y1 = int( ys(j) )  +  N_what 
           do i=1,norx
-             x0 = int( xs(i) )+1 - NSB/2. 
-             x1 = int( xs(i) )  +  NSB/2.
+             x0 = int( xs(i) )+1 - N_what 
+             x1 = int( xs(i) )  +  N_what
              if( (x0>-900).and.(x1>-900).and.(y0>-900).and.(y1>-900) ) then
                 AXC( x0:x1, y0:y1, ip ) = A( i , j , ip )
              endif
@@ -1544,9 +1539,9 @@ function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb ) result( axc
 end function mapridge2cube
 !======================================
 !++1/22/22 Added 
-function fleshout_block ( ncube,nhalo,nsb,nsw,mxdisC,hwdthC,anglxC ) result( axc )
+function fleshout_block ( ncube,nhalo,nsw,mxdisC,hwdthC,anglxC ) result( axc )
    
-       integer, intent(in) :: ncube,nhalo,nsb,nsw
+       integer, intent(in) :: ncube,nhalo,nsw
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: mxdisC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: hwdthC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
@@ -1604,10 +1599,10 @@ write(*,*) " in fleshout_block "
 end function fleshout_block
 !======================================
 !++1/25/22 Added 
-function fleshout_profi ( ncube,nhalo,nsb,nsw,mxdisC,anglxC,uniqidC ) & 
+function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC ) & 
                           result( axc )
    
-       integer, intent(in) :: ncube,nhalo,nsb,nsw
+       integer, intent(in) :: ncube,nhalo,nsw
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: mxdisC
        !!real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: hwdthC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
@@ -1670,10 +1665,10 @@ write(*,*) " in fleshout_profi "
 end function fleshout_profi
 
 !======================================
-function paintridge2cube ( axr, ncube,nhalo,nsb,nsw, lzerovalley, crest_length, crest_weight) & 
+function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, crest_weight) & 
                            result( axc )
    
-       integer, intent(in) :: ncube,nhalo,nsb,nsw
+       integer, intent(in) :: ncube,nhalo,nsw
        real, intent(in), dimension( size(xs) ) :: axr
        logical, intent(in) :: lzerovalley
        logical, optional, intent(in) :: crest_length
@@ -1837,9 +1832,9 @@ write(*,*) " in paintridge "
 
 
 !======================================
-subroutine paintridgeoncube ( ncube,nhalo,nsb,nsw , terr  )
+subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
    
-       integer, intent(in) :: ncube,nhalo,nsb,nsw
+       integer, intent(in) :: ncube,nhalo,nsw
        REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: terr
 
@@ -1851,7 +1846,7 @@ subroutine paintridgeoncube ( ncube,nhalo,nsb,nsw , terr  )
      where( pkhts < 0)
        mxdsp=0.
      end where
-     axc =  paintridge2cube ( mxdsp , ncube,nhalo,nsb,nsw,lzero )
+     axc =  paintridge2cube ( mxdsp , ncube,nhalo,nsw,lzero )
 
      write(411) ncube
      write(411) axc(1:ncube,1:ncube,:)
@@ -1862,14 +1857,14 @@ subroutine paintridgeoncube ( ncube,nhalo,nsb,nsw , terr  )
 !====================================
    subroutine remapridge2tiles(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
-         nreconstruction,ntarget,nhalo,nsb)
+         nreconstruction,ntarget,nhalo)
 
       use shr_kind_mod, only: r8 => shr_kind_r8
       use remap
       implicit none
       real(r8), intent(in) :: weights_all(jall,nreconstruction)
       integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsb
+      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo
       real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
       real(r8):: f(ntarget)
   
@@ -1940,27 +1935,27 @@ subroutine paintridgeoncube ( ncube,nhalo,nsb,nsw , terr  )
      norx=size(mxdis)
      nory=size(mxdis)
 
-     tmpx6 = mapridge2cube ( mxdis , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( mxdis , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( aniso , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( aniso , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      anisoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( mxvrx , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( mxvrx , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      mxvrxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( mxvry , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( mxvry , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      mxvryC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( bsvar , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( bsvar , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      bsvarC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( hwdth , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( hwdth , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      hwdthC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( xspk , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( xspk , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      xspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( yspk , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( yspk , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      yspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
 
-     tmpx6 = mapridge2cube ( 1.*uqrid , norx, nory,xs,ys,xv,yv,ncube,nhalo,nsb )
+     tmpx6 = mapridge2cube ( 1.*uqrid , norx, nory,xs,ys,xv,yv,ncube,nhalo )
      uqridC = INT(reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) ) )
 
 
