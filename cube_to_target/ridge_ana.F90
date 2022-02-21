@@ -1,6 +1,3 @@
-!!!!!++11/1/21 
-!#define SUBSETDBG
-#undef SUBSETDBG
 #define ROTATEBRUSH
 module ridge_ana
 
@@ -143,11 +140,13 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peak
     !nsb2=nsb/2
     !nsb2=nsb/4
     nsb2=1    
+    thsh = 0.
 
     DO np = 1, 6
      CALL CubedSphereFillHalo_Linear_extended(terr_dev, terr_dev_halo(:,:,np), np, ncube+1,nhalo)  
     END DO
 
+     write(*,*) " in find_local_max THSH : ",thsh
 
    
     DO np = 1, 6
@@ -336,48 +335,19 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
       ncube_halo = size( terr_halo_r4, 1)
 
-!++11/1/21
-!   call alloc_ridge_qs(npeaks)
    call alloc_ridge_qs(npeaks , NSW)
  
    do ipk = 1,npeaks
         i  = peaks(ipk)%i
         j  = peaks(ipk)%j
         np = peaks(ipk)%ip
-!++11/1/21
         MyPanel( ipk ) = np  ! could just write peaks%ip but WTF        
 
-#if 0
-                if  ( ((np==4).and.(i>300).and.(i<2400).and.(j>2000)) .or. &
-                      ((np==4).and.(i>1800).and.(i<2300).and.(j>500).and.(j<1500)) .or. &
-                      ((np==2).and.(i>900).and.(i<2000).and.(j>2200).and.(j<2800))  )  then
-                          write(*,901,advance='no')  i,j,np
-#endif       
-#if 0
-                if  ( ((np==4).and.(i>1300).and.(i<2400).and.(j>2000).and.(j<2400))  )  then
-                          write(*,901,advance='no')  i,j,np
-#endif       
-#ifdef SUBSETDBG
-                !!if  ( ((np==4).and.(i>300).and.(i<2400).and.(j>1700))  )  then  ! Most of N America south of Canada
-                !!          write(*,901,advance='no')  i,j,np
-                !!if  ( ((np==5).and.(i>0).and.(i<1000).and.(j>1600)).and.(j<2600)  )  then  ! South America Antarctic Pen
-                !!          write(*,901,advance='no')  i,j,np
-                if  (  ( (np==5).and.(i>0).and.(i<1000).and.(j>1600).and.(j<2600)  ) .or. &        !Patagonia+Antarctic Pen+ S Georgia
-                       ( (np==4).and.(i>1900).and.(i<2100).and.(j>1000).and.(j<1200)  ) .or.   &   !Peru
-                       ( (np==4).and.(i>300).and.(i<2400).and.(j>1700).and.(j<3000)  ) .or.   &    !Most of N America south of Canada
-                       ( (np==2).and.(i>800).and.(i<1500).and.(j>2400).and.(j<3000)  ) .or.   &    !Himalaya
-                       ( (np==6).and.(i>1100).and.(i<2000).and.(j>100).and.(j<1100)  )   &         !N Europe
-                                                                       ) then  
-                          write(*,901,advance='no')  i,j,np
-#endif       
         suba    = terr_dev_halo_r4( i-nsw:i+nsw , j-nsw:j+nsw, np )
         subarw  = terr_halo_r4( i-nsw:i+nsw , j-nsw:j+nsw, np )
         subx    = xv(i-nsw  :i+nsw )
         suby    = yv(j-nsw  :j+nsw )
         call ANISO_ANA( suba , subarw , subX , subY ,NSB,NSW, ipk )
-#ifdef SUBSETDBG
-                end if
-#endif
         write(*,900,advance='no') achar(13) , ipk, npeaks
     end do
 
@@ -386,8 +356,6 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 900 format( a1, "  Analyzed Ridges ",i6," out of ",i6 )
 901 format(" Ridge coords ", i6,i6,i3 )
-
-#if 1
 
 !++11/8/21
        write( ofile, &
@@ -479,19 +447,7 @@ do ipk=1,npeaks
    write(32) rtx_diag(:,:,ipk)
 end do
 
-close(32)
-
-#endif
-
-!++11/1/21
-#ifdef SUBSETDBG
-       !write(*,*)  " Bomb out of code after writing Ridge_list "
-       !                    STOP
-       write(*,*)  " Wrote ridge list going ON ...  "
-#endif       
-
-
- 
+close(32) 
 
 end subroutine find_ridges
 !----------------------------------------------------------
@@ -525,10 +481,10 @@ end subroutine find_ridges
   integer :: ibad_left,ibad_rght
 
   real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00
-  real :: dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),HWDX(NANG),xvld(NANG)
+  real :: dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),xvld(NANG)
         
   real :: NPKX(NANG),NVLX(NANG),vva2(NANG),pkht(NANG),vldp(NANG),rwpk(NANG)
-  real :: rwvl(NANG),RISEX(NANG),FALLX(NANG),LNGTH(NANG) 
+  real :: rwvl(NANG),RISEX(NANG),FALLX(NANG)
   real :: dex_dt(NANG)
 
 
@@ -610,8 +566,6 @@ end subroutine find_ridges
            rty = sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ) /( ns1-ns0 ) ! X-average
            rtrwx = sum( rtrw(ns0:ns1-1,ns0:ns1-1) , 2 ) /( ns1-ns0 ) ! Y-average of Raw topo
 
-
-#if 1 
                                           ! "Silhouettes" in x and y
            do m=ns0,ns1-1
               silux(m-ns0+1) = maxval(  rt( m ,ns0:ns1-1) )
@@ -619,14 +573,10 @@ end subroutine find_ridges
               siluy(m-ns0+1) = maxval(  rt( ns0:ns1-1, m) )
               silly(m-ns0+1) = minval(  rt( ns0:ns1-1, m) )
            end do
-#endif
-
-                                           
+                          
                                            ! Mean elevation
            mnt = sum( rtx )/( ns1-ns0 ) 
            mn2 = sum( rty )/( ns1-ns0 ) 
-
-
 
                   ! Mean slope BETA (and intercept ALPH) of RTX
            beta(L) = sum( (rtx-mnt)*(xrt-xmn) )/(nsw*xvr)           
@@ -682,40 +632,13 @@ end subroutine find_ridges
            var2 = sum( (rty-mn2)**2 )/( ns1-ns0 ) 
            vva2(L) = var2
 
+#if 0
+           ! Counting up some logicals
            Lhgts = ( ( rtx - minval(rtx) ) > 0.5*maxval( rtx - minval(rtx) ) )
-           !hwdx(L) = 1.0*count( Lhgts )
-
-
               ! flats = where slope is less than 33% of max
            Lflats = ( abs(dertx) < 0.33*maxval( abs(dertx ) ) ) 
-           hwdx(L) = 1.0*(nsw+1 - count( Lflats ) )
-
- 
-             ! Calculate Ridge Length
-#if 1
-             ! 1) Subtract steep sections of ridge Line
-             ! sides = where sides are steeper than XX% of max
-             ! (method used for CESM2 with CC_L1=0.2=20%)
-             ! Higher CC_L1 seems to work better for narrower
-             ! band-passes
-           Lsides = ( abs(derty) > CC_L1*maxval( abs(dertx ) ) ) 
-           lngth(L) = 1.0*(nsw+1 - count( Lsides ) )
-#endif
-#if 0
-             ! 2) Subtract steep sections of ridge Line
-             ! Length = where ridge line>0.8*MAX(ridge line)
-           Lsides = ( (rty-minval(rty)) > CC_L2*(maxval(rty)-minval(rty)) ) 
-           lngth(L) = 1.0*( count( Lsides ) )
 #endif
 
-#if 0
-           if (dex(L) > 1.0) then 
-              !hwdx(L) = sum( rtxslp**2  , 1) / (dex(L)**2)            
-              hwdx(L) = ( dex(L)**2 ) / sum( rtxslp**2  , 1)            
-           else
-              hwdx(L) = -1.
-           endif
-#endif
            !===============================================================
            ! Calculate relative horz displacements of actual peaks and 
            ! valleys along ridge-perp X (11/2/21)
@@ -788,10 +711,8 @@ end subroutine find_ridges
            end do
 
 
-!++11/1/21
            rdg_profile( : , L )  = rtx( : )
            crst_profile( : , L ) = rty( : )
-!++11/16/21
            crst_silhouette( : , L ) = siluy( : )
 
 
@@ -805,7 +726,6 @@ end subroutine find_ridges
         mxvry(ipk) = vva2( iorn(1) ) !MAXVAL( vvaa )
         mxdis(ipk) = dex( iorn(1) )
         mxds2(ipk) = dex_dt( iorn(1) )
-        hwdth(ipk) = hwdx( iorn(1) )
         npks(ipk)  = npkx( iorn(1) )
         nvls(ipk)  = nvlx( iorn(1) )
         aniso(ipk) = qual( iorn(1) )
@@ -827,19 +747,13 @@ end subroutine find_ridges
 
         riseq(ipk) = risex( iorn(1) )
         fallq(ipk) = fallx( iorn(1) )
-        !clngth(ipk)= lngth( iorn(1) )
 
-!++ 11//21
         rdg_profiles(:,ipk)  = rdg_profile( : , iorn(1) )
         crst_profiles(:,ipk) = crst_profile( : , iorn(1) )
         crst_silhous(:,ipk)  = crst_silhouette( : , iorn(1) )
-!--
       
-!++11/15/21
         uniqid(ipk) = (1.0d+0) * ipk
-!--
 
-!++11/15-17/21
 !===============================================================
 !  Could be more direct and intuitive to relocate xspk and yspk,
 !  and to estimate ridge width and crest length here, from saved 

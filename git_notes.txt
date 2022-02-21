@@ -1,0 +1,16 @@
+Steps to get current with master. This worked on Feb 19 2022.
+
+
+1) git fetch NCAR topowopts
+
+then 
+
+2) git merge NCAR/topowopts
+
+
+
+Puzzled about syntax. 1 worked fine, but when I tried
+
+2*) git merge NCAR topowopts
+
+Got an error message

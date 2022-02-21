@@ -182,10 +182,6 @@ program convterr
      select case( getopt( "c:f:g:hi:ln:o:pqrstxy:z012:4:", opts ) ) ! opts is optional (for longopts only)
      case( char(0) )
         exit
-     !case( 'P' )
-     !   lread_smooth_topofile = .TRUE.
-     !case( 'S' )
-     !  smooth_topo_fname = optarg
      case( 'c' )
         read (optarg, '(i3)') ioptarg
         ncube_sph_smooth_coarse = ioptarg
@@ -284,9 +280,11 @@ program convterr
   write(*,*) "lzero_out_ocean_point_phis      = ",lzero_out_ocean_point_phis
   write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
   write(*,*) "lridgetiles                     = ",lridgetiles
+#if 0
+! these are not used/needed
   write(*,*) "ncube_sph_smooth_iter           = ",ncube_sph_smooth_iter
   write(*,*) "nridge_subsample                = ",nridge_subsample
-  write(*,*) " "
+#endif
   write(*,*) "lread_smooth_topofile           = ",lread_smooth_topofile
 
   if(lread_smooth_topofile) &
