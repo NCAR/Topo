@@ -150,7 +150,7 @@ program convterr
     integer :: npeaks
 #endif
 
-  type(option_s):: opts(16)
+  type(option_s):: opts(15)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -163,133 +163,123 @@ program convterr
   opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
   opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.true.)
   opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
-  opts(9) = option_s( "regional_refinement"       ,.false.   , 's'   ,.false.       ,.false.)
+  opts(9) =  option_s( "regional_refinement"       ,.false.  , 's'   ,.false.       ,.false.)
   opts(10) = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
   opts(11) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
   opts(12) = option_s( "zero_out_ocean_point_phis",.false.   , 'z'   ,.false.       ,.false.)
   opts(13) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
   opts(14) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
-  opts(15) = option_s( "precomputed_smooth_topo"  ,.false.   , 'q'   ,.false.       ,.false.)
-  opts(16) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
+  opts(15) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
-
+  !
+  ! collect command line arguments in this string for netCDF meta data
+  !
   command_line_arguments = './cube_to_target'
   grid_descriptor_fname = ''
 
-  
-
   ! Process options one by one
   do
-!     select case( getopt( "bc:e:f:g:hi:lmn:o:prstuxy:z012:34:5:6:7:8:", opts ) ) ! opts is optional (for longopts only)
-     select case( getopt( "c:f:g:hi:o:pqrstxy:z:01:", opts ) ) ! opts is optional (for longopts only)
-     case( char(0) )
-        exit
-     !case( 'P' )
-     !   lread_smooth_topofile = .TRUE.
-     !case( 'S' )
-     !  smooth_topo_fname = optarg
-        !
-        ! TODO: add input/username of data creator!
-        !
-     case( 'c' )
-        read (optarg, '(i3)') ioptarg
-        ncube_sph_smooth_coarse = ioptarg
-        write(str,*) ioptarg
-        command_line_arguments = TRIM(command_line_arguments)//' -c '//TRIM(ADJUSTL(str))
-        opts(1)%specified = .true.
-     case( 'f' )
-        read (optarg, '(i3)') ioptarg
-        ncube_sph_smooth_fine = ioptarg
-        write(str,*) ioptarg
-        command_line_arguments = TRIM(command_line_arguments)//' -f '//TRIM(ADJUSTL(str))
-        opts(2)%specified = .true.
-     case( 'g' )
-        grid_descriptor_fname = optarg
-        write(str,*) TRIM(optarg)
-        command_line_arguments = TRIM(command_line_arguments)//' -g '//TRIM(ADJUSTL(str))
-        opts(3)%specified = .true.
-     case( 'h' )
-        call print_help
-        opts(4)%specified = .true.
-     case( 'i' )
-        intermediate_cubed_sphere_fname = optarg
-        write(str,*) TRIM(optarg)
-        command_line_arguments = TRIM(command_line_arguments)//' -i '//TRIM(ADJUSTL(str))
-        opts(5)%specified = .true.
-     case( 'o' )
-        output_grid = optarg
-        write(str,*) TRIM(optarg)
-        command_line_arguments = TRIM(command_line_arguments)//' -o '//TRIM(ADJUSTL(str))
-        opts(6)%specified = .true.
-     case( 'p' )
-        luse_prefilter=.TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -p '
-        opts(7)%specified = .true.
-      case( 'r' )
-        lfind_ridges = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -r '
-        opts(8)%specified = .true.
-     case( 's' )
-        lregional_refinement = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -s '
-        opts(9)%specified = .true.
-     case( 'x' )
-        lstop_after_smoothing = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -x '//TRIM(ADJUSTL(str))
-        opts(10)%specified = .true.
-     case( 'y' )
-        read (optarg, '(i3)') ioptarg
-        rrfac_max = ioptarg
-        write(str,*) ioptarg
-        command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
-        opts(11)%specified = .true.
-     case( 'z' )
-        lzero_out_ocean_point_phis = .TRUE.
-        write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
-        STOP
-        command_line_arguments = TRIM(command_line_arguments)//' -z '
-        opts(12)%specified = .true.
-     case( '0' )
-        lzero_negative_peaks = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -0 '
-        write(*,*) "check support"
-        opts(13)%specified = .true.
-        stop
-     case( '1' )
-        lridgetiles = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -1 '
-        opts(14)%specified = .true.
-     case( 'q' )
-        lread_smooth_topofile = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -q '
-        opts(15)%specified = .true.
-
-     case( 't' )
-        smooth_topo_fname = optarg
-        write(str,*) TRIM(optarg)
-        command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
-        opts(16)%specified = .true.
-      case default
-        write(*,*) "Option unknown: ",char(0)        
-        stop
-     end select
-  end do
-  if ( lread_smooth_topofile ) then
-      write(*,*) " Use pre-computed smooth topo " 
-      write(*,*) " File = ", trim(smooth_topo_fname)
-  end if
-
-
-
-  do i=1,SIZE(opts)
-    write(*,*) i
-    if (.not.opts(i)%specified.and.opts(i)%required) then
-      write(*,*) "Required argument not specified: ",opts(i)%name
+    select case( getopt( "c:f:g:hi:o:prs:xy:z:01:2:t:", opts ) ) ! opts is optional (for longopts only)
+    case( char(0) )
+      exit
+    case( 'c' )
+      read (optarg, '(i3)') ioptarg
+      ncube_sph_smooth_coarse = ioptarg
+      write(str,*) ioptarg
+      command_line_arguments = TRIM(command_line_arguments)//' -c '//TRIM(ADJUSTL(str))
+      opts(1)%specified = .true.
+    case( 'f' )
+      read (optarg, '(i3)') ioptarg
+      ncube_sph_smooth_fine = ioptarg
+      write(str,*) ioptarg
+      command_line_arguments = TRIM(command_line_arguments)//' -f '//TRIM(ADJUSTL(str))
+      opts(2)%specified = .true.
+    case( 'g' )
+      grid_descriptor_fname = optarg
+      write(*,*) 'zzz',trim(grid_descriptor_fname)
+      write(str,*) TRIM(optarg)
+      command_line_arguments = TRIM(command_line_arguments)//' -g '//TRIM(ADJUSTL(str))
+      opts(3)%specified = .true.
+    case( 'h' )
+      call print_help
+      opts(4)%specified = .true.
+    case( 'i' )
+      intermediate_cubed_sphere_fname = optarg
+      write(str,*) TRIM(optarg)
+      command_line_arguments = TRIM(command_line_arguments)//' -i '//TRIM(ADJUSTL(str))
+      opts(5)%specified = .true.
+    case( 'o' )
+      output_grid = optarg
+      write(str,*) TRIM(optarg)
+      command_line_arguments = TRIM(command_line_arguments)//' -o '//TRIM(ADJUSTL(str))
+      opts(6)%specified = .true.
+    case( 'p' )
+      luse_prefilter=.TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -p '
+      opts(7)%specified = .true.
+    case( 'r' )
+      lfind_ridges = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -r '
+      opts(8)%specified = .true.
+    case( 's' )
+      lregional_refinement = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -s '
+      opts(9)%specified = .true.
+    case( 'x' )
+      lstop_after_smoothing = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -x '//TRIM(ADJUSTL(str))
+      opts(10)%specified = .true.
+    case( 'y' )
+      read (optarg, '(i3)') ioptarg
+      rrfac_max = ioptarg
+      write(str,*) ioptarg
+      command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
+      opts(11)%specified = .true.
+    case( 'z' )
+      lzero_out_ocean_point_phis = .TRUE.
+      write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
+      STOP
+      command_line_arguments = TRIM(command_line_arguments)//' -z '
+      opts(12)%specified = .true.
+    case( '0' )
+      lzero_negative_peaks = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -0 '
+      write(*,*) "check support"
+      opts(13)%specified = .true.
       stop
-    end if
-  end do
+     case( '1' )
+       lridgetiles = .TRUE.
+       command_line_arguments = TRIM(command_line_arguments)//' -1 '
+       opts(14)%specified = .true.
+     case( 't' )
+       smooth_topo_fname = optarg
+       write(str,*) TRIM(optarg)
+       write(*,*) str
+       command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
+       opts(15)%specified = .true.
+     case default
+       write(*,*) "Option unknown: ",char(0)        
+       stop
+     end select
+   end do
+
+   if (LEN(TRIM(smooth_topo_fname))>0) then
+     lread_smooth_topofile = .TRUE.
+     write(*,*) " Use pre-computed smooth topo " 
+     write(*,*) " File = ", trim(smooth_topo_fname)
+   end if
+   !
+   ! check that all required arguments are specified/initialized
+   !
+   do i=1,SIZE(opts)
+     write(*,*) i
+     if (.not.opts(i)%specified.and.opts(i)%required) then
+       write(*,*) "Required argument not specified: ",opts(i)%name
+       stop
+     end if
+   end do
 
 
   !
@@ -335,8 +325,6 @@ program convterr
   write(*,*) "lzero_out_ocean_point_phis      = ",lzero_out_ocean_point_phis
   write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
   write(*,*) "lridgetiles                     = ",lridgetiles
-  write(*,*) " "
-  write(*,*) "lread_smooth_topofile           = ",lread_smooth_topofile
   write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
 
   call  set_constants
