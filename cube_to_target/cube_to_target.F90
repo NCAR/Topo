@@ -61,7 +61,7 @@ program convterr
   integer :: jmax_segments,jall,jall_anticipated
   real(r8) :: tmp
   
-  real(r8), allocatable, dimension(:) :: tmp_var
+  real(r8), allocatable, dimension(:) :: tmp_var, rrfac_target
 
 
 
@@ -117,6 +117,7 @@ program convterr
   integer :: nridge_subsample = 0 !-1
   !
   logical :: lridgetiles = .FALSE.
+  
 !+++ARH
   logical :: lregional_refinement = .FALSE.
   integer :: rrfac_max = 1
@@ -125,7 +126,7 @@ program convterr
 !++JTB
   logical :: lread_pre_smoothtopo = .FALSE.
 !--JTB
-
+  logical :: lwrite_rrfac_to_topo_file = .FALSE.
 
   !
   !
@@ -135,7 +136,7 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
-  character(len=1024) :: output_grid, ofile,smooth_topo_fname
+  character(len=1024) :: output_grid, ofile,smooth_topo_fname = ''
   character(len=1024) :: rrfactor_fname, command_line_arguments, str
 
   character(len=8)  :: date
@@ -150,7 +151,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(15)
+    type(option_s):: opts(16)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -170,6 +171,7 @@ program convterr
     opts(13) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
     opts(14) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
     opts(15) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
+    opts(16) = option_s( "write_rrfac_to_topo_file ",.true.    , 'd'   ,.false.       ,.false.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -181,7 +183,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prs:xy:z:01:2:t:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prsxy:z:01:t:d", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -259,16 +261,22 @@ program convterr
         write(*,*) str
         command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
         opts(15)%specified = .true.
+      case( 'd' )
+        lwrite_rrfac_to_topo_file = .TRUE.
+        command_line_arguments = TRIM(command_line_arguments)//' -d '
+        opts(16)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
       end select
     end do
     
-    if (LEN(TRIM(smooth_topo_fname))>0) then
+    if (TRIM(smooth_topo_fname).ne.'') then
       lread_smooth_topofile = .TRUE.
       write(*,*) " Use pre-computed smooth topo " 
       write(*,*) " File = ", trim(smooth_topo_fname)
+    else 
+      write(*,*) " No smooth top"
     end if
     !
     ! check that all required arguments are specified/initialized
@@ -321,6 +329,7 @@ program convterr
     write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
     write(*,*) "lridgetiles                     = ",lridgetiles
     write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
+    write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
     
     call  set_constants
     
@@ -553,7 +562,8 @@ program convterr
     !
     !*********************************************************
     
-    call allocate_target_vars(ntarget)  
+    call allocate_target_vars(ntarget)
+    if (lwrite_rrfac_to_topo_file) allocate (rrfac_target(ntarget))
     
     !*********************************************************************
     !      In the following loops "counti" is the index of a piece of 
@@ -749,8 +759,8 @@ program convterr
         !           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
         !           output_grid,&
         !           lregional_refinement=lregional_refinement, rr_factor = rrfac  )
-        write(*,*) "not merged"
-        stop
+        !write(*,*) "not merged"
+        !stop
       else
         call remapridge2target(area_target,target_center_lon,target_center_lat, & 
              weights_eul_index_all(1:jall,:), & 
@@ -767,6 +777,27 @@ program convterr
              nreconstruction,ntarget,nhalo,nsb)
       endif
     endif
+
+    if (lwrite_rrfac_to_topo_file) then
+      rrfac_target = 0.0_r8
+      do counti=1,jall
+        
+        i    = weights_lgr_index_all(counti)!!
+        !
+        ix  = weights_eul_index_all(counti,1)
+        iy  = weights_eul_index_all(counti,2)
+        ip  = weights_eul_index_all(counti,3)
+        !
+        ! convert to 1D indexing of cubed-sphere
+        !
+        ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+        
+        wt = weights_all(counti,1)
+        
+        rrfac_target  (i) = rrfac_target  (i) + wt*rrfac(ix,iy,ip)/area_target(i)
+      end do
+    end if
+
     
     write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
     
@@ -787,6 +818,9 @@ program convterr
     
     WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)
     WRITE(*,*) "min/max of terr_target                   : ",MINVAL(terr_target    ),MAXVAL(terr_target    )
+    if (lwrite_rrfac_to_topo_file) then
+      WRITE(*,*) "min/max of rrfac                       : ",MINVAL(rrfac_target),MAXVAL(rrfac_target)
+    end if
     !+++ARH
     !WRITE(*,*) "min/max of landfrac_target               : ",MINVAL(landfrac_target),MAXVAL(landfrac_target)
     !---ARH
@@ -811,12 +845,15 @@ program convterr
       
     ELSE
       CALL wrtncdf_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
-           landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges, command_line_arguments)
+           landm_coslat_target,target_center_lon,target_center_lat,target_area,&
+           output_fname,lfind_ridges, command_line_arguments,&
+           lwrite_rrfac_to_topo_file,rrfac_target)
     END IF
     !DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
     DEALLOCATE(terr_target,sgh30_target,sgh_target,landm_coslat_target)
     !---ARH
     DEALLOCATE(weights_all,weights_eul_index_all,terr)
+    if (lwrite_rrfac_to_topo_file) deallocate (rrfac_target)
     
   end program convterr
   
@@ -836,6 +873,7 @@ program convterr
     write (6,*) "-z, --zero_out_ocean_point_phis  Enable [default:disabled]"
     write (6,*) "-0, --zero_negative_peaks        Enable [default:disabled]"
     write (6,*) "-1, --ridge2tiles                Enable [default:disabled]"
+    write (6,*) "-d, --write_rrfac_to_topo_file"
     stop
   end subroutine print_help
   !
@@ -843,7 +881,8 @@ program convterr
   !
   !+++ARH
   !subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
-  subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments)
+  subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments,&
+       lwrite_rrfac_to_topo_file,rrfac_target)
     !---ARH
     use shared_vars, only : rad2deg
     use shr_kind_mod, only: r8 => shr_kind_r8
@@ -865,11 +904,13 @@ program convterr
     integer, intent(in) :: n
     !+++ARH
     !real(r8),dimension(n)  , intent(in) :: terr, landfrac,sgh,sgh30,lon, lat, landm_coslat,area  
-    real(r8),dimension(n)  , intent(in) :: terr,sgh,sgh30,lon,lat,landm_coslat,area
+    real(r8),dimension(n), intent(in) :: terr,sgh,sgh30,lon,lat,landm_coslat,area
     !---ARH
-    character(len=1024), intent(in) :: output_fname
-    logical,             intent(in) :: lfind_ridges
-    character(len=1024), intent(in) :: command_line_arguments
+    character(len=1024),   intent(in) :: output_fname
+    logical,               intent(in) :: lfind_ridges
+    character(len=1024),   intent(in) :: command_line_arguments
+    logical,               intent(in) :: lwrite_rrfac_to_topo_file
+    real(r8),dimension(n), intent(in) :: rrfac_target
     !
     ! Local variables
     !
@@ -883,7 +924,7 @@ program convterr
     integer            :: sghid,sgh30id,landm_coslatid
     !---ARH
     integer             :: mxdisid, ang22id, anixyid, anisoid, mxvrxid, mxvryid, hwdthid, wghtsid, anglxid, gbxarid
-    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid
+    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid
     
     integer            :: status    ! return value for error control of netcdf routin
     !  integer, dimension(2) :: nc_lat_vid,nc_lon_vid
@@ -924,6 +965,15 @@ program convterr
       call handle_err(status)
       write(*,*) "PHIS error"
     end if
+
+    if (lwrite_rrfac_to_topo_file) then
+      status = nf_def_var (foutid,'RRFAC', NF_DOUBLE, 1, nid(1), rrfacid)
+      if (status .ne. NF_NOERR) then
+        call handle_err(status)
+        write(*,*) "RRFAC error"
+      end if
+    end if
+
     !+++ARH  
     !status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 1, nid(1), landfracid)
     !if (status .ne. NF_NOERR) call handle_err(status)
@@ -1072,6 +1122,12 @@ program convterr
     status = nf_put_att_double (foutid, terrid, 'missing_value', nf_double, 1, fillvalue)
     status = nf_put_att_double (foutid, terrid, '_FillValue'   , nf_double, 1, fillvalue)
     !        status = nf_put_att_text (foutid,terrid,'filter', 35, 'area averaged from USGS 30-sec data')
+    if (lwrite_rrfac_to_topo_file) then
+      status = nf_put_att_text (foutid,rrfacid,'long_name', 17, 'refinement factor')
+      status = nf_put_att_text (foutid,rrfacid,'units', 0, '')
+      status = nf_put_att_double (foutid, rrfacid, 'missing_value', nf_double, 1, fillvalue)
+      status = nf_put_att_double (foutid, rrfacid, '_FillValue'   , nf_double, 1, fillvalue)
+    end if
     
     status = nf_put_att_double (foutid, sghid, 'missing_value', nf_double, 1, fillvalue)
     status = nf_put_att_double (foutid, sghid, '_FillValue'   , nf_double, 1, fillvalue)
@@ -1171,6 +1227,12 @@ program convterr
     status = nf_put_var_double (foutid, terrid, terr*9.80616)
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
+
+    if (lwrite_rrfac_to_topo_file) then
+      status = nf_put_var_double (foutid, rrfacid, rrfac_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing rrfac data"
+    end if
     !+++ARH  
     !print*,"writing landfrac data",MINVAL(landfrac),MAXVAL(landfrac)
     !status = nf_put_var_double (foutid, landfracid, landfrac)
