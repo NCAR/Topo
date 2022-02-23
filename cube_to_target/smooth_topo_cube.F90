@@ -1,3 +1,4 @@
+
 !-----------------------------------------------------------------------------
 ! MODULE subgrid_topo_ana
 !
@@ -27,7 +28,8 @@ CONTAINS
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
-                                    , smooth_topo_fname )
+                                    , command_line_arguments&
+                                    , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -61,6 +63,7 @@ CONTAINS
     LOGICAL, INTENT(IN)  :: lregional_refinement
     CHARACTER(len=1024), INTENT(  OUT) :: ofname
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
+    character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
 
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
     REAL (KIND=dbl_kind)     :: volterr_in,volterr_sm
@@ -81,26 +84,21 @@ CONTAINS
     read_in_and_refine=.FALSE.
 
     IF (read_in_precomputed) then
-
-       OPEN (unit = 711, file= trim(smooth_topo_fname) ,form="UNFORMATTED" )
-       READ(711) ncube_in_file
-       READ(711) terr_sm
-       READ(711) terr_dev
-       !!READ(711) rr_factor
-       close(711)
-
-       write(*,*) " Read precomputed filtered topography from "
-       write(*,*) trim(smooth_topo_fname)
-
-       ! return to main program after
-       ! reading topography variables
-       if (.NOT. lregional_refinement) then 
-          RETURN
-       else
-          read_in_and_refine=.TRUE.
-       end if
-
-     ENDIF
+      write(*,*) " Read precomputed filtered topography from ",trim(smooth_topo_fname)
+      if (lregional_refinement) then
+!check can not overwrite rrfac - I think we need merge from Julio
+        !        call read_topo_smooth_data(smooth_topo_fname,ncube*ncube*6,terr_sm,terr_dev,rr_fac=rrfac)
+      else
+        call read_topo_smooth_data(smooth_topo_fname,ncube*ncube*6,terr_sm,terr_dev)
+      end if
+      ! return to main program after
+      ! reading topography variables
+      if (.NOT. lregional_refinement) then 
+        RETURN
+      else
+        read_in_and_refine=.TRUE.
+      end if
+    ENDIF
 
      ! If your are here and read_in_and_refine=.FALSE. then
      ! then you must want to generate a new smooth topo.  So 
@@ -116,14 +114,13 @@ CONTAINS
         ncube, NSCL_c/2, NSCL_f/2
 
        if (lregional_refinement) then
-          ofname= trim(ofname)//'_VRtest.dat'
+          ofname= trim(ofname)//'_VRtest.nc'
        else
-          ofname= trim(ofname)//'.dat'
+          ofname= trim(ofname)//'.nc'
        end if
 
        write(*,*) " Will do smoothing of topo on cubed sphere "
-       write(*,*) " Output will go to:"
-       write(*,*) ofname
+       write(*,*) " Output will go to: ",trim(ofname)
 
      !terr_in = terr
      DO ip = 1, 6
@@ -169,17 +166,11 @@ CONTAINS
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
 
   
-      !terr = terr_in
- 
-      
-      OPEN (unit = 711, file= trim(ofname) ,form="UNFORMATTED" )
-      write(711) ncube
-      WRITE(711) terr_sm
-      WRITE(711) terr_dev
       if (lregional_refinement) then
-        WRITE(711) rrfac
+!xxx        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
+      else
+        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
       end if
-      close(711)
 
       if (stop_after_smoothing) STOP
 
@@ -419,6 +410,187 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
 
 
 END SUBROUTINE smooth_intermediate_topo_halo
+
+subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line_arguments,rr_fac)
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  implicit none
+  
+#     include         <netcdf.inc>
+    
+  !
+  ! Dummy arguments
+  !
+  integer, intent(in) :: n
+  real(r8),dimension(n),           intent(in) :: terr_sm,terr_dev
+  character(len=1024),             intent(in) :: output_fname
+  real(r8),dimension(n), optional, intent(in) :: rr_fac
+  character(len=1024),             intent(in) :: command_line_arguments
+
+  integer            :: foutid     ! Output file id
+  integer            :: lonvid
+  integer            :: latvid
+  integer            :: terr_smid, terr_devid, rr_fac_id
+  integer            :: status
+  character (len=8)  :: datestring
+  integer, dimension(2) :: nid
+    
+  real(r8), parameter :: fillvalue = 1.d36
+  integer, dimension(1) :: latdim
+  character(len=1024) :: str
+    
+    
+  !
+  !  Create NetCDF file for output
+  !
+  print *,"Create NetCDF file for output: ",trim(output_fname)
+  status = nf_create (trim(output_fname), NF_64BIT_OFFSET , foutid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+  !
+  ! Meta data for CESM compliance
+  !
+  !-data_summary		|	Short paragraph about the data.
+  !-data_creator 		| 	Name and email of the person who created the dataset
+  !-cesm_contact    	        |     	The liaison of the relevant WG
+  !-creation_date    	        |     	Full date of dataset creation
+  !-update_date    	        |     	Full date of most recent modification
+  !-history    		        |     	Updates to changes made to the data.
+  !-data_script    	        |     	script to generate data (will be available in the SVN repository ?)
+  !-data_description_url 	|     	A web-page with a description if available  (this could be the climatedataguide webpage.)
+  !-data_source_url    	        |     	The web page where the raw data can be downloaded
+  !-data_reference    	        |     	Full reference for the dataset if available
+  !-data_doi    		|     	If doi of data exists
+  !-climo_years    	        |     	Year 1-year N of the climatological averaging period.
+  !-data_mods    		|     	Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CESM. 
+  !
+  str = 'Smoothed topo data for quicker generation of topography data'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_summary',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  call DATE_AND_TIME(DATE=datestring)
+  status = nf_put_att_text (foutid,NF_GLOBAL,'creation_date',8, TRIM(datestring) )
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  str = 'Peter Hjort Lauritzen and Julio Bacmeister'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'cesm_contact',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  str = 'https://github.com/NCAR/Topo.git'
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_source',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_script',LEN(TRIM(command_line_arguments)), TRIM(command_line_arguments))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
+       'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
+  status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  
+  
+  !  status = nf_put_att_text (foutid,NF_GLOBAL,'data_script',LEN(TRIM(command_line_arguments)), TRIM(command_line_arguments))
+  !  if (status .ne. NF_NOERR) call handle_err(status)
+  !
+  ! Create dimensions for output
+  !
+  status = nf_def_dim (foutid, 'ncol', n, nid(1))
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  print *,"Create variable for output: terr_sm"
+  status = nf_def_var (foutid,'terr_sm', NF_DOUBLE, 1, nid(1), terr_smid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  status = nf_put_att_text (foutid,terr_smid,'long_name', 21, 'precomputed smoothed height field')
+  status = nf_put_att_text (foutid,terr_smid,'units', 1, 'm')
+  status = nf_put_att_double (foutid, terr_smid, 'missing_value', nf_double, 1, fillvalue)
+  status = nf_put_att_double (foutid, terr_smid, '_FillValue'   , nf_double, 1, fillvalue)
+  
+  print *,"Create variable for output: terr_dev"
+  status = nf_def_var (foutid,'terr_dev', NF_DOUBLE, 1, nid(1), terr_devid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  status = nf_put_att_text (foutid,terr_devid,'long_name', 82, &
+       'precomputed difference between intermdiate cubed-sphere height and smoothed height')
+  status = nf_put_att_text (foutid,terr_devid,'units', 1, 'm')
+  status = nf_put_att_double (foutid, terr_devid, 'missing_value', nf_double, 1, fillvalue)
+  status = nf_put_att_double (foutid, terr_devid, '_FillValue'   , nf_double, 1, fillvalue)
+
+  if (present(rr_fac)) then
+    print *,"Create variable for output: rr_fac"
+    status = nf_def_var (foutid,'rr_fac', NF_DOUBLE, 1, nid(1), rr_fac_id)
+    if (status .ne. NF_NOERR) call handle_err(status)    
+  end if
+  !
+  ! End define mode for output file
+  !
+  status = nf_enddef (foutid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  print*,"writing terr",MINVAL(terr_sm),MAXVAL(terr_sm)
+  status = nf_put_var_double (foutid, terr_smid, terr_sm)
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  print*,"writing terr_dev",MINVAL(terr_dev),MAXVAL(terr_dev)
+  status = nf_put_var_double (foutid, terr_devid, terr_dev)
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  if (present(rr_fac)) then
+    print*,"writing rr_fac",MINVAL(rr_fac),MAXVAL(rr_fac)
+    status = nf_put_var_double (foutid, rr_fac_id, rr_fac)
+    if (status .ne. NF_NOERR) call handle_err(status)
+  end if
+
+  
+  print *,"close file"
+  status = nf_close (foutid)
+  if (status .ne. NF_NOERR) call handle_err(status)
+end subroutine wrtncdf_topo_smooth_data
+
+subroutine read_topo_smooth_data(fname,ncol,terr_sm,terr_dev,rr_fac)
+  use shr_kind_mod, only: r8 => shr_kind_r8
+  implicit none
+#     include         <netcdf.inc>
+  character(len=1024),      intent(in)  :: fname
+  integer,                  intent(in)  :: ncol
+  real(r8),dimension(ncol), intent(out) :: terr_sm,terr_dev
+  real(r8),dimension(ncol), intent(out), optional :: rr_fac
+
+  integer :: ncid,status, dimid, alloc_error, terr_sm_id,terr_dev_id,ncol_file, rr_fac_id
+
+  status = nf_open(TRIM(fname) , 0, ncid)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  
+  status = NF_INQ_DIMID(ncid,'ncol', dimid)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+
+  status = NF_INQ_DIMLEN(ncid, dimid, ncol_file)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  if (ncol.ne.ncol_file) then
+    write(*,*) "Mismatch between specified smoothed topo data dimension: ",ncol_file,ncol
+    stop
+  end if
+
+  status = NF_INQ_VARID(ncid, 'terr_sm', terr_sm_id)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  status = NF_GET_VAR_DOUBLE(ncid, terr_sm_id,terr_sm)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+
+  status = NF_INQ_VARID(ncid, 'terr_dev', terr_dev_id)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  
+  status = NF_GET_VAR_DOUBLE(ncid, terr_dev_id,terr_dev)
+  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+
+  if (present(rr_fac)) then
+    status = NF_GET_VAR_DOUBLE(ncid, rr_fac_id,rr_fac)
+    IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+  end if
+
+  status = nf_close (ncid)
+  if (status .ne. NF_NOERR) call handle_err(status)  
+end subroutine read_topo_smooth_data
 
 
 

@@ -479,7 +479,8 @@ program convterr
            luse_prefilter, &
            lstop_after_smoothing, &
            lregional_refinement, &
-           smooth_topo_fname=smooth_topo_fname )
+           command_line_arguments,&
+           smooth_topo_fname=smooth_topo_fname)
       
     else
       terr_dev = terr_2
