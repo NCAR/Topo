@@ -30,11 +30,7 @@ program convterr
   !**********************************************************************
   !
   integer :: ncube !dimension of cubed-sphere grid
-  integer :: ncube_rr ! dimension of refinement factor. 
-                      ! Should be equal to ncube.
-  
 
- 
   integer :: alloc_error
   
   logical :: ldbg
@@ -164,7 +160,7 @@ program convterr
     opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
     opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.true.)
     opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
-    opts(9) = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
+    opts(9)  = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
     opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
     opts(11) = option_s( "zero_out_ocean_point_phis",.false.   , 'z'   ,.false.       ,.false.)
     opts(12) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
@@ -199,7 +195,6 @@ program convterr
         opts(2)%specified = .true.
       case( 'g' )
         grid_descriptor_fname = optarg
-        write(*,*) 'zzz',trim(grid_descriptor_fname)
         write(str,*) TRIM(optarg)
         command_line_arguments = TRIM(command_line_arguments)//' -g '//TRIM(ADJUSTL(str))
         opts(3)%specified = .true.
