@@ -84,9 +84,9 @@ CONTAINS
 
        OPEN (unit = 711, file= trim(smooth_topo_fname) ,form="UNFORMATTED" )
        READ(711) ncube_in_file
-       READ(711) terr
+       READ(711) terr!not needed
        READ(711) terr_sm
-       READ(711) terr_dev
+       READ(711) terr_dev !not needed - must be compured
        !!READ(711) rr_factor
        close(711)
 

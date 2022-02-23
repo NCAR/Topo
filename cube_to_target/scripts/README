@@ -14,6 +14,7 @@ CAM-SE-CSLAM	      : ne5pg3	     , ne16pg3	     , ne30pg3		, ne60pg3	, ne120pg3	
 CAM-SE-CSLAM	      : ne5pg4	     , ne16pg4	     , ne30pg4		, ne60pg4	, ne120pg4
 CAM-MPAS	      : mpasa480     , mpasa120
 
+
 Variable resolution grids
 =========================
 
@@ -24,3 +25,8 @@ ne0np4.ARCTICGRIS.ne30x8
 mpas_scrip_60-3_central_us
 mpas_scrip_60-3_andes
 mpas_scrip_60-15_sa
+
+
+High -resolution that require special attention (i.e. near ~7-~3km)
+===================================================================
+

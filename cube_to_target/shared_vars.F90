@@ -304,7 +304,7 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: grid_descriptor_fname
-  logical, intent(in) :: lregional_refinement
+  logical, intent(out) :: lregional_refinement
   logical, intent(out) :: lpole, ltarget_latlon
   integer, intent(out) :: nlat,nlon,ntarget,ncorner,nrank
   integer :: ncid,status
@@ -321,99 +321,91 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   !
   !*********************************************************
   !
-  if (.true.) then
-     write(*,*) "Opening grid descriptor file :  ",TRIM(grid_descriptor_fname)
-     status = nf_open(TRIM(grid_descriptor_fname), 0, ncid)
-     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-     
-     status = NF_INQ_DIMID(ncid, 'grid_size', ntarget_id)
-     status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget)
-     WRITE(*,*) "dimension of target grid: ntarget=",ntarget
-     
-     status = NF_INQ_DIMID(ncid, 'grid_corners', ncorner_id)
-     status = NF_INQ_DIMLEN(ncid, ncorner_id, ncorner)
-     WRITE(*,*) "maximum number of corners: ncorner=",ncorner
-     
-     status = NF_INQ_DIMID(ncid, 'grid_rank', nrank_id);status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
-     WRITE(*,*) "grid rank: nrank=",nrank
-     IF (nrank==2) THEN
-        WRITE(*,*) "target grid is a lat-lon grid"
-        ltarget_latlon = .TRUE.
-        status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
-        status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
-        status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
-        status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
-        status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
-        status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-        !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
-        WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-        IF (lpole) THEN
-           WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
-        ELSE
-           WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
-        END IF
-     ELSE IF (nrank==1) THEN
-        ltarget_latlon = .FALSE.
-     ELSE
-        WRITE(*,*) "nrank out of range",nrank
-        STOP
-     ENDIF
-     
-     allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
-     allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
-     
-     status = NF_INQ_VARID(ncid, 'grid_corner_lon', lonid)
-     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
-     IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
-     
-     status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
-     status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
-     IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
-!+++ARH
-     if (lregional_refinement) then
-       allocate ( target_rrfac(ntarget),stat=alloc_error)
-       status = NF_INQ_VARID(ncid, 'rrfac', rrfacid)
-       status = NF_GET_VAR_DOUBLE(ncid, rrfacid,target_rrfac)
-     end if
-!---ARH
-     !
-     ! for writing remapped data on file at the end of the program
-     !
-     allocate ( target_center_lon(ntarget),stat=alloc_error)
-     allocate ( target_center_lat(ntarget),stat=alloc_error)
-     allocate ( target_area      (ntarget),stat=alloc_error)
-
-     status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
-     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
-     
-     status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
-     status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
-     
-     status = NF_INQ_VARID(ncid, 'grid_area', latid)
-     status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
-
-     status = nf_close (ncid)
-     if (status .ne. NF_NOERR) call handle_err(status)          
+  write(*,*) "Opening grid descriptor file :  ",TRIM(grid_descriptor_fname)
+  status = nf_open(TRIM(grid_descriptor_fname), 0, ncid)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  status = NF_INQ_DIMID(ncid, 'grid_size', ntarget_id)
+  status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget)
+  WRITE(*,*) "dimension of target grid: ntarget=",ntarget
+  
+  status = NF_INQ_DIMID(ncid, 'grid_corners', ncorner_id)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  
+  status = NF_INQ_DIMLEN(ncid, ncorner_id, ncorner)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  WRITE(*,*) "maximum number of corners: ncorner=",ncorner
+  
+  status = NF_INQ_DIMID(ncid, 'grid_rank', nrank_id);status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  WRITE(*,*) "grid rank: nrank=",nrank
+  IF (nrank==2) THEN
+    WRITE(*,*) "target grid is a lat-lon grid"
+    ltarget_latlon = .TRUE.
+    status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
+    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
+    status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
+    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
+    status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
+    status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
+    !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
+    WRITE(*,*) "nlon=",nlon,"nlat=",nlat
+    IF (lpole) THEN
+      WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
+    ELSE
+      WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
+    END IF
+  ELSE IF (nrank==1) THEN
+    ltarget_latlon = .FALSE.
+  ELSE
+    WRITE(*,*) "nrank out of range",nrank
+    STOP
+  ENDIF
+  
+  allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
+  allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
+  
+  status = NF_INQ_VARID(ncid, 'grid_corner_lon', lonid)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
+  
+  status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
+  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+  IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
+  !+++ARH
+  status = NF_INQ_VARID(ncid, 'rrfac', rrfacid)
+  if (STATUS .NE. NF_NOERR) then
+    lregional_refinement = .false.
+    write(*,*) "rrfac not on file; setting lregional_refinement = .false."
   else
-     !
-     ! define lat-lon grid without grid descriptor file
-     !
-     write(*,*) "lat-lon grid is being defined by cubed_to_target and using not the grid_descriptor_file"
-     ltarget_latlon = .true.
-     nrank = 2
-     ncorner=4
-     nlon=43200
-     nlat=21600
-     lpole=.false.
-     ntarget=nlon*nlat
-     WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-     allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
-     allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
-     allocate ( target_center_lon(ntarget),stat=alloc_error)
-     allocate ( target_center_lat(ntarget),stat=alloc_error)
-     allocate ( target_area      (ntarget),stat=alloc_error)
-     call get_latlon_grid(nlon,nlat,lpole)
+    lregional_refinement = .true.
+    allocate ( target_rrfac(ntarget),stat=alloc_error)
+    status = NF_GET_VAR_DOUBLE(ncid, rrfacid,target_rrfac)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    write(*,*) "rrfac on file; setting lregional_refinement = .true."
   end if
+  
+  !
+  ! for writing remapped data on file at the end of the program
+  !
+  allocate ( target_center_lon(ntarget),stat=alloc_error)
+  allocate ( target_center_lat(ntarget),stat=alloc_error)
+  allocate ( target_area      (ntarget),stat=alloc_error)
+  
+  status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
+  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
+  
+  status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
+  status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
+  
+  status = NF_INQ_VARID(ncid, 'grid_area', latid)
+  status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
+  
+  status = nf_close (ncid)
+  if (status .ne. NF_NOERR) call handle_err(status)          
 end subroutine read_target_grid
 
 subroutine get_latlon_grid(im,jm,lpole)

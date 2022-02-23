@@ -119,7 +119,7 @@ program convterr
   logical :: lridgetiles = .FALSE.
   
 !+++ARH
-  logical :: lregional_refinement = .FALSE.
+  logical :: lregional_refinement = .FALSE. !set in read_target_grid if rrfac is on file
   integer :: rrfac_max = 1
 !---ARH
 
@@ -151,7 +151,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(16)
+    type(option_s):: opts(15)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -164,14 +164,13 @@ program convterr
     opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
     opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.true.)
     opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
-    opts(9) =  option_s( "regional_refinement"       ,.false.  , 's'   ,.false.       ,.false.)
-    opts(10) = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
-    opts(11) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
-    opts(12) = option_s( "zero_out_ocean_point_phis",.false.   , 'z'   ,.false.       ,.false.)
-    opts(13) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
-    opts(14) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
-    opts(15) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
-    opts(16) = option_s( "write_rrfac_to_topo_file ",.true.    , 'd'   ,.false.       ,.false.)
+    opts(9) = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
+    opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
+    opts(11) = option_s( "zero_out_ocean_point_phis",.false.   , 'z'   ,.false.       ,.false.)
+    opts(12) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
+    opts(13) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
+    opts(14) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
+    opts(15) = option_s( "write_rrfac_to_topo_file ",.true.    , 'd'   ,.false.       ,.false.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -183,7 +182,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prsxy:z:01:t:d", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:d", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -225,46 +224,42 @@ program convterr
         lfind_ridges = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -r '
         opts(8)%specified = .true.
-      case( 's' )
-        lregional_refinement = .TRUE.
-        command_line_arguments = TRIM(command_line_arguments)//' -s '
-        opts(9)%specified = .true.
       case( 'x' )
         lstop_after_smoothing = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -x '//TRIM(ADJUSTL(str))
-        opts(10)%specified = .true.
+        opts(9)%specified = .true.
       case( 'y' )
         read (optarg, '(i3)') ioptarg
         rrfac_max = ioptarg
         write(str,*) ioptarg
         command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
-        opts(11)%specified = .true.
+        opts(10)%specified = .true.
       case( 'z' )
         lzero_out_ocean_point_phis = .TRUE.
         write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
         STOP
         command_line_arguments = TRIM(command_line_arguments)//' -z '
-        opts(12)%specified = .true.
+        opts(11)%specified = .true.
       case( '0' )
         lzero_negative_peaks = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -0 '
         write(*,*) "check support"
-        opts(13)%specified = .true.
+        opts(12)%specified = .true.
         stop
       case( '1' )
         lridgetiles = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -1 '
-        opts(14)%specified = .true.
+        opts(13)%specified = .true.
       case( 't' )
         smooth_topo_fname = optarg
         write(str,*) TRIM(optarg)
         write(*,*) str
         command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
-        opts(15)%specified = .true.
+        opts(14)%specified = .true.
       case( 'd' )
         lwrite_rrfac_to_topo_file = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -d '
-        opts(16)%specified = .true.
+        opts(15)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -323,7 +318,6 @@ program convterr
     write(*,*) "output_grid                     = ",trim(output_grid)
     write(*,*) "luse_prefilter                  = ",luse_prefilter
     write(*,*) "lfind_ridges                    = ",lfind_ridges
-    write(*,*) "lregional_refinement            = ",lregional_refinement
     write(*,*) "rrfac_max                       = ",rrfac_max
     write(*,*) "lzero_out_ocean_point_phis      = ",lzero_out_ocean_point_phis
     write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
