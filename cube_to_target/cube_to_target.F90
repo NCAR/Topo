@@ -131,8 +131,8 @@ program convterr
   INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget, ioptarg
   integer, allocatable :: isg(:)
 
-  character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname
-  character(len=1024) :: output_grid, ofile,smooth_topo_fname = ''
+  character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
+  character(len=1024) :: output_grid='', ofile,smooth_topo_fname = ''
   character(len=1024) :: rrfactor_fname, command_line_arguments, str
 
   character(len=8)  :: date
@@ -270,14 +270,18 @@ program convterr
     end if
     !
     ! check that all required arguments are specified/initialized
+    ! (stopping after smoothing is only for developers so it
+    ! is not checked if required arguments are present)
     !
-    do i=1,SIZE(opts)
-      write(*,*) i
-      if (.not.opts(i)%specified.and.opts(i)%required) then
-        write(*,*) "Required argument not specified: ",opts(i)%name
-        stop
-      end if
-    end do
+    if (.not.lstop_after_smoothing) then
+      do i=1,SIZE(opts)
+        write(*,*) i
+        if (.not.opts(i)%specified.and.opts(i)%required) then
+          write(*,*) "Required argument not specified: ",opts(i)%name
+          stop
+        end if
+      end do
+    end if
     !
     ! calculate some defaults
     !
@@ -329,7 +333,8 @@ program convterr
     
     ! Read in target grid
     !------------------------------------------------------------------------------------------------
-    call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
+    if (.not.lstop_after_smoothing) &
+         call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
     
     ! Read in topo data on cubed sphere grid
     !------------------------------------------------------------------------------------------------
@@ -344,7 +349,10 @@ program convterr
     
     ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
     ! in the 'exchange grid'
-    
+    allocate( rrfac(ncube,ncube,6)  )
+    rrfac = 0.0
+
+    if (.not.lstop_after_smoothing) then    
     if (nrank == 1) then
       da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
       da_min_target = MAXVAL(target_area)
@@ -400,9 +408,7 @@ program convterr
     ! RRfac is always used. If output_grid has no 
     ! regional refinement then rrfac(:,:,:)=1.
     
-    allocate( rrfac(ncube,ncube,6)  )
     if (lregional_refinement) then
-      rrfac = 0.0
       !--- remap rrfac to cube
       !-----------------------------------------------------------------
       do counti=1,jall
@@ -426,7 +432,7 @@ program convterr
     endif
     write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
     !---ARH
-    
+    endif !if (.not.lstop_after_smoothing)
     !!rrfac( 400:2400,2000:3000,4) = 4.
     
     !++jtb
