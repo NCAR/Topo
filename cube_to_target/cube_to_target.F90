@@ -1882,8 +1882,6 @@ program convterr
     character(len=1024) :: str
     integer             :: status    ! return value for error control of netcdf routin
     character (len=8)   :: datestring
-!xxx
-
     !
     ! Meta data for CESM compliance
     !
@@ -1892,11 +1890,11 @@ program convterr
     !-cesm_contact    	        |     	The liaison of the relevant WG
     !-creation_date    	        |     	Full date of dataset creation
     !-update_date    	        |     	Full date of most recent modification
-    !-history    		        |     	Updates to changes made to the data.
+    !-history 		        |     	Updates to changes made to the data.
     !-data_script    	        |     	script to generate data (will be available in the SVN repository ?)
     !-data_description_url 	|     	A web-page with a description if available  (this could be the climatedataguide webpage.)
-    !-data_source_url    	        |     	The web page where the raw data can be downloaded
-    !-data_reference    	        |     	Full reference for the dataset if available
+    !-data_source_url  	        |     	The web page where the raw data can be downloaded
+    !-data_reference   	        |     	Full reference for the dataset if available
     !-data_doi    		|     	If doi of data exists
     !-climo_years    	        |     	Year 1-year N of the climatological averaging period.
     !-data_mods    		|     	Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CESM. 
