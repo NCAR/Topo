@@ -133,7 +133,7 @@ program convterr
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
   character(len=1024) :: output_grid='', ofile,smooth_topo_fname = ''
-  character(len=1024) :: rrfactor_fname, command_line_arguments, str
+  character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator
 
   character(len=8)  :: date
   character(len=10) :: time
@@ -147,7 +147,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(15)
+    type(option_s):: opts(16)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -166,7 +166,8 @@ program convterr
     opts(12) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
     opts(13) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
     opts(14) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
-    opts(15) = option_s( "write_rrfac_to_topo_file ",.true.    , 'd'   ,.false.       ,.false.)
+    opts(15) = option_s( "write_rrfac_to_topo_file" ,.true.    , 'd'   ,.false.       ,.false.)
+    opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -178,7 +179,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:d", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:du:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -255,6 +256,12 @@ program convterr
         lwrite_rrfac_to_topo_file = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -d '
         opts(15)%specified = .true.
+      case( 'u' )
+        str_creator = optarg
+        write(str,*) TRIM(optarg)
+        write(*,*) str
+        command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
+        opts(16)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -837,13 +844,14 @@ program convterr
     !END IF
     IF (ltarget_latlon) THEN
       CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,sgh_target,sgh30_target,&
-           landm_coslat_target,target_center_lon,target_center_lat,.FALSE.,output_fname,lfind_ridges)
+           landm_coslat_target,target_center_lon,target_center_lat,.FALSE.,output_fname,&
+           lfind_ridges,str_creator, command_line_arguments)
       
     ELSE
       CALL wrtncdf_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,target_area,&
            output_fname,lfind_ridges, command_line_arguments,&
-           lwrite_rrfac_to_topo_file,rrfac_target)
+           lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
     END IF
     !DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
     DEALLOCATE(terr_target,sgh30_target,sgh_target,landm_coslat_target)
@@ -878,7 +886,7 @@ program convterr
   !+++ARH
   !subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
   subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments,&
-       lwrite_rrfac_to_topo_file,rrfac_target)
+       lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
     !---ARH
     use shared_vars, only : rad2deg
     use shr_kind_mod, only: r8 => shr_kind_r8
@@ -907,6 +915,7 @@ program convterr
     character(len=1024),   intent(in) :: command_line_arguments
     logical,               intent(in) :: lwrite_rrfac_to_topo_file
     real(r8),dimension(n), intent(in) :: rrfac_target
+    character(len=1024),   intent(in) :: str_creator
     !
     ! Local variables
     !
@@ -1169,48 +1178,7 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     !        status = nf_put_att_text (foutid,lonvid,'units' , 21, 'cell center locations')
     !        if (status .ne. NF_NOERR) call handle_err(status)
-    
-    
-    !
-    ! Meta data for CESM compliance
-    !
-    !-data_summary		|	Short paragraph about the data.
-    !-data_creator 		| 	Name and email of the person who created the dataset
-    !-cesm_contact    	        |     	The liaison of the relevant WG
-    !-creation_date    	        |     	Full date of dataset creation
-    !-update_date    	        |     	Full date of most recent modification
-    !-history    		        |     	Updates to changes made to the data.
-    !-data_script    	        |     	script to generate data (will be available in the SVN repository ?)
-    !-data_description_url 	|     	A web-page with a description if available  (this could be the climatedataguide webpage.)
-    !-data_source_url    	        |     	The web page where the raw data can be downloaded
-    !-data_reference    	        |     	Full reference for the dataset if available
-    !-data_doi    		|     	If doi of data exists
-    !-climo_years    	        |     	Year 1-year N of the climatological averaging period.
-    !-data_mods    		|     	Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CESM. 
-    !
-    str = 'Topo file for NCAR CAM'
-    status = nf_put_att_text (foutid,NF_GLOBAL,'data_summary',LEN(TRIM(str)), TRIM(str))
-    if (status .ne. NF_NOERR) call handle_err(status)
-    
-    call DATE_AND_TIME(DATE=datestring)
-    status = nf_put_att_text (foutid,NF_GLOBAL,'creation_date',8, TRIM(datestring) )
-    if (status .ne. NF_NOERR) call handle_err(status)
-    
-    str = 'Cecille Hannay'
-    status = nf_put_att_text (foutid,NF_GLOBAL,'cesm_contact',LEN(TRIM(str)), TRIM(str))
-    if (status .ne. NF_NOERR) call handle_err(status)
-    
-    str = 'https://github.com/NCAR/Topo.git'
-    status = nf_put_att_text (foutid,NF_GLOBAL,'data_source',LEN(TRIM(str)), TRIM(str))
-    if (status .ne. NF_NOERR) call handle_err(status)
-    
-    status = nf_put_att_text (foutid,NF_GLOBAL,'data_script',LEN(TRIM(command_line_arguments)), TRIM(command_line_arguments))
-    if (status .ne. NF_NOERR) call handle_err(status)
-    
-    str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
-         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
-    status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
-    if (status .ne. NF_NOERR) call handle_err(status)
+    call wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)
     !
     ! End define mode for output file
     !
@@ -1382,7 +1350,7 @@ program convterr
   !subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
   !     lprepare_fv_smoothing_routine,output_fname,Lfind_ridges)
   subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
-       lprepare_fv_smoothing_routine,output_fname,Lfind_ridges)
+       lprepare_fv_smoothing_routine,output_fname,Lfind_ridges,str_creator,command_line_arguments)
     !---ARH
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
@@ -1408,6 +1376,7 @@ program convterr
     !+++ARH
     !real(r8),dimension(n)  , intent(in) :: terr_in, landfrac_in,sgh_in,sgh30_in,lon, lat, landm_coslat_in
     real(r8),dimension(n)  , intent(in) :: terr_in,sgh_in,sgh30_in,lon,lat,landm_coslat_in
+    character(len=1024), intent(in) :: str_creator, command_line_arguments
     !---ARH
     !
     ! Local variables
@@ -1756,7 +1725,8 @@ program convterr
     call DATE_AND_TIME(DATE=datestring)
     status = nf_put_att_text (foutid,NF_GLOBAL,'history',25, 'Written on date: ' // datestring )
     if (status .ne. NF_NOERR) call handle_err(status)
-    
+
+    call wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)   
     !
     ! End define mode for output file
     !
@@ -1894,12 +1864,7 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing GBXAR data"
       
-    endif
-    
-    
-    
-    
-    
+    endif    
     !
     ! Close output file
     !
@@ -1907,6 +1872,65 @@ program convterr
     status = nf_close (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrtncdf_rll
+
+  subroutine wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)
+    implicit none    
+#     include         <netcdf.inc>
+    integer,               intent(in) :: foutid                              ! Output file id
+    character(len=1024),   intent(in) :: command_line_arguments, str_creator ! Meta data strings
+
+    character(len=1024) :: str
+    integer             :: status    ! return value for error control of netcdf routin
+    character (len=8)   :: datestring
+!xxx
+
+    !
+    ! Meta data for CESM compliance
+    !
+    !-data_summary		|	Short paragraph about the data.
+    !-data_creator 		| 	Name and email of the person who created the dataset
+    !-cesm_contact    	        |     	The liaison of the relevant WG
+    !-creation_date    	        |     	Full date of dataset creation
+    !-update_date    	        |     	Full date of most recent modification
+    !-history    		        |     	Updates to changes made to the data.
+    !-data_script    	        |     	script to generate data (will be available in the SVN repository ?)
+    !-data_description_url 	|     	A web-page with a description if available  (this could be the climatedataguide webpage.)
+    !-data_source_url    	        |     	The web page where the raw data can be downloaded
+    !-data_reference    	        |     	Full reference for the dataset if available
+    !-data_doi    		|     	If doi of data exists
+    !-climo_years    	        |     	Year 1-year N of the climatological averaging period.
+    !-data_mods    		|     	Any special substantive (non resolution) modifications that were made to the input data set purely for the purpose of using it in CESM. 
+    !
+    str = 'Topo file for NCAR CAM'
+    status = nf_put_att_text (foutid,NF_GLOBAL,'data_summary',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+
+    str = str_creator
+    status = nf_put_att_text (foutid,NF_GLOBAL,'data_creator',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    
+    call DATE_AND_TIME(DATE=datestring)
+    status = nf_put_att_text (foutid,NF_GLOBAL,'creation_date',8, TRIM(datestring) )
+    if (status .ne. NF_NOERR) call handle_err(status)
+    
+    str = 'Cecille Hannay'
+    status = nf_put_att_text (foutid,NF_GLOBAL,'cesm_contact',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    
+    str = 'https://github.com/NCAR/Topo.git'
+    status = nf_put_att_text (foutid,NF_GLOBAL,'data_source',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    
+    status = nf_put_att_text (foutid,NF_GLOBAL,'data_script',LEN(TRIM(command_line_arguments)),&
+         TRIM(command_line_arguments))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    
+    str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
+         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
+    status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+  end subroutine wrt_cesm_meta_data
+
   
   !+++ARH
   !
