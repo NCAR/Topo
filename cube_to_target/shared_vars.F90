@@ -308,12 +308,20 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   logical, intent(out) :: lpole, ltarget_latlon
   integer, intent(out) :: nlat,nlon,ntarget,ncorner,nrank
   integer :: ncid,status
-  integer :: ntarget_id, ncorner_id, nrank_id
+  integer :: ntarget_id, ncorner_id, nrank_id, nodeCount_id,nodeCoords_id,elementConn_id,numElementConn_id,centerCoords_id
   integer :: alloc_error
-  integer :: lonid, latid
+  integer :: lonid, latid,nodeCount
+
+  real(r8), allocatable, dimension(:,:):: centerCoords,nodeCoords
+  integer,  allocatable, dimension(:,:):: elementConn
+  integer,  allocatable, dimension(:)  :: numElementConn
 !+++ARH
   integer :: rrfacid
 !---ARH
+  character(len=23)  :: str_size(2), str_corners(2), str_rank(2), str_corner_lon(2), str_corner_lat(2), str_area(2),str_rrfac(2)
+  character(len=23)  :: str_center_lon(2), str_center_lat(2)
+  integer            :: esmf_file = 1 ! =1 SCRIP naming convention; =2 ESMF naming convention
+  integer            :: icorner,icell,num
   !
   !*********************************************************
   !
@@ -321,62 +329,168 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   !
   !*********************************************************
   !
+  !
+  ! SCRIP and ESMF naming convention
+  ! 
+  str_size         = (/"grid_size             ","elementCount          "/)
+  str_corners      = (/"grid_corners          ","maxNodePElement       "/)
+  str_rank         = (/"grid_rank             ","1                     "/)
+  str_corner_lon   = (/"grid_corner_lon       ","nodeCoords            "/) !(nodeCount, coordDim)
+  str_corner_lat   = (/"grid_corner_lat       ","nodeCoords            "/) !(nodeCount, coordDim)
+  str_center_lon   = (/"grid_center_lon       ","centerCoordsnodeCoords"/) !(elementCount, coordDim)
+  str_center_lat   = (/"grid_center_lat       ","centerCoordsnodeCoords"/) !(elementCount, coordDim)
+  str_area         = (/"grid_area             ","elementArea           "/)
+  str_rrfac        = (/"rrfac                 ","elementRefinementRatio"/)
+
   write(*,*) "Opening grid descriptor file :  ",TRIM(grid_descriptor_fname)
   status = nf_open(TRIM(grid_descriptor_fname), 0, ncid)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  status = NF_INQ_DIMID(ncid, 'grid_size', ntarget_id)
+
+  status = NF_INQ_DIMID(ncid, TRIM(str_size(1)), ntarget_id)
+  IF (STATUS .NE. NF_NOERR) then
+    write(*,*) "File appears to be using ESMF grid descriptor convention"
+    esmf_file = 2
+    status = NF_INQ_DIMID(ncid, TRIM(str_size(esmf_file)), ntarget_id)
+  else
+    write(*,*) "File appears to be using SCRIP grid desciptor convention"
+  end IF
+
   status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget)
   WRITE(*,*) "dimension of target grid: ntarget=",ntarget
-  
-  status = NF_INQ_DIMID(ncid, 'grid_corners', ncorner_id)
+
+  status = NF_INQ_DIMID(ncid, TRIM(str_corners(esmf_file)), ncorner_id)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   
   status = NF_INQ_DIMLEN(ncid, ncorner_id, ncorner)
   IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
   WRITE(*,*) "maximum number of corners: ncorner=",ncorner
   
-  status = NF_INQ_DIMID(ncid, 'grid_rank', nrank_id);status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  WRITE(*,*) "grid rank: nrank=",nrank
-  IF (nrank==2) THEN
-    WRITE(*,*) "target grid is a lat-lon grid"
-    ltarget_latlon = .TRUE.
-    status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
-    status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
-    status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
-    status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-    !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
-    WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-    IF (lpole) THEN
-      WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
-    ELSE
-      WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
-    END IF
-  ELSE IF (nrank==1) THEN
-    ltarget_latlon = .FALSE.
-  ELSE
-    WRITE(*,*) "nrank out of range",nrank
-    STOP
-  ENDIF
-  
+  status = NF_INQ_DIMID(ncid, TRIM(str_rank(esmf_file)), nrank_id)
+  status = NF_INQ_DIMLEN(ncid, nrank_id, nrank)
+
+  allocate ( target_center_lon(ntarget),stat=alloc_error)
+  allocate ( target_center_lat(ntarget),stat=alloc_error)
+  allocate ( target_area      (ntarget),stat=alloc_error)
+
   allocate ( target_corner_lon(ncorner,ntarget),stat=alloc_error)
   allocate ( target_corner_lat(ncorner,ntarget),stat=alloc_error)
-  
-  status = NF_INQ_VARID(ncid, 'grid_corner_lon', lonid)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
-  
-  status = NF_INQ_VARID(ncid, 'grid_corner_lat', latid)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
-  IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
-  IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat
-  !+++ARH
-  status = NF_INQ_VARID(ncid, 'rrfac', rrfacid)
+
+  if (esmf_file==2) then
+    !
+    ! ESMF format uses 2D arrays for vertices, etc. -> special code is needed
+    !
+    !
+    ! how many nodes (unique corners)
+    !
+    status = NF_INQ_DIMID(ncid, 'nodeCount', nodeCount_id)
+    status = NF_INQ_DIMLEN(ncid, nodeCount_id, nodeCount)
+    !
+    ! note that array dimensions are swapped compared to netCDF file
+    !
+    allocate (centerCoords(2,ntarget),stat=alloc_error)
+    allocate (nodeCoords(2,nodeCount),stat=alloc_error)
+    allocate (elementConn(ncorner,ntarget),stat=alloc_error)
+    allocate (numElementConn(ntarget),stat=alloc_error)
+
+    status = NF_INQ_VARID(ncid, 'centerCoords', centerCoords_id)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    status = NF_GET_VAR_DOUBLE(ncid, centerCoords_id,centerCoords)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    IF (maxval(centerCoords(:,1))>10.0) then
+      target_center_lon = centerCoords(1,:)*deg2rad
+      target_center_lat = centerCoords(2,:)*deg2rad
+    else
+      target_center_lon = centerCoords(1,:)
+      target_center_lat = centerCoords(2,:)
+    endif
+
+    status = NF_INQ_VARID(ncid, 'nodeCoords', nodeCoords_id)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    status = NF_GET_VAR_DOUBLE(ncid, nodeCoords_id,nodeCoords)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    IF (maxval(nodeCoords(:,1))>10.0) then
+      nodeCoords = nodeCoords*deg2rad
+    ENDIF
+
+    status = NF_INQ_VARID(ncid, 'elementConn', elementConn_id)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    status = NF_GET_VAR_INT(ncid, elementConn_id,elementConn)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    status = NF_INQ_VARID(ncid, 'numElementConn', numElementConn_id)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    status = NF_GET_VAR_INT(ncid, numElementConn_id,numElementConn)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+
+    do icell=1,ntarget
+      num = numElementConn(icell)
+      do icorner=1,num
+        target_corner_lon(icorner,icell) = nodeCoords(1,elementConn(icorner,icell))
+        target_corner_lat(icorner,icell) = nodeCoords(2,elementConn(icorner,icell))
+      end do
+      do icorner=num+1,ncorner
+        target_corner_lon(icorner,icell) = nodeCoords(1,elementConn(numElementConn(icell),icell))
+        target_corner_lat(icorner,icell) = nodeCoords(2,elementConn(numElementConn(icell),icell))
+      end do
+    end do
+    deallocate(centerCoords,nodeCoords,elementConn)
+  else
+    !
+    ! file uses SCRIP format
+    !
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    WRITE(*,*) "grid rank: nrank=",nrank
+    IF (nrank==2) THEN
+      WRITE(*,*) "target grid is a lat-lon grid"
+      ltarget_latlon = .TRUE.
+      status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
+      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
+      status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
+      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
+      status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
+      status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
+      !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
+      WRITE(*,*) "nlon=",nlon,"nlat=",nlat
+      IF (lpole) THEN
+        WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
+      ELSE
+        WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
+      END IF
+    ELSE IF (nrank==1) THEN
+      ltarget_latlon = .FALSE.
+    ELSE
+      WRITE(*,*) "nrank out of range",nrank
+      STOP
+    ENDIF
+        
+    status = NF_INQ_VARID(ncid, TRIM(str_corner_lon(esmf_file)), lonid)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    status = NF_GET_VAR_DOUBLE(ncid, lonid,target_corner_lon)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    IF (maxval(target_corner_lon)>10.0) target_corner_lon = deg2rad*target_corner_lon
+    
+    status = NF_INQ_VARID(ncid, TRIM(str_corner_lat(esmf_file)), latid)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
+    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+    IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat    
+    !
+    ! for writing remapped data on file at the end of the program
+    !    
+    status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
+    status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
+    
+    status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
+    status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
+  end if
+
+  status = NF_INQ_VARID(ncid, TRIM(str_rrfac(esmf_file)), rrfacid)
   if (STATUS .NE. NF_NOERR) then
     lregional_refinement = .false.
     write(*,*) "rrfac not on file; setting lregional_refinement = .false."
@@ -387,30 +501,17 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     write(*,*) "rrfac on file; setting lregional_refinement = .true."
   end if
-  
-  !
-  ! for writing remapped data on file at the end of the program
-  !
-  allocate ( target_center_lon(ntarget),stat=alloc_error)
-  allocate ( target_center_lat(ntarget),stat=alloc_error)
-  allocate ( target_area      (ntarget),stat=alloc_error)
-  
-  status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
-  status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
-  
-  status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
-  
-  status = NF_INQ_VARID(ncid, 'grid_area', latid)
+
+  status = NF_INQ_VARID(ncid, TRIM(str_area(esmf_file)), latid)
   status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
   
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)          
-end subroutine read_target_grid
-
-subroutine get_latlon_grid(im,jm,lpole)
-        use shr_kind_mod, only: r8 => shr_kind_r8
-        implicit none
+  end subroutine read_target_grid
+  
+  subroutine get_latlon_grid(im,jm,lpole)
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    implicit none
         !
         ! Dummy arguments
         !

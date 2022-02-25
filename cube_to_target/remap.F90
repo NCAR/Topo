@@ -244,7 +244,8 @@ end function paint_sg_field
     if (signed_area>0.0) then
       write(*,*) "area must be clockwise (and counter clockwise in input file)"
       do i=0,nvertex
-        !write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+!        write(*,*) "x,y,dx,dy: ",i,xcell_in(i),ycell_in(i),xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
+        write(*,*) " ",xcell_in(i),ycell_in(i)!,xcell_in(i+1)-xcell_in(i),ycell_in(i+1)-ycell_in(i)
       end do
       
       stop
