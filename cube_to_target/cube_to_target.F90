@@ -133,7 +133,7 @@ program convterr
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
   character(len=1024) :: output_grid='', ofile,smooth_topo_fname = ''
-  character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator
+  character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
   character(len=8)  :: date
   character(len=10) :: time
@@ -147,7 +147,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(16)
+    type(option_s):: opts(17)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -168,6 +168,7 @@ program convterr
     opts(14) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
     opts(15) = option_s( "write_rrfac_to_topo_file" ,.true.    , 'd'   ,.false.       ,.false.)
     opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
+    opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -179,7 +180,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:du:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:du:n:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -259,9 +260,13 @@ program convterr
       case( 'u' )
         str_creator = optarg
         write(str,*) TRIM(optarg)
-        write(*,*) str
         command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
         opts(16)%specified = .true.
+      case( 'n' )
+        str_source = optarg
+        write(str,*) TRIM(optarg)
+        command_line_arguments = TRIM(command_line_arguments)//' -n '//TRIM(ADJUSTL(str))
+        opts(17)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -312,6 +317,13 @@ program convterr
         STOP
       end if
     end if
+
+    if (LEN(TRIM(str_source))==0) then
+      !
+      ! default setting for source topography
+      !
+      str_source = 'gmted2010_bedmachine'
+    end if
     
     write(*,*) "Namelist settings"
     write(*,*) "================="
@@ -330,6 +342,7 @@ program convterr
     write(*,*) "lridgetiles                     = ",lridgetiles
     write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
     write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
+    write(*,*) "str_source                      = ",str_source
     
     call  set_constants
     
@@ -528,11 +541,6 @@ program convterr
            '_Co',i0.3,'_Fi',i0.3)" ) & 
            ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
       
-      if (.not.(lzero_negative_peaks) ) then
-        output_fname = './output/'//trim(output_grid)//trim(ofile)//'._test_v3.nc'
-      else
-        output_fname = './output/'//trim(output_grid)//trim(ofile)//'_'//date//'.nc'
-      end if
       write(*,*) "Writing CESM forcing file for Aniso OGW to "
       write(*,*) output_fname
       !----------------------------------------------------------------------
@@ -554,7 +562,7 @@ program convterr
            "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
            ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
     endif
-    output_fname = './output/'//trim(output_grid)//trim(ofile)//'_'//date//'.nc'
+    output_fname = './output/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
     write(*,*) "Writing CESM forcing WITHOUT Ridge data to "
     write(*,*) output_fname
     
@@ -871,13 +879,15 @@ program convterr
     write (6,*) "-o, --output_grid=<string>                     "
     write (6,*) "-p, --use_prefilter            Enable [default:disabled]"
     write (6,*) "-r, --find_ridges              Enable [default:disabled]"
-    write (6,*) "-s, --regional_refinement      Enable [default:disabled]"
     write (6,*) "-x, --stop_after_smooth        Enable [default:disabled]"
     write (6,*) "-y, --rrfac_max=<int>                          "
     write (6,*) "-z, --zero_out_ocean_point_phis  Enable [default:disabled]"
     write (6,*) "-0, --zero_negative_peaks        Enable [default:disabled]"
     write (6,*) "-1, --ridge2tiles                Enable [default:disabled]"
     write (6,*) "-d, --write_rrfac_to_topo_file"
+    write (6,*) "-u, --name_email_of_creator"
+    write (6,*) "-n, --source_data_identifier"
+
     stop
   end subroutine print_help
   !
