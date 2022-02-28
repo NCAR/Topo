@@ -542,7 +542,6 @@ program convterr
            ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
       
       write(*,*) "Writing CESM forcing file for Aniso OGW to "
-      write(*,*) output_fname
       !----------------------------------------------------------------------
       
       call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
@@ -563,8 +562,16 @@ program convterr
            ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
     endif
     output_fname = './output/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
-    write(*,*) "Writing CESM forcing WITHOUT Ridge data to "
+    write(*,*) "Writing topo file to "
     write(*,*) output_fname
+
+    OPEN (unit = 711, file= 'plot.sh' ,form="FORMATTED" )
+!    write(711,*) 'ncl ''',TRIM(output_fname),''''
+    write(711,*) 'ncl plot.ncl ''topoFile="',TRIM(output_fname),'"''',&
+         ' ''scripFile="',TRIM(grid_descriptor_fname),'"'''
+    
+    !output/ne30pg3_gmted2010_bedmachine_nc0540_Nsw008_Nrs000_Co012_Fi001_20220228.nc"'
+    CLOSE(711)
     
     
     !*********************************************************

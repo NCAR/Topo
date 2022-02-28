@@ -3,3 +3,4 @@
 set file=`ls -t1 output/*.nc |  head -n 1`
 echo $file
 /glade/p/cesm/cseg/tools/cprnc/cprnc -m $file ../regression-test-data/ne30pg3_nc0540_Nsw008_Nrs000_Co012_Fi001_20220218.nc
+source plot.sh
