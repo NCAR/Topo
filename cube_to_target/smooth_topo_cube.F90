@@ -29,7 +29,7 @@ CONTAINS
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
                                     , command_line_arguments&
-                                    , smooth_topo_fname)
+                                    , str_dir, smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -45,6 +45,14 @@ CONTAINS
             DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_sm
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN)    :: rrfac
+    LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
+    LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
+    LOGICAL, INTENT(IN)  :: lregional_refinement
+    CHARACTER(len=1024), INTENT(IN   )           :: str_dir
+    CHARACTER(len=1024), INTENT(OUT)             :: ofname
+    character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
+    CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
+
 
     REAL (KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
@@ -55,15 +63,6 @@ CONTAINS
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6) :: daxx
 
-
-
-
-    LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
-    LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
-    LOGICAL, INTENT(IN)  :: lregional_refinement
-    CHARACTER(len=1024), INTENT(  OUT) :: ofname
-    CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
-    character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
 
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
     REAL (KIND=dbl_kind)     :: volterr_in,volterr_sm
@@ -110,13 +109,13 @@ CONTAINS
 
 
      write( ofname , &
-       "('./output/topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
+       "('topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
         ncube, NSCL_c/2, NSCL_f/2
 
        if (lregional_refinement) then
-          ofname= trim(ofname)//'_VRtest.nc'
+         ofname= TRIM(str_dir)//'/'//trim(ofname)//'_VRtest.nc'
        else
-          ofname= trim(ofname)//'.nc'
+         ofname= TRIM(str_dir)//'/'//trim(ofname)//'.nc'
        end if
 
        write(*,*) " Will do smoothing of topo on cubed sphere "

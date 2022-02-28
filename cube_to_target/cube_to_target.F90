@@ -355,6 +355,42 @@ program convterr
     write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
     write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
     write(*,*) "str_source                      = ",str_source
+
+    !*********************************************************
+    !
+    ! set standard output file name
+    !
+    !*********************************************************
+
+    if(lfind_ridges) then
+      nsw = nwindow_halfwidth
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
+           '_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
+    else
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
+    endif
+    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+    write(*,*) "Writing topo file to "
+    write(*,*) output_fname
+
+    !*********************************************************
+    !
+    ! script for plotting
+    !
+    !*********************************************************
+
+    OPEN (unit = 711, file= TRIM(str_dir)//'/'//'plot.sh' ,form="FORMATTED" )
+    write(711,*) 'ncl plot.ncl ''topoFile="',TRIM(output_fname),'"''',&
+         ' ''scripFile="',TRIM(grid_descriptor_fname),'"'''
+    CLOSE(711)
+
+    !*********************************************************
     
     call  set_constants
     
@@ -512,8 +548,9 @@ program convterr
            luse_prefilter, &
            lstop_after_smoothing, &
            lregional_refinement, &
-           command_line_arguments,&
-           smooth_topo_fname=smooth_topo_fname)
+           command_line_arguments,str_dir,&
+           smooth_topo_fname=smooth_topo_fname&
+           )
       
     else
       terr_dev = terr_2
@@ -544,18 +581,6 @@ program convterr
       nsb = nridge_subsample
       nhalo=2*nsw
       
-      !--- Make output filename
-      !----------------------------------------------------------------------
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      
-      write( ofile , &
-           "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
-           '_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine
-      
-      write(*,*) "Writing CESM forcing file for Aniso OGW to "
-      !----------------------------------------------------------------------
-      
       call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
       if(lregional_refinement) then
         call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
@@ -566,23 +591,7 @@ program convterr
         call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
              ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
       endif
-      
-    else
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
     endif
-    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
-    write(*,*) "Writing topo file to "
-    write(*,*) output_fname
-
-    OPEN (unit = 711, file= TRIM(str_dir)//'/'//'plot.sh' ,form="FORMATTED" )
-!    write(711,*) 'cp plot.ncl ',TRIM(str_dir)//'/'
-    write(711,*) 'ncl plot.ncl ''topoFile="',TRIM(output_fname),'"''',&
-         ' ''scripFile="',TRIM(grid_descriptor_fname),'"'''
-    CLOSE(711)
-    
     
     !*********************************************************
     !
