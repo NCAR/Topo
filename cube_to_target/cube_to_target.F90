@@ -132,7 +132,7 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
-  character(len=1024) :: output_grid='', ofile,smooth_topo_fname = ''
+  character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir=''
   character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
   character(len=8)  :: date
@@ -147,7 +147,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(17)
+    type(option_s):: opts(18)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -169,6 +169,7 @@ program convterr
     opts(15) = option_s( "write_rrfac_to_topo_file" ,.true.    , 'd'   ,.false.       ,.false.)
     opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
     opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
+    opts(18) = option_s( "output_data_directory"    ,.true.    , 'q'   ,.false.       ,.false.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -180,7 +181,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:du:n:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z:01:t:du:n:q:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -267,6 +268,11 @@ program convterr
         write(str,*) TRIM(optarg)
         command_line_arguments = TRIM(command_line_arguments)//' -n '//TRIM(ADJUSTL(str))
         opts(17)%specified = .true.
+      case( 'q' )
+        str_dir = optarg
+        write(str,*) TRIM(optarg)
+        command_line_arguments = TRIM(command_line_arguments)//' -q '//TRIM(ADJUSTL(str))
+        opts(18)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -324,7 +330,13 @@ program convterr
       !
       str_source = 'gmted2010_bedmachine'
     end if
-    
+    if (LEN(TRIM(str_dir))==0) then
+      !
+      ! default output directory
+      !
+      str_dir = 'output'
+    end if
+
     write(*,*) "Namelist settings"
     write(*,*) "================="
     write(*,*)
@@ -561,16 +573,14 @@ program convterr
            "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
            ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
     endif
-    output_fname = './output/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
     write(*,*) "Writing topo file to "
     write(*,*) output_fname
 
-    OPEN (unit = 711, file= 'plot.sh' ,form="FORMATTED" )
-!    write(711,*) 'ncl ''',TRIM(output_fname),''''
+    OPEN (unit = 711, file= TRIM(str_dir)//'/'//'plot.sh' ,form="FORMATTED" )
+!    write(711,*) 'cp plot.ncl ',TRIM(str_dir)//'/'
     write(711,*) 'ncl plot.ncl ''topoFile="',TRIM(output_fname),'"''',&
          ' ''scripFile="',TRIM(grid_descriptor_fname),'"'''
-    
-    !output/ne30pg3_gmted2010_bedmachine_nc0540_Nsw008_Nrs000_Co012_Fi001_20220228.nc"'
     CLOSE(711)
     
     
