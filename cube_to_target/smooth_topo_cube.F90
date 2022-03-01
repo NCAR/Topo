@@ -29,7 +29,7 @@ CONTAINS
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
                                     , command_line_arguments&
-                                    , str_dir, smooth_topo_fname)
+                                    , str_dir, str_source, smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -48,7 +48,7 @@ CONTAINS
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
     LOGICAL, INTENT(IN)  :: lregional_refinement
-    CHARACTER(len=1024), INTENT(IN   )           :: str_dir
+    CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source
     CHARACTER(len=1024), INTENT(OUT)             :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
@@ -107,19 +107,18 @@ CONTAINS
      !---------------------------------------
      new_smooth_topo = .NOT.(read_in_and_refine)
 
-
      write( ofname , &
-       "('topo_smooth_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
-        ncube, NSCL_c/2, NSCL_f/2
+          "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
+          ncube, NSCL_c/2, NSCL_f/2
+     ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
+     if (lregional_refinement) then
+       ofname= TRIM(str_dir)//'/'//trim(ofname)//'_VRtest.nc'
+     else
+       ofname= TRIM(str_dir)//'/'//trim(ofname)//'.nc'
+     end if
 
-       if (lregional_refinement) then
-         ofname= TRIM(str_dir)//'/'//trim(ofname)//'_VRtest.nc'
-       else
-         ofname= TRIM(str_dir)//'/'//trim(ofname)//'.nc'
-       end if
-
-       write(*,*) " Will do smoothing of topo on cubed sphere "
-       write(*,*) " Output will go to: ",trim(ofname)
+     write(*,*) " Will do smoothing of topo on cubed sphere "
+     write(*,*) " Output will go to: ",trim(ofname)
 
      !terr_in = terr
      DO ip = 1, 6
