@@ -1,16 +1,25 @@
+===================================================================
 Steps to get current with master. This worked on Feb 19 2022.
 
 
-1) git fetch NCAR topowopts
+1) $ git fetch NCAR topowopts
 
 then 
 
-2) git merge NCAR/topowopts
+2) $ git merge NCAR/topowopts
 
 
 
 Puzzled about syntax. 1 worked fine, but when I tried
 
-2*) git merge NCAR topowopts
+2*) $ git merge NCAR topowopts
 
 Got an error message
+
+
+
+=====================================================================
+Create and push an annotated tag 
+
+$ git tag -a v5.0.0 -m"Major mods/clean-up to restore VR etc.. Changed rotby procedure ..."
+$ git push origin v5.0.0

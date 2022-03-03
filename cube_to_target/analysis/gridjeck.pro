@@ -1,6 +1,6 @@
 pro gridjeck,xcase=xcase,fi=fi,co=co,nsw=nsw,nc=nc,ogrid=ogrid,quick=quick,stops=stops $
             ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg,list=list $
-            ,cu=cu,latt=latt,lont=lont,itrgt=itrgt,xlist=xlist,xy=xy
+            ,cu=cu,latt=latt,lont=lont,itrgt=itrgt,xlist=xlist,xy=xy,terroutput=terroutput
 
  ;d='/project/amp/juliob/Topo-generate-devel/Topo/Ridge-Finding.git/output/'
 
@@ -33,7 +33,7 @@ rncvar,f=tg,get='var30',dat=var30
 rdremap,rem=rema,top=topo,cube=cu
 rdglist_e02,list=list,xlist=xlist
 
-if keyword_set(trxy) then terrxy,xy=xy,trxy=trxy
+if keyword_set(trxy) and keyword_set(terroutput) then terrxy,xy=xy,trxy=trxy
 
 var30 = reform( var30 , nc , nc, 6)
 lont  = reform(  lont , nc , nc, 6)
