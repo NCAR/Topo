@@ -151,6 +151,8 @@ CONTAINS
             call smooth_intermediate_topo_halo(terr_halo, da_halo,rr_halo, ncube,nhalo, 1,NSCL_f &
                                          , terr_halo_sm,  read_in_and_refine, new_smooth_topo  ) 
             terr_halo = terr_halo_sm
+         else
+            write(*,*) " No prefilter in smooth_topo !!!!!! "
          end if
          call smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo, ncube,nhalo, 1,NSCL_c &
                                      , terr_halo_sm,  read_in_and_refine, new_smooth_topo )

@@ -1,21 +1,24 @@
 #!/bin/tcsh
 
 
-if ( "$#argv" != 5) then
+if ( "$#argv" != 4) then
   echo "Wrong number of arguments specified:"
 set n = 1
   echo "ogrid = argv[1]"
   echo "Co    = argv[2]"
   echo "Fi    = argv[3]"
-  echo "Nsw   = argv[4]"
-  echo "case  = argv[5]"
+  ##echo "Nsw   = argv[4]"
+  echo "tag  = argv[4]"
   echo "     "
   echo "possible ogrid values: fv_0.9x1.25, ne30pg3 ..."
   exit
 endif
 
-set n = 5
-set case = "$argv[$n]"
+set n = 4
+set case = $argv[1]"_co"$argv[2]"_fi"$argv[3]"_"$argv[4]
+
+echo $case
+
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -55,17 +58,9 @@ set n = 2
 set Co = "$argv[$n]"
 set n = 3
 set Fi = "$argv[$n]"
-set n = 4
-set Nsw = "$argv[$n]"
-
-
-#set ogrid='fv_0.9x1.25'
-#set Co=60
-#set Fi=8
-#set Nsw=42
 
 # This is now used for all. Doesn't matter, will eliminate
-set Nrs=00
+#set Nrs=00
 
 if ( $ogrid == 'geos_fv_c48' ) then
    set scrip='PE48x288-CF.nc4'
@@ -100,11 +95,11 @@ endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
 set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis-ncube3000-stitch.nc'
-set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/topo_smooth_nc3000_Co060_Fi001.dat'
-
+#set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/topo_smooth_nc3000_Co060_Fi001.dat'
+set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/fv_co60_fi01_nothin/output/topo_smooth_nc3000_Co060_Fi001.dat'
 echo $smtopo
 
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --nwindow_halfwidth=$Nsw -p -r
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r
 
 # --rrfac_max=4 --use_prefilter --find_ridges --precomputed_smooth_topo  --regional_refinement
 

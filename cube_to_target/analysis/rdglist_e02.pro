@@ -16,11 +16,12 @@ readu,1,nch , grid_length_scale
 
 t1=fltarr(nch,nch,6)
 t1d=fltarr(nch,nch,6)
+dtg=dblarr(nch,nch)
 xv=fltarr(nch)&yv=fltarr(nch)
 
  readu,1,xv,yv
  readu,1,t1
- readu,1,t1d
+ readu,1,t1d ;pr,dtg
 
  npks=0L & m=0L & NSW=0L
  readu,1,npks  , NSW
@@ -36,6 +37,7 @@ xv=fltarr(nch)&yv=fltarr(nch)
   aniso=fltarr(npks) & pkhts=fltarr(npks) & vldps=fltarr(npks) & npeak=fltarr(npks)
   angll=fltarr(npks) & rwpks=fltarr(npks) & rwvls=fltarr(npks)
   isoht=fltarr(npks) & isowd=fltarr(npks) & isobs=fltarr(npks) 
+  RefFac=fltarr(npks)
 
   uqrid=fltarr(npks)
 
@@ -94,27 +96,11 @@ readu, 1, crst_silhous
 readu, 1, isoht
 readu, 1, isowd
 readu, 1, isobs
+;readu, 1, RefFac
 
 close,1
 
 
-if keyword_set(terr) then begin
-openr,1,terr,/f77_u
-
-in1=0L & in2=0L
-readu,1,in1,in2
-aa=fltarr( in2+1 , in2+1 )
-
-for ipk=0,in1-1 do begin
-    readu,1,aa
-    rtx_diag(*,*,ipk) = aa
-    if ipk mod 1000 eq 0 then print," Read to ",ipk
-endfor
-close,1
-
-xterr={rtx:rtx_diag}
-
-endif
 
 
 ipo1=where( mypanel eq 1 )
@@ -151,10 +137,7 @@ norw=where( xs gt 1550 and xs lt 1650 and ys gt 450 and ys lt 550 and mxdis gt 5
 
 if keyword_set(stop) then STOP
 
-xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, mxdis:mxdis, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, rdg_profiles:rdg_profiles }
-
-
-
+xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, panel:mypanel, mxdis:mxdis, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, rdg_profiles:rdg_profiles }
 
 return
 end

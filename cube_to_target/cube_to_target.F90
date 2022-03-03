@@ -277,6 +277,9 @@ program convterr
     end if
   end if
 
+  if (ncube_sph_smooth_fine > 1) luse_prefilter=.TRUE.
+
+
   write(*,*) "Namelist settings"
   write(*,*) "================="
   write(*,*)
@@ -506,15 +509,11 @@ program convterr
     !----------------------------------------------------------------------
     
     call find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
-    if(lregional_refinement) then
-      call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
+
+    call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
            ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
            lregional_refinement=lregional_refinement,           &
            rr_factor = rrfac  )
-    else
-      call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
-           ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
-    endif
     
   else
     call DATE_AND_TIME( DATE=date,TIME=time)
@@ -718,17 +717,14 @@ program convterr
   end do
 
   if(lfind_ridges) then
-    if(lregional_refinement) then
-      write(*,*) "not merged"
-      stop
-    else
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
            nreconstruction,ntarget,nhalo,nsw, &
            ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-           output_grid )
-    end if
+           output_grid, &           
+           lregional_refinement=lregional_refinement,           &
+           rr_factor = rrfac  )
     
     if (lridgetiles) then 
       call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
