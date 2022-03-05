@@ -158,7 +158,7 @@ program convterr
     opts(4 ) = option_s( "help"                     ,.false.   , 'h'   ,.false.       ,.false.)
     opts(5 ) = option_s( "intermediate_cs_name"     ,.true.    , 'i'   ,.false.       ,.true.)
     opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
-    opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.true.)
+    opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.false.)
     opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
     opts(9)  = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
     opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
@@ -229,6 +229,7 @@ program convterr
       case( 'y' )
         read (optarg, '(i3)') ioptarg
         rrfac_max = ioptarg
+        lregional_refinement =.true.
         write(str,*) ioptarg
         command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
         opts(10)%specified = .true.
