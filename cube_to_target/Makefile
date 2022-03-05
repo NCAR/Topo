@@ -1,5 +1,5 @@
-include machine_settings.make
 #include ../machine_settings.make
+include ./machine_settings.make
 EXEDIR = .
 EXENAME = cube_to_target
 RM = rm

@@ -1,0 +1,32 @@
+This directory contains scripts to produce topo files for CAM applications.
+
+The naming convention is based on CAM "hgrid" identifier (which uses resolution specifications native to the dynamical core).
+
+Uniform resolution grids
+========================
+
+CAM-EUL	   	      : 256x512      , 128x256.nc    , 64x128		, 48x96		, 32x64		, 8x16
+CAM-FV 	 	      : 0.23x0.31    , 0.47x0.63     , 0.5x0.625	, 0.9x1.25	, 1.9x2.5 	, 2.5x3.33	, 4x5	, 10x15
+CAM-FV3	 	      : C24	     , C48	     , C96		, C192		, C384
+CAM-SE 	 	      : ne5np4	     , ne16np4	     , ne30np4		, ne60np4	, ne120np4	, ne240np4
+CAM-SE-CSLAM	      : ne5pg2	     , ne16pg2	     , ne30pg2		, ne60pg2	, ne120pg2	, ne240pg2 
+CAM-SE-CSLAM	      : ne5pg3	     , ne16pg3	     , ne30pg3		, ne60pg3	, ne120pg3	, ne240pg3
+CAM-SE-CSLAM	      : ne5pg4	     , ne16pg4	     , ne30pg4		, ne60pg4	, ne120pg4
+CAM-MPAS	      : mpasa480     , mpasa120
+
+
+Variable resolution grids
+=========================
+
+ne0np4CONUS.ne30x8
+ne0np4.ARCTIC.ne30x4
+ne0np4.ARCTICGRIS.ne30x8
+
+mpas_scrip_60-3_central_us
+mpas_scrip_60-3_andes
+mpas_scrip_60-15_sa
+
+
+High -resolution that require special attention (i.e. near ~7-~3km)
+===================================================================
+

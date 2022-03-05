@@ -23,3 +23,14 @@ Create and push an annotated tag
 
 $ git tag -a v5.0.0 -m"Major mods/clean-up to restore VR etc.. Changed rotby procedure ..."
 $ git push origin v5.0.0
+
+
+======================================================================
+Remote add
+
+[juliob@thorodin Topo.git]$ git remote add NCAR https://github.com/NCAR/Topo 
+[juliob@thorodin Topo.git]$ git remote -v
+NCAR	https://github.com/NCAR/Topo (fetch)
+NCAR	https://github.com/NCAR/Topo (push)
+origin	https://github.com/JulioTBacmeister/Topo (fetch)
+origin	https://github.com/JulioTBacmeister/Topo (push)

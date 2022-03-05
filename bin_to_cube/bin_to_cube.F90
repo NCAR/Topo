@@ -172,7 +172,7 @@ program convterr
   WRITE(*,*) "read lat"
   status = NF_GET_VAR_DOUBLE(ncid, latid,lat)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  
+
   print *,"close file"
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)
@@ -371,7 +371,8 @@ program convterr
         IF (ABS(weight(i,j,k))<1.0E-9) THEN
           WRITE(*,*) "there is no lat-lon grid point in cubed sphere cell ",i,j,k
           WRITE(*,*) "fatal error"
-!          STOP
+          write(*,*) "weight     ",i,j,k,weight(i,j,k)
+          STOP
         ELSE
           terr_cube        (i,j,k) = terr_cube        (i,j,k)/weight(i,j,k)                
 !+++ARH

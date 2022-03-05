@@ -12,9 +12,13 @@ endif else begin
 endelse 
 
 case nc of 
-3000 : tg='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis-ncube3000-stitch.nc'
-540  : tg='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube0540.nc'
+3000 : srct='gmted2010_modis' ;-ncube3000-stitch'
+540  : srct='gmted2010_bedmachine' ;_ncube0540'
 endcase
+fn='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/'  + srct 
+soo=file_search( fn+'*.nc')
+nsoo=n_elements(soo)
+tg=soo( nsoo -1 )
 
 Co$  = 'Co'+padstring(Co,/e2)
 Fi$  = 'Fi'+padstring(Fi,/e2)
@@ -27,9 +31,9 @@ soo=file_search( d+fn+'*.dat')
 nsoo=n_elements(soo)
 rema=soo( nsoo -1 )
 
-;fn = 'topo_smooth_nc3000_Co060_Fi008'
-fn = 'topo_smooth_'+nc$+'_' + Co$ + '_' + Fi$
-soo=file_search( d+fn+'*.dat')
+;topo_smooth_gmted2010_bedmachine_nc0540_Co012_Fi001.nc
+fn = 'topo_smooth_'+ srct +'_'+ nc$ + '_' + Co$ + '_' + Fi$
+soo=file_search( d+fn+'*.nc')
 nsoo=n_elements(soo)
 topo=soo( nsoo-1 )
 

@@ -5,15 +5,16 @@ NCAR Global Model Topography Generation Software for Unstructured Grids.
 Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
 
 and updated by Julio Bacmeister for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
+and variable resolution (Adam Herrington).
 
 Get code:
 
       git clone https://github.com/NCAR/Topo
       cd Topo
-      # switch to branch
-      git checkout TopoCESM2
 
 Execute code:
+
+	The raw data (assumed to be on lat-lon grid) 
 
 	The user does not need create_netCDF_from_rawdata/ and bin_to_cube/ steps unless wanting to change
 	base dataset. create_netCDF_from_rawdata is currently broken!
@@ -22,35 +23,11 @@ Execute code:
 
 	intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
 
-	(if located elsewhere edit Makefile)
-
 Type "make"
 
 	Code will compute ne30pg3 dataset by default.
 
 Make new dataset:
-
-     	 1. Open "experiment_settings.make"
-	 2. Add new case name, e.g. ,
-
-	    export case=mpas_120_Co060_ridge
-     
-	 3. Add
-
-	 ifeq ($(case),mpas_120_Co060_ridge)
-	   export ncube_sph_smooth_coarse=060   #smoothing radius: CESM2.2 uses 60 1 degree, 40 for 0.5 degree, ...
-	   export output_grid=mpas_480          
-	   export grid_descriptor_fname=$(PWD)/cube_to_target/inputdata/grid-descriptor-file/$(grid_descriptor_dir)/mpasa480_SCRIP_desc.200911.nc
-	   export nwindow_halfwidth=042         #typically ncube_sph_smooth_coarse/sqrt(2)
-	   export rdgwin=_Nsw$(nwindow_halfwidth)
-	   export stitch=-stitch
-	   export ncube=3000
-	   case_found=
-	 endif
-	 
-	 and edit for new dataset. See more documentation in "experiment_settings.make"
-
-	 For variable resolution grids contant Adam Herrington
 
 
 Overview of directories
@@ -61,34 +38,20 @@ Overview of directories
 ---------------------------------
 
 Make grid-descriptor files for regular lat-lon grids
-(only needed for lat-lon grids)
 
-
-1. create_netCDF_from_rawdata
------------------------------
-
-Program to make netCDF version of the GMTED2010 elevation and MODIS land fraction data.
-(also support USGS gtopo30)
-This netCDF file is used as input for bin_to_cube.
-
-PLEASE NOTE THAT THIS STEP REQUIRES PYTHON AND GDAL LIBRARY. TO BYPASS THIS STEP
-CONTACT PEL@UCAR.EDU TO OBTAIN 
-
-	create_netCDF_from_rawdata/gmted2010_modis-rawdata.nc
-	create_netCDF_from_rawdata/gtopo30-rawdata.nc
-
-2. bin_to_cube:
+1. bin_to_cube:
 ---------------
 
 Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid.
-Creates intermediate cubed-sphere data for cube_to_target.
+Creates intermediate cubed-sphere data for cube_to_target. This is used to separate
+scales for SGH and SGH30.
 
-3. cube_to_target:
+2. cube_to_target:
 ------------------
 
 Remap elevation data to target grid and compute associated variables.
 
-4. cesm_meta_data_compliance:
+3. cesm_meta_data_compliance:
 -----------------------------
 
 Python script to add CESM meta data to topography data file (must be done manually: "make cesm_compliance")

@@ -2,22 +2,20 @@ begin
 ;************************************************
 ; open netCDF file
 ;************************************************
-  a = addfile("topo.nc","r")
+  a = addfile(topoFile,"r")
   ;
   ; SCRIP file
   ;
-  sf =  addfile("scrip.nc","r")
+  sf =  addfile(scripFile,"r")
   cellfill = True
-;************************************************
-; Read in Regression Coef
-;************************************************
-  PHIS  = a->PHIS
-;  PHIS = a->GBXAR
+  var  = a->$vname$
+
 ;************************************************
 ; create plot
 ;************************************************
 
-  wks = gsn_open_wks("pdf","raster")         ; send graphics to PNG file
+  fileName = topoFile+".pdf"
+  wks = gsn_open_wks("pdf",fileName)         ; send graphics to PNG file
   gsn_define_colormap(wks,"BlAqGrYeOrReVi200")   ; choose colormap
 
   res                     = True         ; plot modifications desired
@@ -68,6 +66,6 @@ begin
 
   res@mpCenterLonF     = 180                ; set map center at 180
                                             ; must be in colormap  
-  plot = gsn_csm_contour_map_ce(wks,PHIS, res) ; create plot
+  plot = gsn_csm_contour_map_ce(wks,var, res) ; create plot
 
 end

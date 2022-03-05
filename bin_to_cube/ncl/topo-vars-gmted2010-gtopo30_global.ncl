@@ -8,11 +8,11 @@ begin
 ;
 ;******************************************************
 
-  dataFile_gmted2010 = "../gmted2010_modis-ncube3000.nc"
-  dataFile_gtopo30   = "../gmted2010_modis-ncube3000-fix_inland_water_elevation.nc"
-;  dataFile_gtopo30   = "../gtopo30-ncube3000.nc"
+;  dataFile_gmted2010 = "../gmted2010_modis-ncube3000.nc"
+;  dataFile_gtopo30   = "../gmted2010_modis-ncube3000-fix_inland_water_elevation.nc"
+  dataFile_gtopo30   = "../mars-ncube3000.nc"
   format   = "pdf" 
-  outputFile = "topo-vars-gmted2010-gtopo30"
+  outputFile = "topo-vars-mars"
   f_gmted2010     = addfile(dataFile_gmted2010,"r")
   f_gtopo30       = addfile(dataFile_gtopo30  ,"r")
 

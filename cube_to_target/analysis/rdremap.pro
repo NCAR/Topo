@@ -1,4 +1,4 @@
-pro rdremap,remapfile=fn0,topofile=ftopo0,cube=cube,basedir=basedir,cesm2=cesm2 $
+pro rdremap,remapfile=fn0,cube=cube,basedir=basedir,cesm2=cesm2 $
            ,fvgrid=fvgrid,stop=stop,only_topo=only_topo
 
 if not keyword_set(basedir) then begin
@@ -8,32 +8,11 @@ endif else begin
    dir$=basedir
 endelse
 
-;dir$='/project/amp/juliob/topo_git/Topo/cube_to_target/output/'
-ftopo=dir$+ftopo0
-
-nc=0L&npeaks=0L
-close,1
-openr,1,/f77,ftopo
-readu,1,nc
-terr=dblarr(nc,nc,6)
-terr_sm=dblarr(nc,nc,6)
-terr_dev=dblarr(nc,nc,6)
-rrfac=dblarr(nc,nc,6)
-readu,1,terr
-readu,1,terr_sm
-readu,1,terr_dev
-;readu,1,rrfac
-
-if keyword_set(only_topo) then begin
-cube={raw:terr,dev:terr_dev,smooth:terr_sm}
-RETURN
-endif
 
 f=dir$+fn0
-
 rf$ = fn0
-tf$ = ftopo0
 
+nc=0l & npeaks=0l
 close,1
 openr,1,/f77,f
 readu,1,nc,npeaks
@@ -95,18 +74,16 @@ close,1
 print," read from"
 print,f
 
-pdev=terr_dev
-pdev(where(pdev lt 0))=0.
 
 if not keyword_set(extension) then begin
-cube={raw:terr,dev:terr_dev,smooth:terr_sm,pdev:pdev,mxdis:mxdis  $ 
+cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
-     ,rf:fn0,tf:ftopo0}
+     ,rf:fn0}
 endif else begin
-cube={raw:terr,dev:terr_dev,smooth:terr_sm,pdev:pdev,mxdis:mxdis  $ 
+cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
      ,anglx:anglx,hwdth:hwdth,clngt:clngt  $ 
-     ,rf:fn0,tf:ftopo0}
+     ,rf:fn0}
 endelse
 
 

@@ -19,9 +19,11 @@ use, intrinsic :: iso_fortran_env, only : stdin=>input_unit, &
     logical          :: opterr=.true. ! Errors are printed by default. Set opterr=.false. to suppress them
 
     type option_s
-        character(len=80) :: name     ! Name of the option
-        logical           :: has_arg  ! Option has an argument (.true./.false.)
-        character         :: short    ! Option's short character equal to optopt
+        character(len=80) :: name      ! Name of the option
+        logical           :: has_arg   ! Option has an argument (.true./.false.)
+        character         :: short     ! Option's short character equal to optopt
+        logical           :: specified ! Is option specified on command line
+        logical           :: required  ! Is option required
     end type option_s
 
     ! grpind is index of next option within group; always >= 2
