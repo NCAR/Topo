@@ -2,7 +2,7 @@
 
 
 
-set case = "xreg_co20_fi0"
+set case = "xreg_co12_fi0"
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -27,7 +27,7 @@ gmake clean
 gmake
 
 set ogrid = "ne30pg3"
-set Co = "20"
+set Co = "12"
 set Fi = "0"
 
 

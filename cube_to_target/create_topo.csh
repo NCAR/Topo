@@ -3,7 +3,7 @@
 
 if ( "$#argv" != 4) then
   echo "Wrong number of arguments specified:"
-set n = 1
+  set n = 1
   echo "ogrid = argv[1]"
   echo "Co    = argv[2]"
   echo "Fi    = argv[3]"
@@ -94,12 +94,15 @@ if ( $ogrid == 'Arctic' ) then
 endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
-set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis-ncube3000-stitch.nc'
+set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube3000.nc'
 #set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/topo_smooth_nc3000_Co060_Fi001.dat'
 set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/fv_co60_fi01_nothin/output/topo_smooth_nc3000_Co060_Fi001.dat'
 echo $smtopo
 
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/'
+
+
+# ./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/'
 
 # --rrfac_max=4 --use_prefilter --find_ridges --precomputed_smooth_topo  --regional_refinement
 

@@ -335,7 +335,7 @@ program convterr
       str_dir = 'output'
     end if
 
-    if (ncube_sph_smooth_fine > 1) then 
+    if (ncube_sph_smooth_fine > 0) then 
        luse_prefilter=.TRUE.
     else
        luse_prefilter=.FALSE.
