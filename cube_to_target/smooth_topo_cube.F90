@@ -109,8 +109,8 @@ CONTAINS
      new_smooth_topo = .NOT.(read_in_and_refine)
 
      write( ofname , &
-          "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
-          ncube, NSCL_c/2, NSCL_f/2
+          "('_nc',i0.4,'_Co',i0.3)" ) & 
+          ncube, NSCL_c/2
      ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
      if (lregional_refinement) then
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'_'//trim(ogrid)//'.nc'
