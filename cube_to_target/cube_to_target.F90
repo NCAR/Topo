@@ -405,13 +405,13 @@ program convterr
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile , &
            "('_nc',i0.4,  &
-           '_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
+           '_Co',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse
     else
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
+           "('_nc',i0.4,'_NoAniso_Co',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse
     endif
     output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
     write(*,*) "Writing topo file to "
