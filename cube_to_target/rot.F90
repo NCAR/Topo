@@ -4,6 +4,7 @@ private
 public rotby
 public rotby2
 public rotby3
+public rotby4
 
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -173,11 +174,11 @@ end FUNCTION ROTBY2
 
   n2=n/2
   do i=1,n
-     x(i)=-n2+i*1. - 0.5
+     x(i)=-n2+i*1.- 0.5
   end do
   n2=n/2
   do i=1,n
-     y(i)=-n2+i*1. - 0.5
+     y(i)=-n2+i*1.- 0.5
   end do
 
   do j=1,n
@@ -246,6 +247,55 @@ end FUNCTION ROTBY2
   end do
 
 end FUNCTION ROTBY3
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  FUNCTION ROTBY4( AA,N,THETA ) RESULT(AR)
+    implicit none
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  INTEGER,            intent(IN) ::  N
+
+  REAL,               intent(IN) ::  AA(0:N-1,0:N-1),THETA
+  REAL                           ::  AR(0:N-1,0:N-1)
+
+  real :: x(0:n-1),y(0:n-1)
+  real :: xp(0:n-1,0:n-1),yp(0:n-1,0:n-1)
+  real :: r(0:n-1,0:n-1),wt(0:n-1,0:n-1)
+  real :: THETRAD,PI,swt
+  integer :: i,j,l,m,n2,ii,jj,i1,j1,r00,r10,r01,r11,ic,d00
+  integer :: ir,jr
+
+  PI = 2*ACOS(0.0)
+  THETRAD = -theta*(PI/180.)
+
+  n2=INT(n/2)
+  do i=0,n-1
+     x(i)=-n2+i*1.
+  end do
+  do i=0,n-1
+     y(i)=-n2+i*1.
+  end do
+
+  do j=0,n-1
+  do i=0,n-1
+     xp(i,j)=x(i)*cos(thetrad) - y(j)*sin(thetrad)
+     yp(i,j)=y(j)*cos(thetrad) + x(i)*sin(thetrad)
+  end do
+  end do
+
+  do j=0,n-1
+  do i=0,n-1
+     if ( (xp(i,j)<x(0)).or.(xp(i,j)>x(n-1)).or.(yp(i,j)<y(0)).or.(yp(i,j)>y(n-1)) ) then
+        ar(i,j)=-9999999.9
+     else
+     ir = NINT( xp(i,j) + n2 )
+     jr = NINT( yp(i,j) + n2 )
+          ar(i,j) = aa(ir,jr)
+     endif
+  end do
+  end do
+
+end FUNCTION ROTBY4
 
 
 end module rotation

@@ -128,7 +128,7 @@ program convterr
   !
   INTEGER :: UNIT
 
-  INTEGER :: NSCL_f, NSCL_c, nhalo,nsb,nsw, i_in_sg, itarget, ioptarg
+  INTEGER :: NSCL_f, NSCL_c, nhalo,nsw, i_in_sg, itarget, ioptarg
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
@@ -158,7 +158,7 @@ program convterr
     opts(4 ) = option_s( "help"                     ,.false.   , 'h'   ,.false.       ,.false.)
     opts(5 ) = option_s( "intermediate_cs_name"     ,.true.    , 'i'   ,.false.       ,.true.)
     opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
-    opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.true.)
+    opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.false.)
     opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
     opts(9)  = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
     opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
@@ -229,6 +229,7 @@ program convterr
       case( 'y' )
         read (optarg, '(i3)') ioptarg
         rrfac_max = ioptarg
+        lregional_refinement =.true.
         write(str,*) ioptarg
         command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
         opts(10)%specified = .true.
@@ -284,7 +285,7 @@ program convterr
       write(*,*) " Use pre-computed smooth topo " 
       write(*,*) " File = ", trim(smooth_topo_fname)
     else 
-      write(*,*) " No smooth top"
+      write(*,*) " No smooth topo"
     end if
     !
     ! check that all required arguments are specified/initialized
@@ -307,11 +308,8 @@ program convterr
       if (nwindow_halfwidth<0) then
         nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
         !
-        ! nwindow_halfwidth must be even
+        ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
         !
-        if (MOD(nwindow_halfwidth,2).ne.0) then
-          nwindow_halfwidth = nwindow_halfwidth-1
-        end if
         if (nwindow_halfwidth<5) then
           write(*,*) "nwindow_halfwidth can not be < 4"
           write(*,*) "setting nwindow_halfwidth=4"
@@ -337,6 +335,12 @@ program convterr
       str_dir = 'output'
     end if
 
+    if (ncube_sph_smooth_fine > 1) then 
+       luse_prefilter=.TRUE.
+    else
+       luse_prefilter=.FALSE.
+    end if
+
     write(*,*) "Namelist settings"
     write(*,*) "================="
     write(*,*)
@@ -356,28 +360,6 @@ program convterr
     write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
     write(*,*) "str_source                      = ",str_source
 
-    !*********************************************************
-    !
-    ! set standard output file name
-    !
-    !*********************************************************
-
-    if(lfind_ridges) then
-      nsw = nwindow_halfwidth
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
-           '_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, nsw, nsb,   ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
-    else
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
-    endif
-    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
-    write(*,*) "Writing topo file to "
-    write(*,*) output_fname
 
     !*********************************************************
     !
@@ -411,6 +393,29 @@ program convterr
     
     allocate ( dA(ncube,ncube),stat=alloc_error )
     CALL EquiangularAllAreas(ncube, dA)
+
+    !*********************************************************
+    !
+    ! set standard output file name
+    !
+    !*********************************************************
+
+    if(lfind_ridges) then
+      nsw = nwindow_halfwidth
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4,  &
+           '_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
+    else
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
+    endif
+    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+    write(*,*) "Writing topo file to "
+    write(*,*) output_fname
     
     !+++ARH
     ! Compute overlap weights
@@ -550,6 +555,7 @@ program convterr
            lstop_after_smoothing, &
            lregional_refinement, &
            command_line_arguments,str_dir,str_source,&
+           output_grid,&
            smooth_topo_fname=smooth_topo_fname&
            )
       
@@ -579,19 +585,16 @@ program convterr
     
     if(lfind_ridges) then
       nsw = nwindow_halfwidth
-      nsb = nridge_subsample
       nhalo=2*nsw
       
-      call find_local_maxes ( terr_dev, ncube, nhalo, nsb, nsw ) !, npeaks, peaks )
-      if(lregional_refinement) then
-        call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
-             ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
-             lregional_refinement=lregional_refinement,           &
-             rr_factor = rrfac  )
-      else
-        call find_ridges ( terr_dev, terr, ncube, nhalo, nsb, nsw,&
-             ncube_sph_smooth_coarse   , ncube_sph_smooth_fine )
-      endif
+      call find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
+
+
+      call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
+           ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
+           lregional_refinement=lregional_refinement,           &
+           rr_factor = rrfac  )
+
     endif
     
     !*********************************************************
@@ -786,33 +789,20 @@ program convterr
     end do
     
     if(lfind_ridges) then
-      if(lregional_refinement) then
-        !
-        ! ! qqqq: ARH+JTB: merge not done
-        !
-        !      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-        !           weights_eul_index_all(1:jall,:), & 
-        !           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-        !           nreconstruction,ntarget,nhalo,nsb,nsw, &
-        !           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-        !           output_grid,&
-        !           lregional_refinement=lregional_refinement, rr_factor = rrfac  )
-        !write(*,*) "not merged"
-        !stop
-      else
-        call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-             weights_eul_index_all(1:jall,:), & 
-             weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-             nreconstruction,ntarget,nhalo,nsb,nsw, &
-             ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-             output_grid )
-      end if
-      
+      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
+           weights_eul_index_all(1:jall,:), & 
+           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+           nreconstruction,ntarget,nhalo,nsw, &
+           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           output_grid, &           
+           lregional_refinement=lregional_refinement,           &
+           rr_factor = rrfac  )
+    
       if (lridgetiles) then 
-        call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
-             weights_eul_index_all(1:jall,:), & 
-             weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-             nreconstruction,ntarget,nhalo,nsb)
+         call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
+              weights_eul_index_all(1:jall,:), & 
+              weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
+              nreconstruction,ntarget,nhalo)
       endif
     endif
 
