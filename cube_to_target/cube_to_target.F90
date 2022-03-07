@@ -82,17 +82,11 @@ program convterr
   !
   ! namelist variables
   !
-  !
-  ! set PHIS=0.0 if LANDFRAC<0.01
-  !
-  logical :: lzero_out_ocean_point_phis = .FALSE.! currently broken
-  !
-  !++jtb
-  logical :: lzero_negative_peaks = .TRUE.
+  logical :: ldevelopment_diags    = .FALSE.
+  logical :: lzero_negative_peaks  = .TRUE.
   logical :: lread_smooth_topofile = .FALSE.
-  logical :: luse_prefilter = .FALSE.
+  logical :: luse_prefilter        = .FALSE.
   logical :: lstop_after_smoothing = .FALSE.
-  !--jtb
   !
   ! Cubed sphere terr is band-pass filtered using circular kernels
 
@@ -162,7 +156,7 @@ program convterr
     opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
     opts(9)  = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
     opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
-    opts(11) = option_s( "zero_out_ocean_point_phis",.false.   , 'z'   ,.false.       ,.false.)
+    opts(11) = option_s( "development_diags"        ,.false.   , 'z'   ,.false.       ,.false.)
     opts(12) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
     opts(13) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
     opts(14) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
@@ -234,9 +228,7 @@ program convterr
         command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
         opts(10)%specified = .true.
       case( 'z' )
-        lzero_out_ocean_point_phis = .TRUE.
-        write(*,*) "need to re-introduce LANDFRAC for this to work again - ABORT"
-        STOP
+        ldevelopment_diags = .TRUE.
         command_line_arguments = TRIM(command_line_arguments)//' -z '
         opts(11)%specified = .true.
       case( '0' )
@@ -353,7 +345,7 @@ program convterr
     write(*,*) "luse_prefilter                  = ",luse_prefilter
     write(*,*) "lfind_ridges                    = ",lfind_ridges
     write(*,*) "rrfac_max                       = ",rrfac_max
-    write(*,*) "lzero_out_ocean_point_phis      = ",lzero_out_ocean_point_phis
+    write(*,*) "ldevelopment_diags              = ",ldevelopment_diags
     write(*,*) "lzero_negative_peaks            = ",lzero_negative_peaks
     write(*,*) "lridgetiles                     = ",lridgetiles
     write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
@@ -761,10 +753,6 @@ program convterr
     !
     ! Done internal smoothing
     !
-    if (lzero_out_ocean_point_phis) then
-      WRITE(*,*) "if ocean mask PHIS=0.0"
-    end if
-    
     terr_target=0.0
     sgh_target=0.0
     sgh_uf_target=0.0
