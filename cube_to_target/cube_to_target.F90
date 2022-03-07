@@ -106,7 +106,7 @@ program convterr
   logical :: lfind_ridges = .FALSE.
   !                             Ridge analysis takes place on
   !                             squares of 2*NW+1
-  integer :: nwindow_halfwidth = -1
+  integer :: nwindow_halfwidth =  0
   !                             
   !                             for backwards compat with CESM2.0
   !                             Not used, 0 here for naming
@@ -153,7 +153,7 @@ program convterr
     !                                                 argument| name  | command line | argument
     !
     opts(1 ) = option_s( "coarse_radius"            ,.true.    , 'c'   ,.false.       ,.true.)
-    opts(2 ) = option_s( "fine_radius"              ,.true.    , 'f'   ,.false.       ,.true.)
+    opts(2 ) = option_s( "fine_radius"              ,.true.    , 'f'   ,.false.       ,.false.)
     opts(3 ) = option_s( "grid_descriptor_file"     ,.true.    , 'g'   ,.false.       ,.true.)
     opts(4 ) = option_s( "help"                     ,.false.   , 'h'   ,.false.       ,.false.)
     opts(5 ) = option_s( "intermediate_cs_name"     ,.true.    , 'i'   ,.false.       ,.true.)
