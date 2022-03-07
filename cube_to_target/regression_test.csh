@@ -2,7 +2,7 @@
 
 
 
-set case = "vrreg_00"
+set case = "vrreg_02"
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -28,7 +28,7 @@ gmake
 
 set ogrid = "ne30pg3"
 set Co = "20"
-set Fi = "1"
+set Fi = "0"
 
 
 

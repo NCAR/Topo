@@ -559,6 +559,7 @@ program convterr
            lstop_after_smoothing, &
            lregional_refinement, &
            command_line_arguments,str_dir,str_source,&
+           output_grid,&
            smooth_topo_fname=smooth_topo_fname&
            )
       

@@ -29,7 +29,8 @@ CONTAINS
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
                                     , command_line_arguments&
-                                    , str_dir, str_source, smooth_topo_fname)
+                                    , str_dir, str_source, ogrid& 
+                                    , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
 
@@ -48,7 +49,7 @@ CONTAINS
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
     LOGICAL, INTENT(IN)  :: lregional_refinement
-    CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source
+    CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(OUT)             :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
@@ -112,7 +113,7 @@ CONTAINS
           ncube, NSCL_c/2, NSCL_f/2
      ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
      if (lregional_refinement) then
-       ofname= TRIM(str_dir)//'/'//trim(ofname)//'_VRtest.nc'
+       ofname= TRIM(str_dir)//'/'//trim(ofname)//'_'//trim(ogrid)//'.nc'
      else
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'.nc'
      end if
@@ -167,7 +168,7 @@ CONTAINS
 
   
       if (lregional_refinement) then
-!xxx        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
+        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
       else
         call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
       end if
