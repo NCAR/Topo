@@ -1,5 +1,4 @@
 #define ROTATEBRUSH
-#define DEBUGOUTPUT
 #define DETGDEP
 module ridge_ana
 
@@ -219,7 +218,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     & 
 !                        ++ following used only for file name construction -11/8/21
                          ncube_sph_smooth_coarse, ncube_sph_smooth_fine, &
-                         lregional_refinement, rr_factor )
+                         ldevelopment_diags, lregional_refinement, rr_factor)
 !---------------------------------------------------------------------
 !  Key INPUTS.
 !      NSW: = HALF-size of square window used for ridge analysis. Subsquares of
@@ -236,16 +235,19 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     !type (peak_type), dimension(npeaks), intent(inout) ::  peaks
 
     REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_dev
+            DIMENSION(ncube,ncube,6),           INTENT(IN) :: terr_dev
     REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_raw
+            DIMENSION(ncube,ncube,6),           INTENT(IN) :: terr_raw
+    INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube, nhalo, nsw !, npeaks
+    INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube_sph_smooth_coarse
+    INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube_sph_smooth_fine
+    LOGICAL,                                    INTENT(IN) :: ldevelopment_diags
+    LOGICAL, OPTIONAL,                          INTENT(IN) :: lregional_refinement
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), optional, INTENT(IN) :: rr_factor
-    LOGICAL, intent(IN), OPTIONAL ::  lregional_refinement
-    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo, nsw !, npeaks
-    !++ following used only for file name construction -11/8/21
-    INTEGER (KIND=int_kind), INTENT(IN) ::ncube_sph_smooth_coarse,ncube_sph_smooth_fine
-    
+    !
+    ! Local variables
+    ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
 
 
@@ -383,104 +385,95 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 900 format( a1, "  Analyzed Ridges ",i6," out of ",i6,"  NSWx=",i3 )
 901 format(" Ridge coords ", i6,i6,i3 )
+    if (ldevelopment_diags) then
+      write( ofile, &
+           "('./output/Ridge_list_nc',i0.4, '_Nsw',i0.3,  &
+           '_Co',i0.3,'_Fi',i0.3 )" ) & 
+           ncube, nsw , ncube_sph_smooth_coarse, ncube_sph_smooth_fine 
+      
+      !--- get time stamp for output filename
+      !----------------------------------------------------------------------
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      
+      ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
+      
+      OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
+      
+      write(31) ncube_halo , grid_length_scale
+      write(31) xv,yv
+      write(31) terr_halo_r4
+      write(31) terr_dev_halo_r4 , rdtg
+      
+      write(31) npeaks  , NSW
+      write(31) xs,ys  , MyPanel
+      write(31) mxvrx
+      write(31) bsvar
+      write(31) mxdis
+      write(31) anglx
+      write(31) aniso
+      write(31) mnslp
+      write(31) angll
+      write(31) xspk
+      write(31) yspk
+      write(31) mxds0
+      write(31) mxds1
+      write(31) sft0
+      write(31) sft1
+      write(31) hwdth
+      write(31) npks
+      write(31) mxvry
+      
+      write(31) nvls
+      write(31) pkhts
+      write(31) vldps
+      write(31) rwpks
+      write(31) rwvls
+      
+      write(31) lon0
+      write(31) lon1
+      write(31) lat0
+      write(31) lat1
+      
+      write(31) uniqid
+      write(31) riseq
+      write(31) fallq
+      write(31) clngth
+      
+      write(31) mxds2
+      
+      
+      write(31) rdg_profiles
+      write(31) crst_profiles
+      write(31) crst_silhous
+      write(31) isoht
+      write(31) isowd
+      write(31) isobs
+      write(31) RefFac
+      
+      CLOSE(31)
 
-       write( ofile, &
-       "('./output/Ridge_list_nc',i0.4, '_Nsw',i0.3,  &
-       '_Co',i0.3,'_Fi',i0.3 )" ) & 
-        ncube, nsw , ncube_sph_smooth_coarse, ncube_sph_smooth_fine 
-
-         !--- get time stamp for output filename
-         !----------------------------------------------------------------------
-         call DATE_AND_TIME( DATE=date,TIME=time)
-
-    ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
-
-    OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
-
-    write(31) ncube_halo , grid_length_scale
-    write(31) xv,yv
-    write(31) terr_halo_r4
-    write(31) terr_dev_halo_r4 , rdtg
-
-write(31) npeaks  , NSW
-write(31) xs,ys  , MyPanel
-write(31) mxvrx
-write(31) bsvar
-write(31) mxdis
-write(31) anglx
-write(31) aniso
-write(31) mnslp
-write(31) angll
-write(31) xspk
-write(31) yspk
-write(31) mxds0
-write(31) mxds1
-write(31) sft0
-write(31) sft1
-write(31) hwdth
-write(31) npks
-write(31) mxvry
-
-write(31) nvls
-write(31) pkhts
-write(31) vldps
-write(31) rwpks
-write(31) rwvls
-
-write(31) lon0
-write(31) lon1
-write(31) lat0
-write(31) lat1
-
-write(31) uniqid
-write(31) riseq
-write(31) fallq
-write(31) clngth
-
-write(31) mxds2
-
-
-write(31) rdg_profiles
-write(31) crst_profiles
-write(31) crst_silhous
-write(31) isoht
-write(31) isowd
-write(31) isobs
-write(31) RefFac
-
-   CLOSE(31)
-
-
-#ifdef DEBUGOUTPUT
-       write( ofile , &
-       "('./output/TerrXY_list_nc',i0.4, '_Nsw',i0.3,  &
-       '_Co',i0.3,'_Fi',i0.3 )" ) & 
-        ncube, nsw , ncube_sph_smooth_coarse, ncube_sph_smooth_fine 
-
-         !--- get time stamp for output filename
-         !----------------------------------------------------------------------
-         call DATE_AND_TIME( DATE=date,TIME=time)
-
-    ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
-
-    OPEN (unit = 32, file= trim(ofile) ,form="UNFORMATTED" )
-
-write(32) npeaks  , PSW
-do ipk=1,npeaks
-   write(32) xs(ipk),ys(ipk)  , MyPanel(ipk)
-   write(32) rt_diag(:,:,ipk)
-   write(32) suba_diag(:,:,ipk)
-end do
-do ipk=1,npeaks
-end do
-
-close(32) 
-#endif
-
-
-
-
-
+      write( ofile , &
+           "('./output/TerrXY_list_nc',i0.4, '_Nsw',i0.3,  &
+           '_Co',i0.3,'_Fi',i0.3 )" ) & 
+           ncube, nsw , ncube_sph_smooth_coarse, ncube_sph_smooth_fine 
+      
+      !--- get time stamp for output filename
+      !----------------------------------------------------------------------
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      
+      ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
+      
+      OPEN (unit = 32, file= trim(ofile) ,form="UNFORMATTED" )
+      
+      write(32) npeaks  , PSW
+      do ipk=1,npeaks
+        write(32) xs(ipk),ys(ipk)  , MyPanel(ipk)
+        write(32) rt_diag(:,:,ipk)
+        write(32) suba_diag(:,:,ipk)
+      end do
+      
+      close(32) 
+    end if
 end subroutine find_ridges
 !----------------------------------------------------------
 
@@ -952,7 +945,7 @@ end subroutine ANISO_ANA
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
          nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
-         output_grid,lregional_refinement,rr_factor )
+         output_grid,ldevelopment_diags,lregional_refinement,rr_factor )
 !==========================================
 ! Some key inputs
 !      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
@@ -965,16 +958,16 @@ end subroutine ANISO_ANA
       use remap
       use reconstruct !, only : EquiangularAllAreas
       implicit none
-      real(r8), intent(in) :: weights_all(jall,nreconstruction)
-      integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine
-      real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
-      logical, intent(in)  :: lzerovalley
-      character(len=1024),intent(in)  :: output_grid
-
+      real(r8),           intent(in) :: weights_all(jall,nreconstruction)
+      integer ,           intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer ,           intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine
+      real(r8),           intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      logical,            intent(in) :: lzerovalley
+      character(len=1024),intent(in) :: output_grid
+      logical,            intent(in) :: ldevelopment_diags
       REAL (KIND=dbl_kind), &
-              DIMENSION(ncube,ncube,6), INTENT(IN) :: rr_factor
-      LOGICAL, intent(IN) ::  lregional_refinement
+                          intent(in) :: rr_factor(ncube,ncube,6)
+      LOGICAL,            intent(in) :: lregional_refinement
 
 
 
@@ -1265,62 +1258,62 @@ end subroutine ANISO_ANA
      isowdq_target  = SUM( isowd_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
      isohtq_target  = SUM( isoht_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
 
- 
+     if (ldevelopment_diags) then
        nrs_junk=0
        call DATE_AND_TIME( DATE=date,TIME=time)
-
+       
        write( ofile , &
-       "('./output/remap_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
-       '_Co',i0.3,'_Fi',i0.3)" ) & 
-        ncube, nsw, nrs_junk, nsmcoarse, nsmfine
+            "('./output/remap_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
+            '_Co',i0.3,'_Fi',i0.3)" ) & 
+            ncube, nsw, nrs_junk, nsmcoarse, nsmfine
        ofile= trim(ofile)//'_vX_'//date//'_'//time(1:4)//'.dat'
-
+       
        OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
-
-write(911) ncube,npeaks
-write(911) mxdisC
-write(911) blockC
-write(911) profiC
-write(911) uniqidC
-write(911) isohtC
-write(911) bumpsC
-write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
-
+       
+       write(911) ncube,npeaks
+       write(911) mxdisC
+       write(911) blockC
+       write(911) profiC
+       write(911) uniqidC
+       write(911) isohtC
+       write(911) bumpsC
+       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
+       
 #if 1
-write(911) anglxC
-write(911) hwdthC
-write(911) cwghtC
-write(911) clngtC
-write(911) isowdC
-
+       write(911) anglxC
+       write(911) hwdthC
+       write(911) cwghtC
+       write(911) clngtC
+       write(911) isowdC
+       
 #if 0
-write(911) mxvrxC
-write(911) mxvryC
-write(911) fallqC
-write(911) riseqC
+       write(911) mxvrxC
+       write(911) mxvryC
+       write(911) fallqC
+       write(911) riseqC
 #endif
 #endif
-
-close(911)
-
-      write( ofile , &
-       "('./output/grid_remap_nc',i0.4 )" ) ncube
+       
+       close(911)
+       
+       write( ofile , &
+            "('./output/grid_remap_nc',i0.4 )" ) ncube
        ofile= trim(ofile)//'_'//trim(output_grid)//'.dat'
-
+       
        OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
-write(911) ncube,npeaks
-write(911) itrgtC
-write(911) itrgxC
-write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
-close(911)
-
-
-      write(*,*) " GOT OUT OF remapridge2target "
-
- 
-   end subroutine remapridge2target
-
-
+       write(911) ncube,npeaks
+       write(911) itrgtC
+       write(911) itrgxC
+       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
+       close(911)
+       
+       
+       write(*,*) " GOT OUT OF remapridge2target "
+     end if
+       
+     end subroutine remapridge2target
+     
+     
 !================================================================
   subroutine latlonangles (target_center_lon,target_center_lat,ntarget)
 !-----------------------------------
@@ -1890,7 +1883,7 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
 !====================================
    subroutine remapridge2tiles(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
-         nreconstruction,ntarget,nhalo)
+         nreconstruction,ntarget,nhalo,ldevelopment_diags)
 
       use shr_kind_mod, only: r8 => shr_kind_r8
       use remap
@@ -1899,6 +1892,7 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
       integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
       integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo
       real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      logical,  intent(in) :: ldevelopment_diags
       real(r8):: f(ntarget)
   
       REAL  ,                                                          &
@@ -2071,32 +2065,32 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
      !agnxg_tiles = -9999._r8
      !bgnxg_tiles = -9999._r8
     end where
-
-    !OPEN (unit = 611, file= trim(tfile) ,form="UNFORMATTED" )
-    OPEN (unit = 611, file= 'RidgeTile.dat' ,form="UNFORMATTED" )
-    write( 611 ) ntarget,ntiles
-    write( 611 ) error_tiles
-    write( 611 ) uqrid_tiles
-    write( 611 ) wghts_tiles
-    write( 611 ) mxdis_tiles
-    write( 611 ) anglx_tiles
-    write( 611 ) agnpk_tiles
-    write( 611 ) bgnpk_tiles
-    !write( 611 ) agnxg_tiles
-    !write( 611 ) bgnxg_tiles
-    write( 611 ) mxvrx_tiles
-    write( 611 ) mxvry_tiles
-    write( 611 ) aniso_tiles
-    write( 611 ) hwdth_tiles
-
-
-
-      write(*,*) " GOT OUT OF remapridge2tiles OK "
-
- 
-   end subroutine remapridge2tiles
-
-!==================================================================
+    if (ldevelopment_diags) then
+      !OPEN (unit = 611, file= trim(tfile) ,form="UNFORMATTED" )
+      OPEN (unit = 611, file= 'RidgeTile.dat' ,form="UNFORMATTED" )
+      write( 611 ) ntarget,ntiles
+      write( 611 ) error_tiles
+      write( 611 ) uqrid_tiles
+      write( 611 ) wghts_tiles
+      write( 611 ) mxdis_tiles
+      write( 611 ) anglx_tiles
+      write( 611 ) agnpk_tiles
+      write( 611 ) bgnpk_tiles
+      !write( 611 ) agnxg_tiles
+      !write( 611 ) bgnxg_tiles
+      write( 611 ) mxvrx_tiles
+      write( 611 ) mxvry_tiles
+      write( 611 ) aniso_tiles
+      write( 611 ) hwdth_tiles
+      
+    end if
+      
+    write(*,*) " GOT OUT OF remapridge2tiles OK "
+      
+      
+    end subroutine remapridge2tiles
+    
+    !==================================================================
 
  subroutine alloc_ridge_qs (npeaks , NSW )
 

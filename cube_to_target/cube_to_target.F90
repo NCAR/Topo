@@ -584,7 +584,7 @@ program convterr
 
       call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
            ncube_sph_smooth_coarse   , ncube_sph_smooth_fine,   &
-           lregional_refinement=lregional_refinement,           &
+           ldevelopment_diags, lregional_refinement=lregional_refinement,&
            rr_factor = rrfac  )
 
     endif
@@ -782,7 +782,7 @@ program convterr
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
            nreconstruction,ntarget,nhalo,nsw, &
            ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-           output_grid, &           
+           output_grid, ldevelopment_diags,&
            lregional_refinement=lregional_refinement,           &
            rr_factor = rrfac  )
     
@@ -790,7 +790,7 @@ program convterr
          call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
               weights_eul_index_all(1:jall,:), & 
               weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-              nreconstruction,ntarget,nhalo)
+              nreconstruction,ntarget,nhalo,ldevelopment_diags)
       endif
     endif
 
