@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<topo_settings>
+
+  <domain name="ne120np4">
+    <smoothing_radius>15</smoothing_radius> 
+  </domain>
+  <domain res="ne30np4">
+    <smoothing_radius>16</smoothing_radius> 
+  </domain>
+
+</topo_settings>
+

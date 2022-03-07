@@ -109,8 +109,8 @@ CONTAINS
      new_smooth_topo = .NOT.(read_in_and_refine)
 
      write( ofname , &
-          "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
-          ncube, NSCL_c/2, NSCL_f/2
+          "('_nc',i0.4,'_Co',i0.3)" ) & 
+          ncube, NSCL_c/2
      ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
      if (lregional_refinement) then
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'_'//trim(ogrid)//'.nc'
@@ -166,15 +166,14 @@ CONTAINS
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
 
-  
-      if (lregional_refinement) then
-        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
-      else
-        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+      if (stop_after_smoothing) then
+        if (lregional_refinement) then
+          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
+        else
+          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+        end if
+        STOP
       end if
-
-      if (stop_after_smoothing) STOP
-
   end SUBROUTINE smooth_intermediate_topo_wrap
    
 
