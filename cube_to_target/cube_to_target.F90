@@ -307,14 +307,9 @@ program convterr
     if (lfind_ridges) then
       if (nwindow_halfwidth<0) then
         nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
-#if 0
         !
-        ! nwindow_halfwidth must be even
+        ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
         !
-        if (MOD(nwindow_halfwidth,2).ne.0) then
-          nwindow_halfwidth = nwindow_halfwidth-1
-        end if
-#endif
         if (nwindow_halfwidth<5) then
           write(*,*) "nwindow_halfwidth can not be < 4"
           write(*,*) "setting nwindow_halfwidth=4"
@@ -365,28 +360,6 @@ program convterr
     write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
     write(*,*) "str_source                      = ",str_source
 
-    !*********************************************************
-    !
-    ! set standard output file name
-    !
-    !*********************************************************
-
-    if(lfind_ridges) then
-      nsw = nwindow_halfwidth
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,  &
-           '_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
-    else
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
-    endif
-    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
-    write(*,*) "Writing topo file to "
-    write(*,*) output_fname
 
     !*********************************************************
     !
@@ -420,6 +393,29 @@ program convterr
     
     allocate ( dA(ncube,ncube),stat=alloc_error )
     CALL EquiangularAllAreas(ncube, dA)
+
+    !*********************************************************
+    !
+    ! set standard output file name
+    !
+    !*********************************************************
+
+    if(lfind_ridges) then
+      nsw = nwindow_halfwidth
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4,  &
+           '_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse   , ncube_sph_smooth_fine      
+    else
+      call DATE_AND_TIME( DATE=date,TIME=time)
+      write( ofile , &
+           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse , ncube_sph_smooth_fine
+    endif
+    output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+    write(*,*) "Writing topo file to "
+    write(*,*) output_fname
     
     !+++ARH
     ! Compute overlap weights
