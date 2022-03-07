@@ -166,15 +166,14 @@ CONTAINS
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
 
-  
-      if (lregional_refinement) then
-        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
-      else
-        call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+      if (stop_after_smoothing) then
+        if (lregional_refinement) then
+          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
+        else
+          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+        end if
+        STOP
       end if
-
-      if (stop_after_smoothing) STOP
-
   end SUBROUTINE smooth_intermediate_topo_wrap
    
 
