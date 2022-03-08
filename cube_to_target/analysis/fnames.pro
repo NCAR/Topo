@@ -11,11 +11,12 @@ endif else begin
    d='../../cases/'+xcase+'/output/'
 endelse 
 
+srct='gmted2010_bedmachine'
 case nc of 
-3000 : srct='gmted2010_modis' ;-ncube3000-stitch'
-540  : srct='gmted2010_bedmachine' ;_ncube0540'
+3000 : srctnc='gmted2010_bedmachine-ncube3000' ;-ncube3000-stitch'
+540  : srctnc='gmted2010_bedmachine-ncube0540'
 endcase
-fn='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/'  + srct 
+fn='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/'  + srctnc
 soo=file_search( fn+'*.nc')
 nsoo=n_elements(soo)
 tg=soo( nsoo -1 )
@@ -40,7 +41,7 @@ topo=soo( nsoo-1 )
 grem =d+'grid_remap_'+nc$+'_' + ogrid + '.dat'
 
 ; fv_0.9x1.25_nc3000_Nsw042_Nrs000_Co060_Fi008_20211222.nc
-fn = ogrid + '_'+nc$+'_'+Co$+'_'+Fi$+'_'
+fn = ogrid + '_'+ srct+'_'+nc$+'_'+Co$+'_'+Fi$+'_'
 
 soo=file_search( d+fn+'*.nc')
 nsoo=n_elements(soo)

@@ -28,6 +28,7 @@ CONTAINS
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
+                                    , ldevelopment_diags &
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
                                     , smooth_topo_fname)
@@ -48,7 +49,7 @@ CONTAINS
             DIMENSION(ncube,ncube,6), INTENT(IN)    :: rrfac
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
-    LOGICAL, INTENT(IN)  :: lregional_refinement
+    LOGICAL, INTENT(IN)  :: lregional_refinement, ldevelopment_diags
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(OUT)             :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
@@ -166,13 +167,13 @@ CONTAINS
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
 
-      if (stop_after_smoothing) then
+      if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
           call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
         else
           call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
         end if
-        STOP
+        if (stop_after_smoothing ) STOP
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
    

@@ -546,6 +546,7 @@ program convterr
            luse_prefilter, &
            lstop_after_smoothing, &
            lregional_refinement, &
+           ldevelopment_diags, &
            command_line_arguments,str_dir,str_source,&
            output_grid,&
            smooth_topo_fname=smooth_topo_fname&
