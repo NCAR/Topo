@@ -32,7 +32,7 @@ set Fi = "0"
 
 
 
-./cube_to_target --grid_descriptor_file='../../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'userid@ucar.edu' -q 'output/'
+./cube_to_target --grid_descriptor_file='../../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'userid@ucar.edu' -q 'output/' -z
 
 # Variable res
 #./cube_to_target --grid_descriptor_file='../../regression-test-data/ne0_15x2.nc' --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid='ne0_15x2_SA' --coarse_radius=$Co --fine_radius=001 -r -y 2 -u 'userid@ucar.edu' -q 'output/'
