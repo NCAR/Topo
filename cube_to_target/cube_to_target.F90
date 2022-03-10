@@ -297,7 +297,7 @@ program convterr
     ! calculate some defaults
     !
     if (lfind_ridges) then
-      if (nwindow_halfwidth<0) then
+      if (nwindow_halfwidth<=0) then
         nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
         !
         ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
@@ -391,20 +391,38 @@ program convterr
     ! set standard output file name
     !
     !*********************************************************
-
-    if(lfind_ridges) then
-      nsw = nwindow_halfwidth
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
+    if( ncube_sph_smooth_fine==0) then
+      if(lfind_ridges) then
+        nsw = nwindow_halfwidth
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
            "('_nc',i0.4,  &
            '_Co',i0.3)" ) & 
            ncube, ncube_sph_smooth_coarse
-    else
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
+      else
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
            "('_nc',i0.4,'_NoAniso_Co',i0.3)" ) & 
            ncube, ncube_sph_smooth_coarse
-    endif
+      endif
+    else
+      if(lfind_ridges) then
+        nsw = nwindow_halfwidth
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
+           "('_nc',i0.4,  &
+           '_Co',i0.3,'_Fi',i0.3 )" ) & 
+           ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+      else
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
+           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+           ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+      endif
+    end if
+
+
+
     output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
     write(*,*) "Writing topo file to "
     write(*,*) output_fname
@@ -545,7 +563,7 @@ program convterr
            lread_smooth_topofile, &
            luse_prefilter, &
            lstop_after_smoothing, &
-           lregional_refinement, &
+           lregional_refinement, rrfac_max, &
            ldevelopment_diags, &
            command_line_arguments,str_dir,str_source,&
            output_grid,&

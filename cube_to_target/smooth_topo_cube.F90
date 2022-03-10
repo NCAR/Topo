@@ -28,6 +28,7 @@ CONTAINS
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
+                                    , rrfac_max &
                                     , ldevelopment_diags &
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
@@ -55,15 +56,18 @@ CONTAINS
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
+    integer, INTENT(IN)  :: rrfac_max
 
     REAL (KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
     REAL (KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
-    REAL (KIND=dbl_kind),                                            &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo
+     REAL (KIND=dbl_kind),                                            &
+         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo, rr_halo_sm
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6) :: daxx
+   REAL (KIND=dbl_kind),                                            &
+         DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
 
 
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
@@ -89,6 +93,7 @@ CONTAINS
       if (lregional_refinement) then
 !check can not overwrite rrfac - I think we need merge from Julio
         !        call read_topo_smooth_data(smooth_topo_fname,ncube*ncube*6,terr_sm,terr_dev,rr_fac=rrfac)
+        call read_topo_smooth_data(smooth_topo_fname,ncube*ncube*6,terr_sm,terr_dev)
       else
         call read_topo_smooth_data(smooth_topo_fname,ncube*ncube*6,terr_sm,terr_dev)
       end if
@@ -98,7 +103,12 @@ CONTAINS
         RETURN
       else
         read_in_and_refine=.TRUE.
-      end if
+      end if   
+      terr_sm00  = terr_sm
+      terr_dev00 = terr_dev
+    ELSE
+      terr_sm00  = 0.
+      terr_dev00 = 0.
     ENDIF
 
      ! If your are here and read_in_and_refine=.FALSE. then
@@ -109,10 +119,18 @@ CONTAINS
      !---------------------------------------
      new_smooth_topo = .NOT.(read_in_and_refine)
 
+     if ( ldevelopment_diags.AND.(NSCL_f>0) ) then
+     write( ofname , &
+          "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
+          ncube, NSCL_c/2, NSCL_f/2
+     ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
+     else
      write( ofname , &
           "('_nc',i0.4,'_Co',i0.3)" ) & 
           ncube, NSCL_c/2
      ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
+     end if
+
      if (lregional_refinement) then
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'_'//trim(ogrid)//'.nc'
      else
@@ -143,6 +161,13 @@ CONTAINS
                     write(*,*) MINVAL(abs(rr_halo) ) , MAXVAL(abs(rr_halo) )
                     write(*,*) " MINVAL(abs(rrfac) ) , MAXVAL(abs(rrfac) ) "
                     write(*,*) MINVAL(abs(rrfac) ) , MAXVAL(abs(rrfac) )
+ 
+         if (lregional_refinement) then
+            call smooth_rrfac_halo(rr_halo, rrfac_max, ncube,nhalo, NSCL_c, rr_halo_sm  ) 
+            rr_halo = rr_halo_sm
+            rr_updt = rr_halo( 1:ncube , 1:ncube, :) 
+         end if
+
          if (use_prefilter) then
             call smooth_intermediate_topo_halo(terr_halo, da_halo,rr_halo, ncube,nhalo, 1,NSCL_f &
                                          , terr_halo_sm,  read_in_and_refine, new_smooth_topo  ) 
@@ -153,9 +178,17 @@ CONTAINS
          call smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo, ncube,nhalo, 1,NSCL_c &
                                      , terr_halo_sm,  read_in_and_refine, new_smooth_topo )
 
+         
          terr_sm( 1:ncube , 1:ncube, :)  = terr_halo_sm( 1:ncube , 1:ncube, :) 
          terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
     
+         ! 
+         if (read_in_and_refine) then
+            where( rr_updt <= 1. )
+               terr_sm   =  terr_sm00
+               terr_dev  =  terr_dev00
+            end where
+         end if
 
       volterr_in=0.
       volterr_sm=0.
@@ -169,7 +202,7 @@ CONTAINS
 
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
-          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rrfac)
+          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rr_updt)
         else
           call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
         end if
@@ -278,58 +311,6 @@ write(*,*) "LIMITS in smoother "
 write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
 
   if (NSCL_c > 1 ) then
-#if 0
-      terr_halo_sm(:,:,:) =  0.0
-      write(*,*) "Convoluted smoothing option "
-      DO np=1,6
-        DO j=1-nhalo+ns2,ncube+nhalo-ns2
-        DO i=1-nhalo+ns2,ncube+nhalo-ns2
-
-           volt0  = terr_halo(i,j,np)*da_halo(i,j,np)
-           volt1 = 0.
-
-           ! Smooth topography with Conical kernel
-           !----------------------------------------------
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              dalp = alph(iix)-alph(i)
-              dbet = beta(jjx)-beta(j)
-              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-              wt1p(i2,j2) = da_halo(iix,jjx,np)
-              diss0r = diss00 !* MAX( rr_fact_halo( iix,jjx,np ), rr_fact_halo(i,j,np) )
-              terr_patch(i2,j2) = terr_halo(i,j,np)*( 1. - diss00 * sqrt( diss ) ) !*da_halo(iix,jjx,np)
-
-              if(terr_patch(i2,j2)<0.) terr_patch(i2,j2)=0.             
-
-              if ((volt0*terr_patch(i2,j2)<=0.).or.(wt1p(i2,j2)<=0.) ) then 
-                terr_patch(i2,j2)=0.
-                wt1p(i2,j2)      =0.
-              end if
-              volt1 = volt1 + terr_patch(i2,j2)*wt1p(i2,j2)
-           end do
-           end do
-
-           if ( abs(volt1) > 0.) terr_patch = (volt0 / volt1) * terr_patch 
-
-           do j2=-ns2,ns2
-           do i2=-ns2,ns2
-              jjx = j+j2
-              iix = i+i2
-              terr_halo_sm(iix,jjx,np) = terr_halo_sm(iix,jjx,np) + terr_patch(i2,j2)
-           end do
-           end do
-           ! end of smoothing with conical kernel
-           !---------------------------------------
-           ! Block above is functionally like the one-line smoothing command here:
-           !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
-
-        END DO  !  i-loop   
-        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
-        END DO  ! j-loop
-     END DO  ! panel loop
-#else
       write(*,*) "Direct smoothing option "
       write(*,*) " new_smooth_topo , read_in_and_refine ", new_smooth_topo , read_in_and_refine
        write(*,*) " max RR in panels "
@@ -397,8 +378,6 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
         if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
         END DO  ! j-loop
       END DO  ! panel loop
-#endif
-
 
       write(*,*) " end / clear "
    end if
@@ -411,6 +390,98 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
 
 
 END SUBROUTINE smooth_intermediate_topo_halo
+
+!===========================================================
+
+
+!=============================================================================
+SUBROUTINE smooth_rrfac_halo(rr_halo &
+                           , rrfac_max, ncube,nhalo, NSCL_c &
+                           , rr_halo_sm  ) 
+
+    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
+
+    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo,NSCL_c,rrfac_max
+
+    REAL (KIND=dbl_kind), &
+            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: rr_halo
+    REAL (KIND=dbl_kind), &
+            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(OUT) :: rr_halo_sm
+
+
+    !-----------------------------------------------------------------
+    !Internal work arrays
+    !-----------------------------------------------------------------
+    !------------------------------
+    REAL (KIND=dbl_kind), &
+            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6)  :: rr_halo_xx
+
+    
+    INTEGER :: NSM,iter,i,j,np , ns
+    REAL (KIND=dbl_kind) :: wt
+
+
+      NSM=NSCL_c
+      write(*,*) "1-2-1 smoothing of RRFAC "
+
+      rr_halo_xx = rr_halo
+      rr_halo_sm = rr_halo
+
+      ns=1
+      wt = 1./((2.*ns+1.)**2)
+      DO iter=1,4*NSM/ns
+      DO np=1,6
+        DO j=1-nhalo+ns,ncube+nhalo-ns
+        DO i=1-nhalo+ns,ncube+nhalo-ns
+
+#if 1
+           ! This is less flexible but is about 2x faster than
+           ! using the SUM function
+           rr_halo_xx(i,j,np) = (                          &
+                                rr_halo_sm(i+1,j,  np)  +  &
+                                rr_halo_sm(i-1,j,  np)  +  &
+                                rr_halo_sm(i,  j+1,np)  +  &
+                                rr_halo_sm(i,  j-1,np)  +  &
+                                rr_halo_sm(i+1,j+1,np)  +  &
+                                rr_halo_sm(i-1,j-1,np)  +  &
+                                rr_halo_sm(i-1,j+1,np)  +  &
+                                rr_halo_sm(i+1,j-1,np)  +  &
+                                rr_halo_sm(i,  j,  np)  ) / 9.  
+#else
+           rr_halo_xx(i,j,np) = SUM( rr_halo_sm(i-ns:i+ns, j-ns:j+ns, np) ) * wt
+#endif
+
+        END DO  !  i-loop   
+        END DO  ! j-loop
+      END DO  ! panel loop
+#if 0
+      where( rr_halo_sm >= rrfac_max ) 
+        rr_halo_xx = 1.0*rrfac_max
+      end where
+      where( rr_halo_sm <= 1.0 ) 
+        rr_halo_xx = 1.0
+      end where
+#endif
+      rr_halo_sm = rr_halo_xx
+      write(*,900,advance='no') achar(13), iter,4*nsm/ns
+      END DO
+
+
+#if 0
+      rr_halo_sm = 1.0*NINT( rr_halo_sm )
+
+      where(rr_halo_sm.lt.2.0) rr_halo_sm = 1.0
+      where(rr_halo_sm.gt.2.0 .and. rr_halo_sm.le.3.0) rr_halo_sm = 2.0
+      where(rr_halo_sm.gt.3.0 .and. rr_halo_sm.le.8.0) rr_halo_sm = 4.0 !hi-conn
+      where(rr_halo_sm.gt.8.0 .and. rr_halo_sm.le.16.0) rr_halo_sm = 8.0
+#endif
+
+
+900   format( a1, " Smoothing iteration ",i4," out of ",i4 )
+
+ 
+   END SUBROUTINE smooth_rrfac_halo
+!======================================================================================
 
 subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line_arguments,rr_fac)
   use shr_kind_mod, only: r8 => shr_kind_r8

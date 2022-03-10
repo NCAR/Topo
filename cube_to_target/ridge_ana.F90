@@ -293,8 +293,6 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 
 
-
-
 !---------------------------------------------------------------------------------------
 !  B E G I N   C A L C U L A T I O N S
 !---------------------------------------------------------------------------------------
@@ -375,15 +373,16 @@ write(*,*) " SHAPE ", shape( peaks%i )
         subx    = xv(i-nswx:i+nswx )
         suby    = yv(j-nswx:j+nswx )
         call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
-        write(*,900,advance='no') achar(13) , ipk, npeaks,nswx
+        write(*,900,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
 
               deallocate( suba, subarw, subx, suby )
     end do
 
     write(*,*)
+
     write(*,*) " Done with anisotropy analysis "
 
-900 format( a1, "  Analyzed Ridges ",i6," out of ",i6,"  NSWx=",i3 )
+900 format( a1, "  Analyzed Ridges ",i6," out of ",i6,"  NSWx=",i3," mxdis=",f8.2 )
 901 format(" Ridge coords ", i6,i6,i3 )
     if (ldevelopment_diags) then
       write( ofile, &
