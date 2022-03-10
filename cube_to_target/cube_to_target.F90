@@ -59,7 +59,10 @@ program convterr
   
   real(r8), allocatable, dimension(:) :: tmp_var, rrfac_target
 
-
+  real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat
+  real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area
+  real(r8), allocatable, dimension(:)  :: target_rrfac
+  real(r8), allocatable, dimension(:)  :: area_target
 
   real(r8), allocatable, dimension(:,:) :: weights_all
   integer , allocatable, dimension(:,:) :: weights_eul_index_all
@@ -70,7 +73,7 @@ program convterr
   !
   real(r8) :: vol_target, vol_target_un, area_target_total,vol_source,area_source,mea_source
   integer :: nlon,nlat
-  logical :: ltarget_latlon,lpole
+  logical :: ltarget_latlon,lpole, lphis_gll=.false.
 
   !
   ! for internal filtering
@@ -126,6 +129,7 @@ program convterr
   integer, allocatable :: isg(:)
 
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
+  character(len=1024) :: grid_descriptor_fname_gll
   character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir=''
   character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
@@ -141,7 +145,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(18)
+    type(option_s):: opts(19)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -164,18 +168,21 @@ program convterr
     opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
     opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
     opts(18) = option_s( "output_data_directory"    ,.true.    , 'q'   ,.false.       ,.false.)
+    opts(19) = option_s( "grid_descriptor_file_gll" ,.true.    , 'a'   ,.false.       ,.false.)
+
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
     !
     ! collect command line arguments in this string for netCDF meta data
     !
-    command_line_arguments = './cube_to_target'
-    grid_descriptor_fname = ''
+    command_line_arguments    = './cube_to_target'
+    grid_descriptor_fname     = ''
+    grid_descriptor_fname_gll = ''
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -266,6 +273,12 @@ program convterr
         write(str,*) TRIM(optarg)
         command_line_arguments = TRIM(command_line_arguments)//' -q '//TRIM(ADJUSTL(str))
         opts(18)%specified = .true.
+      case( 'a' )
+        lphis_gll=.TRUE.
+        grid_descriptor_fname_gll = optarg
+        write(str,*) TRIM(optarg)
+        command_line_arguments = TRIM(command_line_arguments)//' -a '//TRIM(ADJUSTL(str))
+        opts(19)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -376,9 +389,13 @@ program convterr
     
     ! Read in target grid
     !------------------------------------------------------------------------------------------------
-    if (.not.lstop_after_smoothing) &
-         call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
-    
+    if (.not.lstop_after_smoothing) then
+      call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
+           target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
+      allocate (area_target(ntarget),stat=alloc_error )
+      area_target = 0.0
+    end if
+
     ! Read in topo data on cubed sphere grid
     !------------------------------------------------------------------------------------------------
     call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
@@ -424,8 +441,7 @@ program convterr
 
 
     output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
-    write(*,*) "Writing topo file to "
-    write(*,*) output_fname
+    write(*,*) "Writing topo file to ",output_fname
     
     !+++ARH
     ! Compute overlap weights
@@ -865,6 +881,7 @@ program convterr
     WRITE(*,*) "min/max of var_target                    : ",MINVAL(sgh_target   ),MAXVAL(sgh_target   )
     
     write(*,*) " Model topo output file ",trim(output_fname)
+
     !+++ARH
     !IF (ltarget_latlon) THEN
     !  CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
@@ -875,24 +892,64 @@ program convterr
     !       landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges)
     !END IF
     IF (ltarget_latlon) THEN
+      if (lphis_gll) then
+        write(*,*) "separate grid for PHIS not supported for lat-lon grids"
+        stop
+      end if
       CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,.FALSE.,output_fname,&
-           lfind_ridges,str_creator, command_line_arguments)
+           lfind_ridges,str_creator, command_line_arguments,area_target)
       
     ELSE
       CALL wrtncdf_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,target_area,&
            output_fname,lfind_ridges, command_line_arguments,&
-           lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
+           lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target)
     END IF
     !DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
-    DEALLOCATE(terr_target,sgh30_target,sgh_target,landm_coslat_target)
+    DEALLOCATE(terr_target,sgh30_target,sgh_target,landm_coslat_target,area_target)
     !---ARH
-    DEALLOCATE(weights_all,weights_eul_index_all,terr)
-    if (lwrite_rrfac_to_topo_file) deallocate (rrfac_target)
-    
+
+    DEALLOCATE(target_center_lon, target_center_lat, target_area)
+    if (lwrite_rrfac_to_topo_file) deallocate (rrfac_target,target_rrfac)
+
+    !**********************************************************************************************************************************
+    !
+    ! Dual grid physics grid configuration
+    !
+    !**********************************************************************************************************************************
+    if (lphis_gll) then
+      call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
+           target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
+      
+      weights_all = 0.0_r8
+      weights_eul_index_all = 0
+      weights_lgr_index_all = 0
+      jall=jall_anticipated
+      
+      write(*,*) "Compute overlap weights for GLL grid: "
+      CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
+           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+      
+      allocate (terr_target(ntarget))
+      allocate (area_target(ntarget))
+      area_target = 0.0
+      tmp = 0.0
+      do counti=1,jall
+        i    = weights_lgr_index_all(counti)
+        wt = weights_all(counti,1)
+        area_target        (i) = area_target(i) + wt
+      end do
+      
+      write(*,*) "Remapping terrain"
+      terr_target = remap_field(terr,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
+           weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
+      DEALLOCATE(weights_all,weights_eul_index_all)
+      CALL wrtncdf_unstructured_append_phis(ntarget,terr_target, &
+           target_center_lon,target_center_lat,output_fname)
+    end if
   end program convterr
-  
+    
   subroutine print_help
     write (6,*) "Usage: cube_to_target [options] ..."
     write (6,*) "Options:"
@@ -920,11 +977,11 @@ program convterr
   !+++ARH
   !subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
   subroutine wrtncdf_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments,&
-       lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
+       lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target)
     !---ARH
     use shared_vars, only : rad2deg
     use shr_kind_mod, only: r8 => shr_kind_r8
-    use shared_vars, only : terr_uf_target, sgh_uf_target, area_target
+    use shared_vars, only : terr_uf_target, sgh_uf_target
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
@@ -942,7 +999,7 @@ program convterr
     integer, intent(in) :: n
     !+++ARH
     !real(r8),dimension(n)  , intent(in) :: terr, landfrac,sgh,sgh30,lon, lat, landm_coslat,area  
-    real(r8),dimension(n), intent(in) :: terr,sgh,sgh30,lon,lat,landm_coslat,area
+    real(r8),dimension(n), intent(in) :: terr,sgh,sgh30,lon,lat,landm_coslat,area,area_target !xxx can we remove area_target?
     !---ARH
     character(len=1024),   intent(in) :: output_fname
     logical,               intent(in) :: lfind_ridges
@@ -953,7 +1010,6 @@ program convterr
     !
     ! Local variables
     !
-    character (len=1024) :: fout       ! NetCDF output file
     integer            :: foutid     ! Output file id
     integer            :: lonvid
     integer            :: latvid
@@ -971,16 +1027,13 @@ program convterr
     integer, dimension(2) :: nid
     
     real(r8), parameter :: fillvalue = 1.d36
-    integer, dimension(1) :: latdim
     character(len=1024) :: str
     
-    
-    fout = trim(output_fname)
     !
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (fout, NF_64BIT_OFFSET , foutid)
+    status = nf_create (trim(output_fname), NF_64BIT_OFFSET , foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output
@@ -1047,7 +1100,6 @@ program convterr
       write(*,*) "lat error"
     end if
     
-    latdim(1) = latvid
     status = nf_def_var (foutid,'lon', NF_DOUBLE, 1, nid(1), lonvid)
     if (status .ne. NF_NOERR) then
       call handle_err(status)
@@ -1373,6 +1425,131 @@ program convterr
     status = nf_close (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrtncdf_unstructured
+
+  subroutine wrtncdf_unstructured_append_phis(n,terr,lon,lat,output_fname)
+    !---ARH
+    use shared_vars, only : rad2deg
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    implicit none
+    
+#     include         <netcdf.inc>
+    
+    !
+    ! Dummy arguments
+    !
+    integer, intent(in) :: n
+    real(r8),dimension(n), intent(in) :: terr,lon,lat
+    !---ARH
+    character(len=1024),   intent(in) :: output_fname
+    !
+    ! Local variables
+    !
+    integer            :: foutid     ! Output file id
+    integer            :: lonvid
+    integer            :: latvid
+    integer            :: terrid
+    integer            :: status    ! return value for error control of netcdf routin
+    integer, dimension(2) :: nid
+    
+    real(r8), parameter :: fillvalue = 1.d36
+    character(len=1024) :: str
+    
+    
+    !
+    !  Create NetCDF file for output
+    !
+    print *,"Opening ",trim(output_fname)
+    status = nf_open (trim(output_fname), nf_write, foutid)
+    if (status .ne. NF_NOERR) call handle_err(status)
+
+    status = nf_redef(foutid)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    !
+    ! Create dimensions for output
+    !
+    status = nf_def_dim (foutid, 'ncol_gll', n, nid(1))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    !
+    print *,"Create variable for output"
+    status = nf_def_var (foutid,'PHIS_gll', NF_DOUBLE, 1, nid(1), terrid)
+    if (status .ne. NF_NOERR) then
+      call handle_err(status)
+      write(*,*) "PHIS_gll error"
+    end if
+    
+    status = nf_def_var (foutid,'lat_gll', NF_DOUBLE, 1, nid(1), latvid)
+    if (status .ne. NF_NOERR) then
+      call handle_err(status)
+      write(*,*) "lat error"
+    end if
+    
+    status = nf_def_var (foutid,'lon_gll', NF_DOUBLE, 1, nid(1), lonvid)
+    if (status .ne. NF_NOERR) then
+      call handle_err(status)
+      write(*,*) "lon error"
+    end if
+    
+    
+
+    !
+    ! Create attributes for output variables
+    !
+    status = nf_put_att_text (foutid,terrid,'long_name', 33, 'surface geopotential on GLL grid')
+    status = nf_put_att_text (foutid,terrid,'units', 5, 'm2/s2')
+    status = nf_put_att_double (foutid, terrid, 'missing_value', nf_double, 1, fillvalue)
+    status = nf_put_att_double (foutid, terrid, '_FillValue'   , nf_double, 1, fillvalue)
+    !        status = nf_put_att_text (foutid,terrid,'filter', 35, 'area averaged from USGS 30-sec data')
+    
+    status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_att_text (foutid,latvid,'units', 13, 'degrees_north')
+    if (status .ne. NF_NOERR) call handle_err(status)
+    !        status = nf_put_att_text (foutid,latvid,'units', 21, 'cell center locations')
+    !        if (status .ne. NF_NOERR) call handle_err(status)
+    
+    status = nf_put_att_text (foutid,lonvid,'long_name', 9, 'longitude')
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_att_text (foutid,lonvid,'units', 12, 'degrees_east')
+    if (status .ne. NF_NOERR) call handle_err(status)
+    !
+    ! End define mode for output file
+    !
+    status = nf_enddef (foutid)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    !
+    ! Write variable for output
+    !
+    print*,"writing terrain data",MINVAL(terr),MAXVAL(terr)
+    status = nf_put_var_double (foutid, terrid, terr*9.80616)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    print*,"done writing terrain data"
+
+    print*,"writing lat data"
+    if (maxval(lat)<45.0) then
+      status = nf_put_var_double (foutid, latvid, lat*rad2deg)
+    else
+      status = nf_put_var_double (foutid, latvid, lat)
+    endif
+    if (status .ne. NF_NOERR) call handle_err(status)
+    print*,"done writing lat data"
+    
+    print*,"writing lon data"
+    if (maxval(lon)<100.0) then
+      status = nf_put_var_double (foutid, lonvid, lon*rad2deg)    
+    else
+      status = nf_put_var_double (foutid, lonvid, lon)
+    end if
+    
+    if (status .ne. NF_NOERR) call handle_err(status)
+    print*,"done writing lon data"
+    
+    !
+    ! Close output file
+    !
+    print *,"close file"
+    status = nf_close (foutid)
+    if (status .ne. NF_NOERR) call handle_err(status)
+  end subroutine 
   !
   !**************************************************************     
   ! 
@@ -1384,14 +1561,14 @@ program convterr
   !subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
   !     lprepare_fv_smoothing_routine,output_fname,Lfind_ridges)
   subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
-       lprepare_fv_smoothing_routine,output_fname,Lfind_ridges,str_creator,command_line_arguments)
+       lprepare_fv_smoothing_routine,output_fname,Lfind_ridges,str_creator,command_line_arguments,area_target)
     !---ARH
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
          fallq_target
     
-    use shared_vars, only : terr_uf_target, sgh_uf_target, area_target
+    use shared_vars, only : terr_uf_target, sgh_uf_target
     use shr_kind_mod, only: r8 => shr_kind_r8
     implicit none
     
@@ -1409,7 +1586,7 @@ program convterr
     logical , intent(in) :: lpole,lprepare_fv_smoothing_routine
     !+++ARH
     !real(r8),dimension(n)  , intent(in) :: terr_in, landfrac_in,sgh_in,sgh30_in,lon, lat, landm_coslat_in
-    real(r8),dimension(n)  , intent(in) :: terr_in,sgh_in,sgh30_in,lon,lat,landm_coslat_in
+    real(r8),dimension(n)  , intent(in) :: terr_in,sgh_in,sgh30_in,lon,lat,landm_coslat_in,area_target
     character(len=1024), intent(in) :: str_creator, command_line_arguments
     !---ARH
     !
