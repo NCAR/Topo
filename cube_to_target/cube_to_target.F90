@@ -92,7 +92,7 @@ program convterr
 
   !                             *Radii* of smoothing circles
   integer :: ncube_sph_smooth_coarse = -1
-  integer :: ncube_sph_smooth_fine   = -1
+  integer :: ncube_sph_smooth_fine   =  0
   !
   ! namelist variables for detection of sub-grid scale orientation
   ! i.e., "ridge finding"
