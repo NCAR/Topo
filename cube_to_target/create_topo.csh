@@ -62,6 +62,9 @@ set Fi = "$argv[$n]"
 # This is now used for all. Doesn't matter, will eliminate
 #set Nrs=00
 
+echo "Here you are "
+
+
 if ( $ogrid == 'geos_fv_c48' ) then
    set scrip='PE48x288-CF.nc4'
 endif
@@ -90,21 +93,33 @@ if ( $ogrid == 'ne30pg3' ) then
    set scrip='ne30pg3.nc'
 endif
 if ( $ogrid == 'Arctic' ) then
-   set scrip='ne0ARCTICne30x4_scrip_c191212.nc'
+   ## set scrip='ne0ARCTICne30x4_scrip_c191212.nc'
+   set scrip='ne0ARCTICne30x4_np4_SCRIP.nc'
+   set Yfac = "4"
+endif
+if ( $ogrid == 'HMA' ) then
+   set scrip='HMACUBIT_ne30x16_np4_SCRIP.nc'
+   #set Yfac = "16"
 endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
 set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube3000.nc'
-#set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/topo_smooth_nc3000_Co060_Fi001.dat'
-set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/fv_co60_fi01_nothin/output/topo_smooth_nc3000_Co060_Fi001.dat'
+
+set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi0_ctlq/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060.nc'
+
 echo $smtopo
+ln -sf $smtopo output/topo_smooth.nc
 
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/'
+#Smooth and find ridges
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z
 
 
-# ./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --smooth_topo_file=$smtopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/'
+#READ IN Smooth and find ridges
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z
 
-# --rrfac_max=4 --use_prefilter --find_ridges --precomputed_smooth_topo  --regional_refinement
+
+#READ IN Smooth, Refine and find ridges
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -y $Yfac
 
 
 exit
