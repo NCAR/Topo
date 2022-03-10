@@ -112,10 +112,12 @@ def main ():
     print(arguments)
 #    cmd = '../cube_to_target'.split()
 #    subprocess.call(["../cube_to_target",arguments])
-    cmd = ['../cube_to_target','--coarse_radius',smoothing_radius,'''--grid_descriptor_file=''',model_mesh]
+    cmd = ['../cube_to_target','--coarse_radius',smoothing_radius,'''--grid_descriptor_file='''+model_mesh]
+    cmd.append('--intermediate_cs_name='+"'"+intermediate_cubed_sphere_data+"'")
+    cmd.append(' --output_grid='+"'"+res+"'")
     print(cmd)
-    subprocess.call(cmd,shell=True)
-
+    subprocess.run(cmd)
+#    subprocess.run(['ls', '-l','-r'])
 
 if __name__ == "__main__":
     main()
