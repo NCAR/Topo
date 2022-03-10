@@ -11,9 +11,12 @@
 #
 #****************************************************************
 #
+unset raw_data_dir
+unset topo_dir
+unset raw_data_dir
 set topo_dir     = /glade/scratch/pel/topowopts_new/                  # location of cube_to_target binary
-#set raw_data_dir = /glade/p/cgd/amp/pel/topo/cubedata/               # location of intermediate cubed-sphere data
-set raw_data_dir = $topo_dir/regression-test-data/                    # low resolution testinf
+set raw_data_dir = /glade/p/cgd/amp/pel/topo/cubedata/               # location of intermediate cubed-sphere data
+#set raw_data_dir = $topo_dir/regression-test-data/                    # low resolution testinf
 set output_dir   = /glade/scratch/$user/output                        # location of output files
 #
 # check if directories exist
@@ -25,7 +28,11 @@ foreach dir ( $topo_dir $raw_data_dir $output_dir )
   endif
 end
 
-foreach c ( 2 4 )
+foreach c ( 60 )
   echo "creating pre-smoothed file using smoothing c="$c
-  $topo_dir/cube_to_target/cube_to_target -i $topo_dir/regression-test-data/gmted2010_bedmachine-ncube0540.nc -c $c -f 1 -p -x -q $output_dir
+  $topo_dir/cube_to_target/cube_to_target -i $raw_data_dir/gmted2010_bedmachine-ncube3000.nc -c $c -p -x -q $output_dir
 end
+#foreach c ( 2 4 )
+#  echo "creating pre-smoothed file using smoothing c="$c
+#  $topo_dir/cube_to_target/cube_to_target -i $topo_dir/regression-test-data/gmted2010_bedmachine-ncube0540.nc -c $c -p -x -q $output_dir
+#end
