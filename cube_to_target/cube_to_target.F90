@@ -878,8 +878,24 @@ program convterr
       end do
       
       write(*,*) "Remapping terrain"
-      terr_target = remap_field(terr,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
-           weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
+
+      terr_target=0.0
+      do counti=1,jall        
+        i    = weights_lgr_index_all(counti)!!
+        !
+        ix  = weights_eul_index_all(counti,1)
+        iy  = weights_eul_index_all(counti,2)
+        ip  = weights_eul_index_all(counti,3)
+        !
+        ! convert to 1D indexing of cubed-sphere
+        !
+        ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+        
+        wt = weights_all(counti,1)
+        
+        terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
+      end do
+
       DEALLOCATE(weights_all,weights_eul_index_all)
       CALL wrtncdf_unstructured_append_phis(ntarget,terr_target, &
            target_center_lon,target_center_lat,output_fname)
