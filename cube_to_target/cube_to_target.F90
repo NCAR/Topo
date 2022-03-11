@@ -28,18 +28,15 @@ program convterr
   integer :: jmax_segments,jall,jall_anticipated !overlap segments
   integer, parameter :: ngauss = 3               !quadrature for line integrals
   
-  real(r8) :: tmp
-  
-  
   integer                              :: ntarget, ncorner, nrank, nlon, nlat               !target grid dimensions
   logical                              :: ltarget_latlon,lpole                              !if target grid lat-lon
   real(r8), allocatable, dimension(:)  :: rrfac_target,target_rrfac
-  real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat, area_target !target grid coordinates
-  real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area !target grid coordinates
-  real(r8), allocatable, dimension(:)  :: target_rrfac
+  real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat              !target grid coordinates
+  real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area, area_target !target grid coordinates
   
-  real(r8), allocatable, dimension(:,:) :: weights_all, weights_eul_index_all !overlap weights
+  real(r8), allocatable, dimension(:,:) :: weights_all                        !overlap weights
   integer , allocatable, dimension(:)   :: weights_lgr_index_all              !overlap index
+  integer , allocatable, dimension(:,:) :: weights_eul_index_all              !overlap index
   integer :: ix,iy  , i
   !
   ! volume of topography
@@ -595,7 +592,6 @@ program convterr
     ! Sum exchange grid cells within each target
     ! grid cell
     !
-    tmp = 0.0
     do counti=1,jall
       i    = weights_lgr_index_all(counti)
       wt = weights_all(counti,1)
@@ -814,7 +810,7 @@ program convterr
       !+++ARH
       !IF (landfrac_target(i)<.001_r8)  landfrac_target(i) = 0.0D0
       !---ARH
-      IF (sgh_target(i)     <    0.5)  sgh_target(i)      = 0.0D0
+      IF (sgh_target(i)     <    0.5)  sgh_target(i)       = 0.0D0
       IF (sgh30_target(i)<       0.5D0) sgh30_target(i)    = 0.0D0
     END DO
     sgh30_target = SQRT(sgh30_target)
@@ -825,9 +821,6 @@ program convterr
     if (lwrite_rrfac_to_topo_file) then
       WRITE(*,*) "min/max of rrfac                       : ",MINVAL(rrfac_target),MAXVAL(rrfac_target)
     end if
-    !+++ARH
-    !WRITE(*,*) "min/max of landfrac_target               : ",MINVAL(landfrac_target),MAXVAL(landfrac_target)
-    !---ARH
     WRITE(*,*) "min/max of landm_coslat_target           : ",&
          MINVAL(landm_coslat_target),MAXVAL(landm_coslat_target)
     WRITE(*,*) "min/max of var30_target                  : ",MINVAL(sgh30_target   ),MAXVAL(sgh30_target   )
@@ -835,15 +828,6 @@ program convterr
     
     write(*,*) " Model topo output file ",trim(output_fname)
 
-    !+++ARH
-    !IF (ltarget_latlon) THEN
-    !  CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
-    !       landm_coslat_target,target_center_lon,target_center_lat,.FALSE.,output_fname,lfind_ridges)
-    !
-    !ELSE
-    !  CALL wrtncdf_unstructured(ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
-    !       landm_coslat_target,target_center_lon,target_center_lat,target_area,output_fname,lfind_ridges)
-    !END IF
     IF (ltarget_latlon) THEN
       if (lphis_gll) then
         write(*,*) "separate grid for PHIS not supported for lat-lon grids"
@@ -872,7 +856,7 @@ program convterr
     !
     !**********************************************************************************************************************************
     if (lphis_gll) then
-      call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
+      call read_target_grid(grid_descriptor_fname_gll,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
            target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
       
       weights_all = 0.0_r8
@@ -887,7 +871,6 @@ program convterr
       allocate (terr_target(ntarget))
       allocate (area_target(ntarget))
       area_target = 0.0
-      tmp = 0.0
       do counti=1,jall
         i    = weights_lgr_index_all(counti)
         wt = weights_all(counti,1)
@@ -2094,161 +2077,6 @@ program convterr
   end subroutine wrt_cesm_meta_data
 
   
-  !+++ARH
-  !
-  ! write netCDF file
-  !
-  subroutine wrt_cube(ncube,terr_cube,rrfac_cube,output_file)
-    use shr_kind_mod, only: r8 => shr_kind_r8
-    use shared_vars
-    implicit none
-#     include         <netcdf.inc>
-    
-    !
-    ! Dummy arguments
-    !
-    integer, intent(in) :: ncube
-    real (r8), dimension(6*ncube*ncube)          , intent(in) :: terr_cube,rrfac_cube
-    character(len=1024) :: output_file, tmp_string
-    !
-    ! Local variables
-    !
-    !-----------------------------------------------------------------------
-    !
-    !     grid coordinates and masks
-    !
-    !-----------------------------------------------------------------------
-    
-    real (r8), dimension(6*ncube*ncube) :: grid_center_lat  ! lat/lon coordinates for
-    real (r8), dimension(6*ncube*ncube) :: grid_center_lon  ! each grid center in degrees
-    
-    integer  :: ncstat             ! general netCDF status variable
-    integer  :: nc_grid_id         ! netCDF grid dataset id
-    integer  :: nc_gridsize_id     ! netCDF grid size dim id
-    integer  :: nc_gridrank_id     ! netCDF grid rank dim id
-    integer  :: nc_griddims_id     ! netCDF grid dimension size id
-    integer  :: nc_grdcntrlat_id   ! netCDF grid center lat id
-    integer  :: nc_grdcntrlon_id   ! netCDF grid center lon id
-    integer  :: nc_terr_id
-    integer  :: nc_rrfac_id
-    
-    integer :: grid_dims
-    
-    character(90), parameter :: grid_name = 'equi-angular gnomonic cubed sphere grid'
-    
-    integer            :: status    ! return value for error control of netcdf routin
-    integer            :: i,j,k
-    character (len=8)  :: datestring
-    
-    integer  :: atm_add,n
-    real(r8) :: xgno_ce,lon,ygno_ce,lat
-    real(r8) :: da
-    
-    grid_dims = 6*ncube*ncube
-    
-    da = pi / DBLE(2*ncube)
-    atm_add = 1
-    do k=1,6
-      do j=1,ncube
-        ygno_ce = -piq + da * (DBLE(j-1)+0.5) !center of cell
-        do i=1,ncube
-          xgno_ce = -piq + da * (DBLE(i-1)+0.5)
-          call CubedSphereRLLFromABP(xgno_ce, ygno_ce, k, lon, lat)
-          grid_center_lon(atm_add  ) = lon*rad2deg
-          grid_center_lat(atm_add  ) = lat*rad2deg
-          atm_add = atm_add+1
-        end do
-      end do
-    end do
-    
-    WRITE(*,*) "Create NetCDF file for output: ", TRIM(output_file)
-    ncstat = nf_create (TRIM(output_file), NF_64BIT_OFFSET,nc_grid_id)
-    call handle_err(ncstat)
-    
-    ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)
-    call handle_err(ncstat)
-    
-    call DATE_AND_TIME(DATE=datestring)
-    tmp_string = 'Written on date: ' // datestring
-    status = nf_put_att_text (nc_grid_id,NF_GLOBAL,'history',len_trim(tmp_string), TRIM(tmp_string))
-    call handle_err(ncstat)
-    
-    tmp_string='Peter Hjort Lauritzen (NCAR)'
-    ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'author',len_trim(tmp_string), TRIM(tmp_string))
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define grid size dimension"
-    ncstat = nf_def_dim (nc_grid_id, 'grid_size', 6*ncube*ncube, nc_gridsize_id)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define grid rank dimension"
-    ncstat = nf_def_dim (nc_grid_id, 'grid_rank', 1, nc_gridrank_id)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define grid dimension size array"
-    ncstat = nf_def_var (nc_grid_id, 'grid_dims', NF_INT,1, nc_gridrank_id, nc_griddims_id)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define grid center latitude array"
-    ncstat = nf_def_var (nc_grid_id, 'lat', NF_DOUBLE,1, nc_gridsize_id, nc_grdcntrlat_id)
-    call handle_err(ncstat)
-    ncstat = nf_put_att_text (nc_grid_id, nc_grdcntrlat_id, 'units',13, 'degrees_north')
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define grid center longitude array"
-    ncstat = nf_def_var (nc_grid_id, 'lon', NF_DOUBLE,1, nc_gridsize_id, nc_grdcntrlon_id)
-    call handle_err(ncstat)
-    ncstat = nf_put_att_text (nc_grid_id, nc_grdcntrlon_id, 'units',12, 'degrees_east')
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define terr_cube array"
-    ncstat = nf_def_var (nc_grid_id, 'terr', NF_DOUBLE,1, nc_gridsize_id, nc_terr_id)
-    call handle_err(ncstat)
-    ncstat = nf_put_att_text (nc_grid_id, nc_terr_id, 'units',1, 'm')
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "define rrfac_cube array"
-    ncstat = nf_def_var (nc_grid_id, 'rrfac_cube', NF_DOUBLE,1, nc_gridsize_id, nc_rrfac_id)
-    call handle_err(ncstat)
-    ncstat = nf_put_att_text (nc_grid_id, nc_rrfac_id, 'units',1, 'neXX/ne30')
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "end definition stage"
-    ncstat = nf_enddef(nc_grid_id)
-    call handle_err(ncstat)
-    
-    !-----------------------------------------------------------------------
-    !
-    !     write grid data
-    !
-    !-----------------------------------------------------------------------
-    
-    
-    WRITE(*,*) "write grid data"
-    ncstat = nf_put_var_int(nc_grid_id, nc_griddims_id, grid_dims)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "write lat data"
-    ncstat = nf_put_var_double(nc_grid_id, nc_grdcntrlat_id, grid_center_lat)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "write lon data"
-    ncstat = nf_put_var_double(nc_grid_id, nc_grdcntrlon_id, grid_center_lon)
-    call handle_err(ncstat)
-    !
-    !  WRITE(*,*) "write terr data"
-    !  ncstat = nf_put_var_double(nc_grid_id, nc_terr_id, terr_cube)
-    !  call handle_err(ncstat)
-    !
-    WRITE(*,*) "write rrfac data"
-    ncstat = nf_put_var_double(nc_grid_id, nc_rrfac_id, rrfac_cube)
-    call handle_err(ncstat)
-    
-    WRITE(*,*) "Close output file"
-    ncstat = nf_close(nc_grid_id)
-    call handle_err(ncstat)
-  end subroutine wrt_cube
-  !---ARH
   
   !************************************************************************
   !!handle_err
@@ -2273,72 +2101,6 @@ program convterr
     
   end subroutine handle_err
   
-  
-  SUBROUTINE coarsen(f,fcoarse,nf,n,dA_coarse)
-    use shr_kind_mod, only: r8 => shr_kind_r8
-    IMPLICIT NONE
-    INTEGER, INTENT(in) :: n,nf
-    REAL (R8), DIMENSION(n)       , INTENT(IN)  :: f
-    REAL (R8), DIMENSION(n/(nf*nf)), INTENT(OUT) :: fcoarse             
-    REAL(R8), DIMENSION(INT(SQRT(DBLE(n/6)))/nf,INT(SQRT(DBLE(n/6)))/nf),INTENT(OUT) :: dA_coarse
-    !must be an even number
-    !
-    ! local workspace
-    !
-    ! ncube = INT(SQRT(DBLE(n/6)))
-    
-    REAL(R8), DIMENSION(INT(SQRT(DBLE(n/6))),INT(SQRT(DBLE(n/6)))):: dA        
-    REAL (R8)    :: sum, sum_area,tmp
-    INTEGER  :: jx,jy,jp,ii,ii_coarse,coarse_ncube,ncube
-    INTEGER  :: jx_coarse,jy_coarse,jx_s,jy_s
-    
-    
-    !        REAL(R8), DIMENSION(INT(SQRT(DBLE(n/6)))/nf,INT(SQRT(DBLE(n/6)))/nf) :: dAtmp
-    
-    ncube = INT(SQRT(DBLE(n/6)))
-    coarse_ncube = ncube/nf
-    
-    IF (ABS(DBLE(ncube)/DBLE(nf)-coarse_ncube)>0.000001) THEN
-      WRITE(*,*) "ncube/nf must be an integer"
-      WRITE(*,*) "ncube and nf: ",ncube,nf
-      STOP
-    END IF
-    
-    da_coarse = 0.0
-  
-    WRITE(*,*) "compute all areas"
-    CALL EquiangularAllAreas(ncube, dA)
-    !        CALL EquiangularAllAreas(coarse_ncube, dAtmp)!dbg
-    tmp = 0.0
-    DO jp=1,6
-      DO jy_coarse=1,coarse_ncube
-        DO jx_coarse=1,coarse_ncube
-          !
-          ! inner loop
-          !
-          sum      = 0.0
-          sum_area = 0.0
-          DO jy_s=1,nf
-            jy = (jy_coarse-1)*nf+jy_s
-            DO jx_s=1,nf
-              jx = (jx_coarse-1)*nf+jx_s
-              ii = (jp-1)*ncube*ncube+(jy-1)*ncube+jx
-              sum      = sum     +f(ii)*dA(jx,jy)
-              sum_area = sum_area+dA(jx,jy)
-              !                  WRITE(*,*) "jx,jy",jx,jy
-            END DO
-          END DO
-          tmp = tmp+sum_area
-          da_coarse(jx_coarse,jy_coarse) = sum_area
-          !              WRITE(*,*) "jx_coarse,jy_coarse",jx_coarse,jy_coarse,&
-          !                   da_coarse(jx_coarse,jy_coarse)-datmp(jx_coarse,jy_coarse)
-          ii_coarse = (jp-1)*coarse_ncube*coarse_ncube+(jy_coarse-1)*coarse_ncube+jx_coarse
-          fcoarse(ii_coarse) = sum/sum_area 
-        END DO
-      END DO
-    END DO
-    WRITE(*,*) "coarsened surface area",tmp-4.0*3.141592654
-  END SUBROUTINE COARSEN
   
   
   !*******************************************************************************
