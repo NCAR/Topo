@@ -321,6 +321,8 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   character(len=23)  :: str_center_lon(2), str_center_lat(2)
   integer            :: esmf_file = 1 ! =1 SCRIP naming convention; =2 ESMF naming convention
   integer            :: icorner,icell,num
+
+  ltarget_latlon = .FALSE.
   !
   !*********************************************************
   !
