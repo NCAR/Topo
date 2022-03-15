@@ -99,7 +99,7 @@ public peak_type
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
+subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
 !------------------------------------------------
 !  INPUTS.
 !      NSW = size of window used for ridge analysis
@@ -112,9 +112,9 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
             DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_dev
 
        INTEGER (KIND=int_kind), INTENT(IN)  :: ncube, nhalo, nsw
-       !INTEGER (KIND=int_kind), INTENT(out) :: npeaks
+       INTEGER (KIND=int_kind), INTENT(IN)  :: iopt_ridge_seed
        INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nhigher,npeaks
-       INTEGER (KIND=int_kind) :: ipk,nblock
+       INTEGER (KIND=int_kind) :: ipk,nblock,ijaa(2),im,jm,bloc
 
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6)  :: terr_max , terr_sm
@@ -128,6 +128,7 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
     REAL  ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
 
+    real (KIND=dbl_kind), allocatable :: aa(:,:)
 
 
     !REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
@@ -139,13 +140,11 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
 !  B E G I N   C A L C U L A T I O N S
 !---------------------------------------------------------------------------------------
 
-    thsh = 0.
 
     DO np = 1, 6
      CALL CubedSphereFillHalo_Linear_extended(terr_dev, terr_dev_halo(:,:,np), np, ncube+1,nhalo)  
     END DO
 
-     write(*,*) " in find_local_max THSH : ",thsh
 
 
     DO np = 1, 6
@@ -158,19 +157,71 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
 
     terr_sm = terr_dev*0._r8
  
+ 
+    if( iopt_ridge_seed == 2 ) then
+    thsh = 10.
+    bloc = MAX( 4 ,  NINT(nsw/8.) ) !NINT(nsw/20.) !NINT(nsw/4.)  ! 5
+    allocate( aa(bloc+1,bloc+1) )
+    write(*,*) " in find_local_max iopt_ridge_seed=2 "
+    write(*,*) " ---> NSW , bloc ",nsw,bloc
+
+    DO np = 1, 6
+    DO j=1-nhalo+1,ncube+nhalo-1,bloc
+    DO i=1-nhalo+1,ncube+nhalo-1,bloc
+       aa   = terr_dev_halo(i:i+bloc,j:j+bloc,np)
+       ijaa = MAXLOC( aa )
+       im   = ijaa(1)-1 + i
+       jm   = ijaa(2)-1 + j
+       if ( terr_dev_halo(im,jm,np) >= thsh ) terr_max_halo(im,jm,np)= terr_dev_halo(im,jm,np)
+    END DO
+    END DO
+             write(*,*) " FACE = ",np
+    END DO
+    deallocate(aa)
+    end if
+
+    if( iopt_ridge_seed == 1 ) then
+    write(*,*) "performing a diff with 3x3 to find 'peaks' "
+
     DO np = 1, 6
     DO j=1-nhalo+1,ncube+nhalo-1
     DO i=1-nhalo+1,ncube+nhalo-1
 
-      if ( ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j,np) +thsh ) .and. &
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j,np) +thsh ) .and. &
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i,j+1,np) +thsh ) .and. &
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i,j-1,np) +thsh ) .and. & 
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j-1,np) +thsh ) .and. & 
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j-1,np) +thsh ) .and. & 
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j+1,np) +thsh ) .and. & 
-           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j+1,np) +thsh ) .and. & 
-           ( terr_dev_halo(i,j,np) > thsh )  ) then 
+      terr_dev_halox(i,j,np) =       &
+         terr_dev_halo(i+1,j,np) -   &
+         (  terr_dev_halo(i+1,j,np)+ &
+            terr_dev_halo(i-1,j,np)+ &
+            terr_dev_halo(i,j+1,np)+ &
+            terr_dev_halo(i,j-1,np)+ & 
+            terr_dev_halo(i+1,j-1,np)+ & 
+            terr_dev_halo(i-1,j-1,np)+ & 
+            terr_dev_halo(i+1,j+1,np)+ & 
+            terr_dev_halo(i-1,j+1,np)+ & 
+            terr_dev_halo(i,j,np) ) /9.
+
+    END DO
+    END DO
+             write(*,*) " FACE = ",np
+    END DO
+
+    terr_dev_halo = terr_dev_halox
+    end if
+
+    if( ( iopt_ridge_seed == 1 ).OR. ( iopt_ridge_seed == 0 )) then
+    thsh = 0.
+    DO np = 1, 6
+    DO j=1-nhalo+1,ncube+nhalo-1
+    DO i=1-nhalo+1,ncube+nhalo-1
+
+      if ( ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j,np)   ) .and. &
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j,np)   ) .and. &
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i,j+1,np)   ) .and. &
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i,j-1,np)   ) .and. & 
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j-1,np)   ) .and. & 
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j-1,np)   ) .and. & 
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i+1,j+1,np)   ) .and. & 
+           ( terr_dev_halo(i,j,np) > terr_dev_halo(i-1,j+1,np)   ) .and. & 
+           ( terr_dev_halo(i,j,np) > 0. )  ) then 
 
                   terr_max_halo(i,j,np) = terr_dev_halo(i,j,np)
        END IF
@@ -179,6 +230,8 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
     END DO
              write(*,*) " FACE = ",np
     END DO
+    end if
+
 
     do np=1,6
        terr_max(1:ncube,1:ncube,np) = terr_max_halo(1:ncube,1:ncube,np )
@@ -375,6 +428,19 @@ write(*,*) " SHAPE ", shape( peaks%i )
         call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
         write(*,900,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
 
+#if 0
+!Phase 2 ???
+        xs(ipk)=xspk(ipk)
+        ys(ipk)=yspk(ipk)
+        i=xspk(ipk)
+        j=yspk(ipk)
+        suba    = terr_dev_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
+        subarw  = terr_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
+        subx    = xv(i-nswx:i+nswx )
+        suby    = yv(j-nswx:j+nswx )
+        call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
+        write(*,902,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
+#endif
               deallocate( suba, subarw, subx, suby )
     end do
 
@@ -382,7 +448,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
     write(*,*) " Done with anisotropy analysis "
 
-900 format( a1, "  Analyzed Ridges ",i6," out of ",i6,"  NSWx=",i3," mxdis=",f8.2 )
+900 format( a1, "  Analyzed Ridges ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
+902 format( a1, "  Analyzed Ridges (2 Phase) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 901 format(" Ridge coords ", i6,i6,i3 )
     if (ldevelopment_diags) then
       write( ofile, &
@@ -477,7 +544,7 @@ end subroutine find_ridges
 !----------------------------------------------------------
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSW,IPK)
+  subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSW,IPK )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN)  ::  NSW,IPK
   REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1),SUBX( 2*nsw+1),SUBY(2*nsw+1)
@@ -499,6 +566,7 @@ end subroutine find_ridges
   integer :: i,j,l,m,n2,mini,maxi,minj,maxj,ns0,ns1,iorn(1),jj
   integer :: ipkh(1),ivld(1),ift0(1),ift1(1),i2,ii,ipksv(1),nswx
   integer :: ibad_left,ibad_rght
+  integer :: phase
 
   real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00
   real :: dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),xvld(NANG)
@@ -518,6 +586,7 @@ end subroutine find_ridges
  
 
   PI = 2*ACOS(0.0)
+
 
 ! Allocate work arrays for ridge analysis
 !-----------------------------------------

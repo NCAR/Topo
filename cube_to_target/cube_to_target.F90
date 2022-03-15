@@ -92,7 +92,7 @@ program convterr
 
   !                             *Radii* of smoothing circles
   integer :: ncube_sph_smooth_coarse = -1
-  integer :: ncube_sph_smooth_fine   = -1
+  integer :: ncube_sph_smooth_fine   = 0
   !
   ! namelist variables for detection of sub-grid scale orientation
   ! i.e., "ridge finding"
@@ -115,6 +115,7 @@ program convterr
 
 !++JTB
   logical :: lread_pre_smoothtopo = .FALSE.
+  integer :: iopt_ridge_seed = 0
 !--JTB
   logical :: lwrite_rrfac_to_topo_file = .FALSE.
 
@@ -141,7 +142,7 @@ program convterr
     integer :: npeaks
 #endif
 
-    type(option_s):: opts(18)
+    type(option_s):: opts(19)
     !               
     !                     long name                   has     | short | specified    | required
     !                                                 argument| name  | command line | argument
@@ -164,6 +165,7 @@ program convterr
     opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
     opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
     opts(18) = option_s( "output_data_directory"    ,.true.    , 'q'   ,.false.       ,.false.)
+    opts(19) = option_s( "ridge_seeding_option"     ,.true.    , 'a'   ,.false.       ,.false.)
     ! END longopts
     ! If no options were committed
     if (command_argument_count() .eq. 0 ) call print_help
@@ -175,7 +177,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -266,6 +268,12 @@ program convterr
         write(str,*) TRIM(optarg)
         command_line_arguments = TRIM(command_line_arguments)//' -q '//TRIM(ADJUSTL(str))
         opts(18)%specified = .true.
+      case( 'a' ) 
+        read (optarg, '(i3)') ioptarg
+        iopt_ridge_seed = ioptarg
+        write(str,*) ioptarg
+        command_line_arguments = TRIM(command_line_arguments)//' -a '//TRIM(ADJUSTL(str))
+        opts(19)%specified = .true.
       case default
         write(*,*) "Option unknown: ",char(0)        
         stop
@@ -308,7 +316,7 @@ program convterr
           nwindow_halfwidth = 4
         end if
       end if
-      if (ncube_sph_smooth_coarse<5) then
+      if (ncube_sph_smooth_coarse<0) then
         write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
         STOP
       end if
@@ -350,8 +358,10 @@ program convterr
     write(*,*) "lridgetiles                     = ",lridgetiles
     write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
     write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
-    write(*,*) "str_source                      = ",str_source
-
+    write(*,*) "str_source                      = ",trim(str_source)
+    write(*,*) "iopt_ridge_seed                 = ",iopt_ridge_seed
+    write(*,*) "================="
+  
 
     !*********************************************************
     !
@@ -598,7 +608,7 @@ program convterr
       nsw = nwindow_halfwidth
       nhalo=2*nsw
       
-      call find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
+      call find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
 
 
       call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&

@@ -1,0 +1,19 @@
+
+
+
+March 15 2022
+Leading upto - made many changes related to correct expansion/contraction
+of windows w/ repsect to metrics on cubed sphere. Re-enabled variable res
+ridge finding and set up more efficient smoothing that starts from
+pre-computed smooth topo on coarse outer grids.  This is all in tags
+v5.0.. - v6.0...
+
+
+Now going to work on ridge finding some.  Changed "seeding" added -a option
+to control this.  New (better?) seeding '-a 2' isn't based on maxes of 
+topo_dev file rather seeds with topo_dev>10m contour on bloc X bloc squares
+where bloc=NINT(nsw/8.).
+
+Toying with itrative ANISO_ANA but may need to straigthen out x,y
+coordiantes in ridge finding. ...
+

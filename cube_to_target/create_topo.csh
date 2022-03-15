@@ -7,18 +7,14 @@ if ( "$#argv" != 4) then
   echo "ogrid = argv[1]"
   echo "Co    = argv[2]"
   echo "Fi    = argv[3]"
-  ##echo "Nsw   = argv[4]"
-  echo "tag  = argv[4]"
+  echo "tag   = argv[4]"
   echo "     "
   echo "possible ogrid values: fv_0.9x1.25, ne30pg3 ..."
   exit
 endif
 
-set n = 4
 set case = $argv[1]"_co"$argv[2]"_fi"$argv[3]"_"$argv[4]
-
 echo $case
-
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -106,20 +102,21 @@ set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descrip
 set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube3000.nc'
 
 set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi0_ctlq/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060.nc'
+#set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi8_x01/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060_Fi008.nc'
 
 echo $smtopo
 ln -sf $smtopo output/topo_smooth.nc
 
 #Smooth and find ridges
-#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z -a 2
 
 
 #READ IN Smooth and find ridges
-#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -a 2
 
 
 #READ IN Smooth, Refine and find ridges
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -y $Yfac
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -y $Yfac
 
 
 exit
