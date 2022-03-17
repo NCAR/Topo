@@ -21,8 +21,11 @@ program convterr
 
   integer :: ncube                   !dimension of intermediate cubed-sphere grid
   
-  integer :: alloc_error  
-  logical :: ldbg
+  integer :: alloc_error 
+  !
+  ! turn extra debugging on/off
+  ! 
+  logical :: ldbg=.false.
   real(r8):: wt
   integer :: ii,ip,jx,jy,jp,np,counti !counters,dimensions
   integer :: jmax_segments,jall,jall_anticipated !overlap segments
@@ -337,11 +340,6 @@ program convterr
   
   call  set_constants
   
-  !
-  ! turn extra debugging on/off
-  !
-  ldbg = .FALSE.
-  
   ! Read in target grid
   !------------------------------------------------------------------------------------------------
   if (.not.lstop_after_smoothing) then
@@ -448,7 +446,7 @@ program convterr
     if (.not.lstop_after_smoothing) then
       write(*,*) "Compute overlap weights: "
       CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     end if
     deallocate(target_corner_lon,target_corner_lat)
     
@@ -858,15 +856,21 @@ program convterr
     if (lphis_gll) then
       call read_target_grid(grid_descriptor_fname_gll,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
            target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
-      
+
+      deallocate(target_corner_lat, target_corner_lon)
+      ncorner = 4
+      allocate(target_corner_lat(ncorner,ntarget), target_corner_lon(ncorner,ntarget))
+
+      call redefine_cells(ntarget,ncorner,target_center_lon,target_center_lat,target_rrfac,target_corner_lon,target_corner_lat)
+
       weights_all = 0.0_r8
       weights_eul_index_all = 0
       weights_lgr_index_all = 0
       jall=jall_anticipated
-      
+
       write(*,*) "Compute overlap weights for GLL grid: "
       CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
       
       allocate (terr_target(ntarget))
       allocate (area_target(ntarget))
@@ -2118,6 +2122,37 @@ program convterr
   end subroutine handle_err
   
   
+  SUBROUTINE redefine_cells(ntarget,ncorner,target_center_lon,target_center_lat,target_rrfac,target_corner_lon,target_corner_lat)
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    IMPLICIT NONE
+    
+    
+    INTEGER,                              INTENT(IN) :: ntarget,ncorner
+    REAL(R8), DIMENSION(ntarget),         INTENT(IN) :: target_center_lon, target_center_lat, target_rrfac
+    REAL(R8), DIMENSION(ncorner,ntarget), INTENT(OUT):: target_corner_lon, target_corner_lat
+    
+    REAL(R8), DIMENSION(ncorner)     :: lat, lon
+    
+    real(r8) :: alpha_center,beta_center,dalpha,pi,pih
+    real(r8) :: alpha(ncorner),beta(ncorner)
+    integer  :: ipanel,i,j
+
+    pi     = 4.D0*DATAN(1._r8)
+    pih    = pi*0.5_r8
+    dalpha = pih/90.0_r8!xxx
+    do j=1,ntarget
+      call CubedSphereABPFromRLL(target_center_lon(j), target_center_lat(j), alpha_center, beta_center, ipanel,.true.)
+      alpha(1) = alpha_center-0.5_r8*dalpha; beta(1) = beta_center-0.5_r8*dalpha
+      alpha(2) = alpha_center+0.5_r8*dalpha; beta(2) = beta_center-0.5_r8*dalpha
+      alpha(3) = alpha_center+0.5_r8*dalpha; beta(3) = beta_center+0.5_r8*dalpha
+      alpha(4) = alpha_center-0.5_r8*dalpha; beta(4) = beta_center+0.5_r8*dalpha
+      do i=1,4
+        call CubedSphereRLLFromABP(alpha(i), beta(i), ipanel, target_corner_lon(i,j), target_corner_lat(i,j))
+      end do
+    end do
+  end SUBROUTINE redefine_cells
+
+
   
   !*******************************************************************************
   !  At this point mapping arrays are calculated
@@ -2142,20 +2177,21 @@ program convterr
   
   
   SUBROUTINE overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-       jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
+       jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     use shr_kind_mod, only: r8 => shr_kind_r8
     use remap
     IMPLICIT NONE
     
     
-    INTEGER, INTENT(INOUT) :: jall !anticipated number of weights
-    INTEGER, INTENT(IN)    :: ncube, ngauss, ntarget, jmax_segments, ncorner, nreconstruction
+    INTEGER,                                     INTENT(INOUT):: jall !anticipated number of weights
+    INTEGER,                                     INTENT(IN)   :: ncube, ngauss, ntarget, jmax_segments, ncorner, nreconstruction
     
-    INTEGER, DIMENSION(jall,3), INTENT(OUT) :: weights_eul_index_all
-    REAL(R8), DIMENSION(jall,nreconstruction)  , INTENT(OUT) :: weights_all
-    INTEGER, DIMENSION(jall)  , INTENT(OUT) :: weights_lgr_index_all
+    INTEGER, DIMENSION(jall,3),                  INTENT(OUT)  :: weights_eul_index_all
+    REAL(R8), DIMENSION(jall,nreconstruction)  , INTENT(OUT)  :: weights_all
+    INTEGER, DIMENSION(jall)  ,                  INTENT(OUT)  :: weights_lgr_index_all
     
-    REAL(R8), DIMENSION(ncorner,ntarget), INTENT(INOUT) :: target_corner_lon, target_corner_lat
+    REAL(R8), DIMENSION(ncorner,ntarget),        INTENT(INOUT):: target_corner_lon, target_corner_lat
+    LOGICAL,                                     INTENT(IN)   :: ldbg
     
     INTEGER,  DIMENSION(9*(ncorner+1)) :: ipanel_tmp,ipanel_array
     REAL(R8), DIMENSION(ncorner)  :: lat, lon
@@ -2174,9 +2210,6 @@ program convterr
     
     real(r8), allocatable, dimension(:,:) :: weights
     integer , allocatable, dimension(:,:) :: weights_eul_index
-    
-    
-    LOGICAL:: ldbg = .FALSE.
     
     INTEGER :: jall_anticipated, count
     
