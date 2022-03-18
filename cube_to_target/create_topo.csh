@@ -104,7 +104,23 @@ set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-spher
 set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi0_ctlq/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060.nc'
 #set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi8_x01/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060_Fi008.nc'
 
-echo $smtopo
+set topodir = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/bedmachine/'
+set cog = `printf "%.3d" $Co`
+set cog = "Co"$cog
+set fig = `printf "%.3d" $Fi`
+set fig = "Fi"$fig
+
+if ( $Fi == 0 ) then
+   set smtopo = 'topo_smooth_gmted2010_bedmachine_nc3000_'$cog'.nc'
+else
+   set smtopo = 'topo_smooth_gmted2010_bedmachine_nc3000_'$cog'_'$fig'.nc'
+endif
+
+echo  $cog
+echo  $fig
+set smtopo = $topodir$smtopo
+
+echo  "SMooth topo file= "$smtopo
 ln -sf $smtopo output/topo_smooth.nc
 
 #Smooth and find ridges

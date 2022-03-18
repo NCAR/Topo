@@ -23,6 +23,7 @@ mxdis=dblarr(nc,nc,6)
 block=dblarr(nc,nc,6)
 profi=dblarr(nc,nc,6)
 uniqi=dblarr(nc,nc,6)
+aniso=dblarr(nc,nc,6)
 
 ;++ more and more
 isoht=dblarr(nc,nc,6)
@@ -65,6 +66,7 @@ if not eof(1) then begin
    readu,1,cwght
    readu,1,clngt
    readu,1,isowd
+   if not eof(1) then readu,1,aniso
    print,' Extended remap file '
 endif
 
@@ -82,7 +84,7 @@ cube={mxdis:mxdis  $
 endif else begin
 cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
-     ,anglx:anglx,hwdth:hwdth,clngt:clngt  $ 
+     ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
      ,rf:fn0}
 endelse
 

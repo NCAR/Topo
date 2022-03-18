@@ -1,5 +1,6 @@
 #define ROTATEBRUSH
 #define DETGDEP
+#define DEBUGOUTPUT
 module ridge_ana
 
 use rotation, only : rotbyx => rotby4
@@ -114,7 +115,7 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
        INTEGER (KIND=int_kind), INTENT(IN)  :: ncube, nhalo, nsw
        INTEGER (KIND=int_kind), INTENT(IN)  :: iopt_ridge_seed
        INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nhigher,npeaks
-       INTEGER (KIND=int_kind) :: ipk,nblock,ijaa(2),im,jm,bloc
+       INTEGER (KIND=int_kind) :: ipk,nblock,ijaa(2),im,jm,bloc,ivar1,ivar2,ii,jj
 
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6)  :: terr_max , terr_sm
@@ -158,9 +159,37 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
     terr_sm = terr_dev*0._r8
  
  
+    if( iopt_ridge_seed == 3 ) then
+    thsh  = 0.
+    bloc  = 1 
+    ivar2 = INT( (2*bloc+1)**2   )-1 ! INT( (2*bloc+1)**2 /2  ) 
+    allocate( aa(-bloc:bloc,-bloc:bloc) )
+    write(*,*) " in find_local_max iopt_ridge_seed=3 "
+    write(*,*) " ---> NSW , bloc , thresh count ",nsw,bloc,ivar2
+
+    DO np = 1, 6
+    DO j=1-nhalo+bloc,ncube+nhalo-bloc
+    DO i=1-nhalo+bloc,ncube+nhalo-bloc
+       aa   = terr_dev_halo(i-bloc:i+bloc,j-bloc:j+bloc,np)
+       ivar1=0
+       do jj=-bloc,bloc
+       do ii=-bloc,bloc
+          if (aa(0,0) > aa(ii,jj) ) ivar1=ivar1+1
+       end do
+       end do
+       if ( (ivar1 >=ivar2) .AND. ( terr_dev_halo(i,j,np) > thsh )) &
+           terr_max_halo(i,j,np)= terr_dev_halo(i,j,np)
+    END DO
+    END DO
+             write(*,*) " FACE = ",np
+    END DO
+    deallocate(aa)
+    end if
+
     if( iopt_ridge_seed == 2 ) then
     thsh = 10.
-    bloc = MAX( 4 ,  NINT(nsw/8.) ) !NINT(nsw/20.) !NINT(nsw/4.)  ! 5
+    bloc = MAX( 4 ,  NINT(nsw/8.) ) ! Think about floor of 4
+    !bloc = MAX( 2 ,  NINT(nsw/16.) ) ! Think about floor of 4
     allocate( aa(bloc+1,bloc+1) )
     write(*,*) " in find_local_max iopt_ridge_seed=2 "
     write(*,*) " ---> NSW , bloc ",nsw,bloc
@@ -302,6 +331,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! Local variables
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
+    INTEGER (KIND=int_kind) :: ispk,jspk
 
 
     REAL (KIND=dbl_kind),                                            &
@@ -356,7 +386,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
     END DO
 
 
-   
+#if 1
+! Original definitions  
     DO i=1-nhalo,ncube+nhalo
        xv(i)=1.*i   !  xv,yv are 'SW' corners
        yv(i)=1.*i   
@@ -365,6 +396,17 @@ write(*,*) " SHAPE ", shape( peaks%i )
        alph(i) =  ( xv(i) - 0.5 - ncube/2 )*(pi/2.)/ncube
        beta(i) =  ( yv(i) - 0.5 - ncube/2 )*(pi/2.)/ncube
     END DO
+#else
+    DO i=1-nhalo,ncube+nhalo
+       xv(i)=1.*i - 0.5   !  xv,yv are cell centers
+       yv(i)=1.*i - 0.5
+    END DO
+    DO i=1-nhalo,ncube+nhalo
+       alph(i) =  ( xv(i) - ncube/2 )*(pi/2.)/ncube
+       beta(i) =  ( yv(i) - ncube/2 )*(pi/2.)/ncube
+    END DO
+#endif
+
     !! Calculate Square root of DET(metric tensor), i.e., area 
     DO j=1-nhalo,ncube+nhalo
     DO i=1-nhalo,ncube+nhalo
@@ -428,20 +470,11 @@ write(*,*) " SHAPE ", shape( peaks%i )
         call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
         write(*,900,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
 
-#if 0
-!Phase 2 ???
-        xs(ipk)=xspk(ipk)
-        ys(ipk)=yspk(ipk)
-        i=xspk(ipk)
-        j=yspk(ipk)
-        suba    = terr_dev_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
-        subarw  = terr_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
-        subx    = xv(i-nswx:i+nswx )
-        suby    = yv(j-nswx:j+nswx )
-        call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
-        write(*,902,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
-#endif
-              deallocate( suba, subarw, subx, suby )
+        ispk = NINT(1.*xspk(ipk) )
+        jspk = NINT(1.*yspk(ipk) )
+        suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
+        call ANISO_ANA_2( SUBA,NSWx,IPK )
+           deallocate( suba, subarw, subx, suby )
     end do
 
     write(*,*)
@@ -464,13 +497,14 @@ write(*,*) " SHAPE ", shape( peaks%i )
       ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
       
       OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
-      
+
+#if 0      
       write(31) ncube_halo , grid_length_scale
       write(31) xv,yv
       write(31) terr_halo_r4
       write(31) terr_dev_halo_r4 , rdtg
-      
-      write(31) npeaks  , NSW
+#endif      
+      write(31) npeaks  , NSW, PSW
       write(31) xs,ys  , MyPanel
       write(31) mxvrx
       write(31) bsvar
@@ -533,7 +567,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
       
       write(32) npeaks  , PSW
       do ipk=1,npeaks
-        write(32) xs(ipk),ys(ipk)  , MyPanel(ipk)
+        write(32) xs(ipk),ys(ipk)  , MyPanel(ipk),xspk(ipk),yspk(ipk)
         write(32) rt_diag(:,:,ipk)
         write(32) suba_diag(:,:,ipk)
       end do
@@ -556,6 +590,7 @@ end subroutine find_ridges
 
   real, allocatable :: rdg_profile(:,:),crst_profile(:,:)
   real, allocatable :: crst_silhouette(:,:)
+  real, allocatable :: rdg_profile_bk(:),crst_silhouette_bk(:)
 
   logical,allocatable :: lhgts(:),lflats(:),lsides(:)
   logical :: Keep_Cuestas=.true.
@@ -617,6 +652,8 @@ end subroutine find_ridges
   allocate( rdg_profile(nsw+1,NANG) )
   allocate( crst_profile(nsw+1,NANG) )
   allocate( crst_silhouette(nsw+1,NANG) )
+  allocate( rdg_profile_bk(nsw+1) )
+  allocate( crst_silhouette_bk(nsw+1) )
 
 
 
@@ -831,7 +868,10 @@ end subroutine find_ridges
         rdg_profiles(1:nsw+1,ipk)  = rdg_profile( : , iorn(1) )
         crst_profiles(1:nsw+1,ipk) = crst_profile( : , iorn(1) )
         crst_silhous(1:nsw+1,ipk)  = crst_silhouette( : , iorn(1) )
-      
+
+        rdg_profile_bk( :)      = rdg_profile( : , iorn(1) )
+        crst_silhouette_bk( : ) = crst_silhouette( : , iorn(1) )
+
         uniqid(ipk) = (1.0d+0) * ipk
 
 !===============================================================
@@ -845,12 +885,21 @@ end subroutine find_ridges
 !      Raw:        SUBARW( 2*nsw+1, 2*nsw+1)
 !===============================================================
 
+#if 1
         call ridgescales( nsw, rdg_profiles(:,ipk), crst_silhous(:,ipk), xrt, xmn, &
                           anglx(ipk), xs(ipk) , ys(ipk), & 
                           xspk(ipk), yspk(ipk), clngth(ipk) , hwdth(ipk), & 
                           suba , &      
                           isoht(ipk), isowd(ipk), isobs(ipk), & 
                           rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk)  )
+#else
+        call ridgescales( nsw, rdg_profile_bk , crst_silhouette_bk, xrt, xmn, &
+                          anglx(ipk), xs(ipk) , ys(ipk), & 
+                          xspk(ipk), yspk(ipk), clngth(ipk) , hwdth(ipk), & 
+                          suba , &      
+                          isoht(ipk), isowd(ipk), isobs(ipk), & 
+                          rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk)  )
+#endif
 
 #ifdef DEBUGOUTPUT  
               rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk) )
@@ -884,8 +933,34 @@ end subroutine find_ridges
 !++11/1/21
   deallocate( rdg_profile )
   deallocate( crst_profile )
+  deallocate( crst_silhouette )
+  deallocate( rdg_profile_bk )
+  deallocate( crst_silhouette_bk )
 
 end subroutine ANISO_ANA
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine ANISO_ANA_2( SUBA,NSW,IPK )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  INTEGER,            intent(IN)  ::  NSW,IPK
+  REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1)
+  real    :: rt( 2*nsw+1, 2*nsw+1)
+  real    :: ridge_x( 2*nsw+1 )
+  integer :: ns0,ns1
+  !-----------------------------------------
+  ! Indices for most ridge scheme subarrays.
+  ! Note ns1-ns0 = nsw+1 always. Appears 
+  ! safe for any value of nsw.
+  !-----------------------------------------
+  ns0=nsw/2+1
+  ns1=ns0+nsw+1
+ 
+  rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk))
+  ridge_x(1:2*nsw+1) = sum( rt( : , ns0:ns1-1) , 2 ) /(ns1-ns0)
+  rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) = ridge_x(1:2*nsw+1)
+
+end subroutine ANISO_ANA_2
+
 
 !====================================
 !====================================
@@ -1353,6 +1428,7 @@ end subroutine ANISO_ANA
        write(911) cwghtC
        write(911) clngtC
        write(911) isowdC
+       write(911) anisoC
        
 #if 0
        write(911) mxvrxC
@@ -1726,7 +1802,8 @@ write(*,*) " in fleshout_profi "
        suba(:,:) = 0.
        subr(:,:) = 0.
        do jw=-1,1
-          suba(: , jw  ) = rdg_profiles_x(1:2*nsw+1,ipk)
+          !!suba(: , jw  ) = rdg_profiles_x(1:2*nsw+1,ipk)
+          suba(: , jw  ) = rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) 
        end do
        rotangl = - anglxC(i,j,ip) 
        subr = rotbyx( suba , 2*nsw+1, rotangl )
@@ -1821,11 +1898,17 @@ write(*,*) " in paintridge "
   
     sub11(:,:)=0.
     DO j=-nsw/2,nsw/2
+    DO i=-nsw/4,nsw/4
+          sub11(i,j)=1.0
+    END DO
+    END DO
+#if 0
+    DO j=-nsw/2,nsw/2
     DO i=-nsw/2,nsw/2
           sub11(i,j)=1.0
     END DO
     END DO
-
+#endif
 #ifdef ROTATEBRUSH
     write(*,*) "Using nsw/2 x nsw/2 ROTATED brush in paintridge"
 #endif
@@ -1909,8 +1992,10 @@ write(*,*) " in paintridge "
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
-                x0 = INT( xspk(ipk) ) + 1
-                y0 = INT( yspk(ipk) ) + 1
+                !x0 = INT( xspk(ipk) ) + 1  ! original has +1
+                !y0 = INT( yspk(ipk) ) + 1  ! original has +1
+                x0 = INT( xspk(ipk) )      ! why do we need +1 
+                y0 = INT( yspk(ipk) )
                 if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
                        if ( QC( x0+ii, y0+jj, ip ) <= subq(ii,jj) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
                        if ( QC( x0+ii, y0+jj, ip ) <= subq(ii,jj) )  QC( x0+ii, y0+jj, ip )  = subq(ii,jj)
