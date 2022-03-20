@@ -1125,13 +1125,11 @@ end subroutine ANISO_ANA_2
       integer :: nswx,nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-!++11/3/21 Added profiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC, profiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, clngtC, blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC, itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
-!++11/15/21 Added uniqidC
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,isohtC,bumpsC,isowdC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,isohtC,bumpsC,isowdC,superC
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -1241,6 +1239,10 @@ end subroutine ANISO_ANA_2
      write(*,*) " painting MXDIS "
      tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsw,lzerovalley )
      mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " painting SUPER "
+     tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsw,lzerovalley,all_pixels=.TRUE. )
+     superC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting HWDTH "
      tmpx6 = paintridge2cube ( hwdth ,  ncube,nhalo,nsw,lzerovalley )
@@ -1429,6 +1431,7 @@ end subroutine ANISO_ANA_2
        write(911) clngtC
        write(911) isowdC
        write(911) anisoC
+       write(911) superC
        
 #if 0
        write(911) mxvrxC
@@ -1835,7 +1838,7 @@ write(*,*) " in fleshout_profi "
 end function fleshout_profi
 
 !======================================
-function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, crest_weight) & 
+function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, crest_weight, all_pixels ) & 
                            result( axc )
    
        integer, intent(in) :: ncube,nhalo,nsw
@@ -1843,6 +1846,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
        logical, intent(in) :: lzerovalley
        logical, optional, intent(in) :: crest_length
        logical, optional, intent(in) :: crest_weight
+       logical, optional, intent(in) :: all_pixels
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: qc
@@ -1851,7 +1855,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
        real, dimension(-nsw:nsw)          :: xq,yq
        real :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
-       logical :: lcrestln,lcrestwt,lblockfl,lprofifl,lbumpfl,ldottfl
+       logical :: lcrestln,lcrestwt,lblockfl,lprofifl,lbumpfl,allpixels
 !---------------------------------------------------
 
 
@@ -1866,6 +1870,11 @@ write(*,*) " in paintridge "
       lcrestwt = crest_weight
     else
        lcrestwt = .false.
+    endif
+    if(present(all_pixels)) then
+       allpixels = all_pixels
+    else
+       allpixels = .false.
     endif
 
 
@@ -1986,9 +1995,10 @@ write(*,*) " in paintridge "
              !======================================================
              dsq    = 1.0 - SQRT( (xs(ipk)-xspk(ipk))**2 + (ys(ipk)-yspk(ipk))**2 )/nsw
              subq   = sub1 * dsq
+             NSWx = NSW / RefFac(ipk)
+             if (.NOT.(allpixels)) then
              ! original reconciliation
              !------------------------
-             NSWx = NSW / RefFac(ipk)
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
@@ -2002,7 +2012,21 @@ write(*,*) " in paintridge "
                 endif
              end do
              end do
-         end if
+             else
+             do jj = -NSWx/2,NSWx/2
+             do ii = -NSWx/2,NSWx/2
+                ip = peaks(ipk)%ip
+                !x0 = INT( xspk(ipk) ) + 1  ! original has +1
+                !y0 = INT( yspk(ipk) ) + 1  ! original has +1
+                x0 = INT( xspk(ipk) )      ! why do we need +1 
+                y0 = INT( yspk(ipk) )
+                if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
+                       if (subdis(ii,jj) >= AXC( x0+ii, y0+jj, ip ))  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                 endif
+             end do
+             end do
+             end if
+          end if
       end do
 
      write(*,*) " finished paintridge2cube "

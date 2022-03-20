@@ -1,6 +1,8 @@
 pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran $
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi $
-              ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev
+              ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super $
+              ;  overplotting  
+              ,xl=x
 
 if not keyword_set(w0) then w0 =1
 
@@ -21,6 +23,12 @@ endif
 if keyword_set(swc) then begin
    xr=[swc(0),swc(0)+1.2*size]
    yr=[swc(1),swc(1)+size]
+endif
+
+if keyword_set(x) then begin
+   ox=where( x.xspk ge xr(0) and x.xspk le xr(1) $ 
+         and x.yspk ge yr(0) and x.yspk le yr(1) $
+         and x.panel eq p )
 endif
 
 
@@ -107,6 +115,21 @@ amwgct
 contour,cu.block(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92," 'Blocks' ",size=3.
+xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+endif
+
+if keyword_set(super) then begin
+lev=(findgen(16)-7.99999)*200.
+window,re=2,xs=1200,ys=900,w0
+wset,w0
+amwgct
+contour,cu.super(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+contour,cu.super(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
+
+if keyword_set(x) then oplot,x.xspk(ox)-1, x.yspk(ox)-1 ,ps=1,syms=.5
+
+xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
+xyouts,/norm,align=.5,.4,.92," MXDIS Super-set ",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
 endif
 

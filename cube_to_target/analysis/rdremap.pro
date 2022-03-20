@@ -24,6 +24,7 @@ block=dblarr(nc,nc,6)
 profi=dblarr(nc,nc,6)
 uniqi=dblarr(nc,nc,6)
 aniso=dblarr(nc,nc,6)
+super=dblarr(nc,nc,6)
 
 ;++ more and more
 isoht=dblarr(nc,nc,6)
@@ -67,6 +68,10 @@ if not eof(1) then begin
    readu,1,clngt
    readu,1,isowd
    if not eof(1) then readu,1,aniso
+   if not eof(1) then begin 
+      readu,1,super
+       print,'Read Super from file '
+   endif
    print,' Extended remap file '
 endif
 
@@ -85,7 +90,7 @@ endif else begin
 cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
      ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
-     ,rf:fn0}
+     ,super:super,rf:fn0}
 endelse
 
 

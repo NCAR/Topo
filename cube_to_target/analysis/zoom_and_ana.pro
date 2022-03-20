@@ -5,6 +5,9 @@ pro zoom_and_ana,cu=cu,xl=x,panel=p,xr=xr,yr=yr,terr=t
 ; S. Andes  xr=[100,220],  yr=[1950,2050],  panel=5
 
 
+if not keyword_set(xr) then xr = [100,220]
+if not keyword_set(yr) then yr = [1950,2050]
+if not keyword_set(p)  then p  = 5
 
 ox = where( x.panel eq p and $
             (x.xs ge xr(0) and x.xs le xr(1) ) and $
@@ -46,7 +49,8 @@ yv=findgen(nc)+1
 lev=[-1,0,1,10, 20, 50, 100, 200, 500, 1000, 2000, 3000 ]
 window,re=2,1,xs=1100,ys=900
 amwgct
-contour,cu.mxdis(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
+;contour,cu.mxdis(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
+contour,cu.super(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
 contour,cu.dev(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,200,500,1000],/noer,c_line=[2,2,2,0,0,0,0,0],c_thick=[1,1,1,1,1,1,2,2],/fol
 contour,cu.block(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,200,500,1000],/noer,c_line=[2,2,2,0,0,0,0,0],c_thick=[1,1,1,1,1,1,2,2],/fol,c_colo=12
 
