@@ -28,8 +28,9 @@ npks=0L & m=0L & NSW=0L & PSW=0L
  
   xs=  fltarr(npks) &ys=fltarr(npks)&xspk=fltarr(npks)&yspk=fltarr(npks)
   mypanel = lonarr( npks )
+  nswx_diag = lonarr( npks )
 
-  readu,1,xs,ys   , mypanel
+  readu,1,xs,ys   , mypanel, nswx_diag
 
   mxdis=fltarr(npks) & clngt=fltarr(npks) & hwdth=fltarr(npks) & anglx=fltarr(npks)
   aniso=fltarr(npks) & pkhts=fltarr(npks) & vldps=fltarr(npks) & npeak=fltarr(npks)
@@ -41,11 +42,20 @@ npks=0L & m=0L & NSW=0L & PSW=0L
 
   xspk= fltarr(npks) & yspk= fltarr(npks)
 
+ hnodes_x = fltarr( 2*Psw+1,npks )
+ hwedge_x = fltarr( 2*Psw+1,npks )
+ rdg_profiles_x = fltarr( 2*Psw+1,npks )
  rdg_profiles = fltarr( Psw+1,npks )
  crst_profiles = fltarr( Psw+1,npks )
  crst_silhous = fltarr( Psw+1,npks )
  rt_diag = fltarr( 2*nsw+1, 2*nsw+1, npks )
  rtx_diag = fltarr( nsw+1, nsw+1, npks )
+ nnodes_list = lonarr( npks )
+ xnodes_list = lonarr( Psw+1,npks )
+ hnodes_list = fltarr( Psw+1,npks )
+ dcenter_list = lonarr( npks )
+ xwedge_list = lonarr( 3, npks )
+ hwedge_list = fltarr( 3, npks )
 
 
 readu, 1 ;, mxvrx
@@ -94,7 +104,15 @@ readu, 1, crst_silhous
 readu, 1, isoht
 readu, 1, isowd
 readu, 1, isobs
-;readu, 1, RefFac
+readu, 1  ;, RefFac
+if not (eof(1) ) then readu, 1, rdg_profiles_x
+if not (eof(1) ) then readu, 1, xnodes_list
+if not (eof(1) ) then readu, 1, hnodes_list
+if not (eof(1) ) then readu, 1, dcenter_list
+if not (eof(1) ) then readu, 1, xwedge_list,hwedge_list
+if not (eof(1) ) then readu, 1, nnodes_list
+if not (eof(1) ) then readu, 1, hwedge_x
+if not (eof(1) ) then readu, 1, hnodes_x
 
 close,1
 
@@ -102,7 +120,11 @@ close,1
 
 if keyword_set(stop) then STOP
 
-xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, panel:mypanel, mxdis:mxdis, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, rdg_profiles:rdg_profiles }
+xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, panel:mypanel, nswx:nswx_diag, $ 
+          mxdis:mxdis, pkhts:pkhts, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, $ 
+          ridge:rdg_profiles , crest:crst_profiles, silh:crst_silhous, $ 
+          rdg_profiles_x:rdg_profiles_x, xnodes:xnodes_list,hnodes:hnodes_list,dcenter:dcenter_list, $ 
+          xwedge:xwedge_list, hwedge:hwedge_list, nnodes:nnodes_list,hwedge_x:hwedge_x,hnodes_x:hnodes_x}
 
 return
 end

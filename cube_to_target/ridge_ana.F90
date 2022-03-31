@@ -6,6 +6,7 @@ module ridge_ana
 use rotation, only : rotbyx => rotby4
 USE reconstruct
 use shr_kind_mod, only: r8 => shr_kind_r8
+use ridge_utils
 
 IMPLICIT NONE
 private
@@ -34,11 +35,18 @@ public peak_type
   REAL, allocatable  :: RISEQ(:),FALLQ(:),ANIXY(:),MXDSP(:),CLNGTH(:),MXDS2(:)
 
   REAL, allocatable  :: rdg_profiles(:,:) , crst_profiles(:,:), crst_silhous(:,:)
-  INTEGER, allocatable ::  MyPanel(:)
+  INTEGER, allocatable ::  MyPanel(:), NSWx_diag(:)
   REAL, allocatable  :: rt_diag(:,:,:), suba_diag(:,:,:),rdg_profiles_x(:,:)
 
   REAL, allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:)
   REAL, allocatable  :: RefFac(:)
+  REAL, allocatable  :: hnodes_list(:,:)
+  INTEGER, allocatable  :: xnodes_list(:,:), dcenter_list(:), nnodes_list(:)
+  INTEGER, allocatable  :: xwedge_list(:,:)
+  REAL, allocatable  :: hwedge_list(:,:)
+
+
+  REAL, allocatable  :: hwedge_x(:,:),hnodes_x(:,:)
 
 !================================================================================
 
@@ -332,6 +340,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
     INTEGER (KIND=int_kind) :: ispk,jspk
+    INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge
 
 
     REAL (KIND=dbl_kind),                                            &
@@ -458,6 +467,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
         if(do_refine) nswx = NINT( nswx / rr_factor(i,j,np) )
         if(do_refine) RefFac(ipk) = rr_factor(i,j,np) 
 
+        NSWx_diag( ipk ) = nswx
+
              allocate( suba( 2*nswx+1 ,  2*nswx+1 ) )
              allocate( subarw( 2*nswx+1 ,  2*nswx+1 ) )
              allocate( subx( 2*nswx+1  ) )
@@ -468,12 +479,13 @@ write(*,*) " SHAPE ", shape( peaks%i )
         subx    = xv(i-nswx:i+nswx )
         suby    = yv(j-nswx:j+nswx )
         call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
-        write(*,900,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
 
         ispk = NINT(1.*xspk(ipk) )
         jspk = NINT(1.*yspk(ipk) )
         suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
         call ANISO_ANA_2( SUBA,NSWx,IPK )
+         write(*,903,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
+ 
            deallocate( suba, subarw, subx, suby )
     end do
 
@@ -481,9 +493,17 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
     write(*,*) " Done with anisotropy analysis "
 
-900 format( a1, "  Analyzed Ridges ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
-902 format( a1, "  Analyzed Ridges (2 Phase) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
+900 format( a1, "  Analyzed Ridges (original) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
+902 format( a1, "  Analyzed Ridges (iterative): N="i2," Ridge ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
+903 format( a1, "  Analyzed Ridges (two-Phase) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 901 format(" Ridge coords ", i6,i6,i3 )
+
+
+
+    call thinout_list( ncube, npeaks, nsw )
+
+
+
     if (ldevelopment_diags) then
       write( ofile, &
            "('./output/Ridge_list_nc',i0.4, '_Nsw',i0.3,  &
@@ -498,14 +518,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
       
       OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
 
-#if 0      
-      write(31) ncube_halo , grid_length_scale
-      write(31) xv,yv
-      write(31) terr_halo_r4
-      write(31) terr_dev_halo_r4 , rdtg
-#endif      
       write(31) npeaks  , NSW, PSW
-      write(31) xs,ys  , MyPanel
+      write(31) xs,ys  , MyPanel, NSWx_diag
       write(31) mxvrx
       write(31) bsvar
       write(31) mxdis
@@ -549,7 +563,17 @@ write(*,*) " SHAPE ", shape( peaks%i )
       write(31) isowd
       write(31) isobs
       write(31) RefFac
-      
+      write(31) rdg_profiles_x
+
+      write(31) xnodes_list
+      write(31) hnodes_list
+      write(31) dcenter_list
+      write(31) xwedge_list,hwedge_list
+
+      write(31) nnodes_list
+      write(31) hwedge_x
+      write(31) hnodes_x
+
       CLOSE(31)
 
       write( ofile , &
@@ -594,10 +618,11 @@ end subroutine find_ridges
 
   logical,allocatable :: lhgts(:),lflats(:),lsides(:)
   logical :: Keep_Cuestas=.true.
-  
+  logical :: reposition_ridge
 
   real :: THETRAD,PI,swt,ang,rotmn,rotvar,mnt,var,xmn,xvr,basmn,basvar,mn2,var2
   real :: dyr_crest
+  real :: xspk0 , yspk0
   integer :: i,j,l,m,n2,mini,maxi,minj,maxj,ns0,ns1,iorn(1),jj
   integer :: ipkh(1),ivld(1),ift0(1),ift1(1),i2,ii,ipksv(1),nswx
   integer :: ibad_left,ibad_rght
@@ -690,26 +715,13 @@ end subroutine find_ridges
 
                                           ! "Silhouettes" in x and y
            do m=ns0,ns1-1
-              silux(m-ns0+1) = maxval(  rt( m ,ns0:ns1-1) )
-              sillx(m-ns0+1) = minval(  rt( m ,ns0:ns1-1) )
               siluy(m-ns0+1) = maxval(  rt( ns0:ns1-1, m) )
-              silly(m-ns0+1) = minval(  rt( ns0:ns1-1, m) )
            end do
                           
                                            ! Mean elevation
            mnt = sum( rtx )/( ns1-ns0 ) 
            mn2 = sum( rty )/( ns1-ns0 ) 
 
-                  ! Mean slope BETA (and intercept ALPH) of RTX
-           beta(L) = sum( (rtx-mnt)*(xrt-xmn) )/(nsw*xvr)           
-           alph    = mnt - beta(L)*xmn
-               ! subtract linear slope
-               do ii=1,nsw+1
-                  rtx_dt(ii) = rtx(ii) - ( alph+beta(L)*xrt(ii) )
-               end do
-
-           rtxslp(1:nsw)=abs(rtx(2:nsw+1)-rtx(1:nsw) )                         
-  
 
                  ! count actual peaks and valleys in RTX cross section
            pklc = 0.
@@ -718,57 +730,25 @@ end subroutine find_ridges
            end do
            npkx(L)=sum(pklc)
 
-           pklc = 0.
-           do i2=2,nsw
-             if ( ( rtx(i2-1)>rtx(i2) ).and.( rtx(i2+1)>rtx(i2) ) ) pklc(i2)=1.
-           end do
-           nvlx(L)=sum(pklc)
 
 
            ! Accumulate rising and falling segments
            risex(L)=0.
            fallx(L)=0.
-           do i2=2,nsw+1
-              if ( rtx(i2-1)<=rtx(i2) ) risex(L) = risex(L) + ( rtx(i2) - rtx(i2-1) )
-              if ( rtx(i2-1)>=rtx(i2) ) fallx(L) = fallx(L) + ( rtx(i2) - rtx(i2-1) )
-           end do
-           do i2=2,nsw+1
-              dertx(i2-1) = rtx(i2) - rtx(i2-1)
-              derty(i2-1) = rty(i2) - rty(i2-1)
-           end do
 
 
            ! Record actual max and min elevations in RTX and Raw topo profile (RTRWX)
            pkht(L)=maxval(RTX)
-           vldp(L)=minval(RTX)
-           rwpk(L)=maxval(RTRWX)
-           rwvl(L)=minval(RTRWX)
 
 
            var = sum( (rtx-mnt)**2 )/( ns1-ns0 ) 
            vvaa(L) = var
            dex(L)  = MAXVAL(RTX)-MINVAL(RTX)
-           dex_dt(L)  = MAXVAL(RTX_dt)-MINVAL(RTX_dt)
 
 
            var2 = sum( (rty-mn2)**2 )/( ns1-ns0 ) 
            vva2(L) = var2
 
-#if 0
-           ! Counting up some logicals
-           Lhgts = ( ( rtx - minval(rtx) ) > 0.5*maxval( rtx - minval(rtx) ) )
-              ! flats = where slope is less than 33% of max
-           Lflats = ( abs(dertx) < 0.33*maxval( abs(dertx ) ) ) 
-#endif
-
-           !===============================================================
-           ! Calculate relative horz displacements of actual peaks and 
-           ! valleys along ridge-perp X (11/2/21)
-           !===============================================================
-           ipkh    = MAXLOC( RTX ) ! index of MAX peak height in rotated topo avg cross-section
-           xpkh(L) = XRT( ipkh(1) )-xmn
-           ivld    = MINLOC( RTX ) ! index of MIN valley depth in rotated topo avg cross-section
-           xvld(L) = XRT( ivld(1) )-xmn
 
            !================ Dec 2021  =========================================
            ! Ideally ipkh=nsw/2, i.e, center of ridge profile. If ipkh=1 or nsw
@@ -783,6 +763,7 @@ end subroutine find_ridges
            ! If ipkh is /// region then we flag it as "bad".  Maybe this code 
            ! should be removed altogether ... 
            !====================================================================
+           ipkh    = MAXLOC( RTX ) ! index of MAX peak height in rotated topo avg cross-section
            if (nsw>=8) then
               ibad_left  = 1    
               ibad_rght  = nsw 
@@ -795,39 +776,11 @@ end subroutine find_ridges
            end if
            
  
-           ipksv = ipkh
-
-           ift0    = MINLOC( RTX( 1 : ipkh(1) ) )
-           ift1    = MINLOC( RTX( ipkh(1) :  ) )+ipkh(1)-1
-
-           dex0(L)  = MAXVAL(RTX)-MINVAL( RTX( 1 : ipkh(1) ) )
-           dex1(L)  = MAXVAL(RTX)-MINVAL( RTX( ipkh(1) :  ) )
-
-           xft0(L)  =  XRT( ift0(1) ) -XRT( ipkh(1) )
-           xft1(L)  =  XRT( ift1(1) ) -XRT( ipkh(1) )
-
            rotmn  =  sum( sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            rotvar =  sum( sum( (rt(ns0:ns1-1,ns0:ns1-1)-rotmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
            if (rotvar>0.) qual(L) = var/rotvar
            if (rotvar>0.) vvaa(L) = vvaa(L)*(basvar/rotvar)
            if (rotvar>0.) vva2(L) = vva2(L)*(basvar/rotvar)
-
-
-        !++++ Analysis using triangular profiles in X and Y
-           do i2=1,ipkh(1)
-              cusp(i2) = rtx(ipkh(1)) + (rtx(1)-rtx(ipkh(1)))*(i2-ipkh(1))/(1-ipkh(1)) 
-           end do
-           do i2=ipkh(1),nsw+1
-              cusp(i2) = rtx(ipkh(1)) + (rtx(nsw)-rtx(ipkh(1)))*(i2-ipkh(1))/(nsw-ipkh(1)) 
-           end do
- 
-           ipkh    = MAXLOC( RTY ) ! index of ridge "FACE"
-           do i2=1,ipkh(1)
-              face(i2) = rty(ipkh(1)) + (rty(1)-rty(ipkh(1)))*(i2-ipkh(1))/(1-ipkh(1)) 
-           end do
-           do i2=ipkh(1),nsw 
-              face(i2) = rty(ipkh(1)) + (rty(nsw)-rty(ipkh(1)))*(i2-ipkh(1))/(nsw-ipkh(1)) 
-           end do
 
 
            rdg_profile( : , L )  = rtx( : )
@@ -839,40 +792,22 @@ end subroutine find_ridges
 
         iorn       = MAXLOC( vvaa )
 
-        mxvrx(ipk) = vvaa( iorn(1) ) !MAXVAL( vvaa )
-        mxvry(ipk) = vva2( iorn(1) ) !MAXVAL( vvaa )
-        mxdis(ipk) = dex( iorn(1) )
-        mxds2(ipk) = dex_dt( iorn(1) )
-        npks(ipk)  = npkx( iorn(1) )
-        nvls(ipk)  = nvlx( iorn(1) )
+        uniqid(ipk) = (1.0d+0) * ipk
         aniso(ipk) = qual( iorn(1) )
         anglx(ipk) = (iorn(1)-1)*(180./nang)
-        mnslp(ipk) = beta( iorn(1) )
+
+        mxdis(ipk) = dex( iorn(1) )
+
+        mxvrx(ipk) = vvaa( iorn(1) ) !MAXVAL( vvaa )
+        mxvry(ipk) = vva2( iorn(1) ) !MAXVAL( vvaa )
+        npks(ipk)  = npkx( iorn(1) )
 
         pkhts(ipk) = pkht( iorn(1) )
-        vldps(ipk) = vldp( iorn(1) )
  
-        rwpks(ipk) = rwpk( iorn(1) )
-        rwvls(ipk) = rwvl( iorn(1) )
-
-        ang00      =  (iorn(1)-1)*(180./nang)*(PI/180.)
-
-        mxds0(ipk) = dex0( iorn(1) )
-        mxds1(ipk) = dex1( iorn(1) )
-        sft0(ipk)  = xft0( iorn(1) )
-        sft1(ipk)  = xft1( iorn(1) )
-
-        riseq(ipk) = risex( iorn(1) )
-        fallq(ipk) = fallx( iorn(1) )
-
         rdg_profiles(1:nsw+1,ipk)  = rdg_profile( : , iorn(1) )
         crst_profiles(1:nsw+1,ipk) = crst_profile( : , iorn(1) )
         crst_silhous(1:nsw+1,ipk)  = crst_silhouette( : , iorn(1) )
 
-        rdg_profile_bk( :)      = rdg_profile( : , iorn(1) )
-        crst_silhouette_bk( : ) = crst_silhouette( : , iorn(1) )
-
-        uniqid(ipk) = (1.0d+0) * ipk
 
 !===============================================================
 !  Could be more direct and intuitive to relocate xspk and yspk,
@@ -885,27 +820,12 @@ end subroutine find_ridges
 !      Raw:        SUBARW( 2*nsw+1, 2*nsw+1)
 !===============================================================
 
-#if 1
-        call ridgescales( nsw, rdg_profiles(:,ipk), crst_silhous(:,ipk), xrt, xmn, &
-                          anglx(ipk), xs(ipk) , ys(ipk), & 
-                          xspk(ipk), yspk(ipk), clngth(ipk) , hwdth(ipk), & 
-                          suba , &      
-                          isoht(ipk), isowd(ipk), isobs(ipk), & 
-                          rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk)  )
-#else
-        call ridgescales( nsw, rdg_profile_bk , crst_silhouette_bk, xrt, xmn, &
-                          anglx(ipk), xs(ipk) , ys(ipk), & 
-                          xspk(ipk), yspk(ipk), clngth(ipk) , hwdth(ipk), & 
-                          suba , &      
-                          isoht(ipk), isowd(ipk), isobs(ipk), & 
-                          rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk)  )
-#endif
 
-#ifdef DEBUGOUTPUT  
-              rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk) )
-              rt_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk)   = rt(:,:)
-              suba_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk) = suba(:,:)
-#endif
+        call ridgeshift( nsw, rdg_profiles(:,ipk), crst_silhous(:,ipk), &
+             anglx(ipk), xs(ipk) , ys(ipk), & 
+             xspk(ipk) , yspk(ipk)  )
+
+
 
 
 
@@ -945,8 +865,9 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
   INTEGER,            intent(IN)  ::  NSW,IPK
   REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1)
   real    :: rt( 2*nsw+1, 2*nsw+1)
-  real    :: ridge_x( 2*nsw+1 )
-  integer :: ns0,ns1
+  real    :: ridge_x( 2*nsw+1 )  ,hnodes(nsw+1),pkht0,npk0
+  integer :: ns0,ns1, xnodes(nsw+1)
+  logical :: lredo
   !-----------------------------------------
   ! Indices for most ridge scheme subarrays.
   ! Note ns1-ns0 = nsw+1 always. Appears 
@@ -954,135 +875,121 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
   !-----------------------------------------
   ns0=nsw/2+1
   ns1=ns0+nsw+1
- 
-  rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk))
-  ridge_x(1:2*nsw+1) = sum( rt( : , ns0:ns1-1) , 2 ) /(ns1-ns0)
-  rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) = ridge_x(1:2*nsw+1)
+
+     call ridgescales( nsw, suba, & 
+          rdg_profiles(:,ipk), &
+          crst_silhous(:,ipk), &
+          xnodes_list(:,ipk), &
+          hnodes_list(:,ipk), & 
+          nnodes_list(ipk),   &
+          xwedge_list(:,ipk), &
+          hwedge_list(:,ipk), &
+          xspk(ipk), yspk(ipk), &
+          dcenter_list(ipk) , &             
+          anglx(ipk) , &
+          clngth(ipk), hwdth(ipk), & 
+          aniso(ipk), mxdis(ipk), & 
+          npks(ipk), pkhts(ipk), &
+          isoht(ipk), isowd(ipk), isobs(ipk), ridge_x )
+
+
+
+
+          call rebuild_nodes( nsw , PSW, &
+               3 , &
+               xwedge_list(:,ipk), &
+               hwedge_list(:,ipk), & 
+               hwedge_x(:,ipk) )
+
+          call rebuild_nodes( nsw , PSW, &
+               nnodes_list(ipk) , &
+               xnodes_list(:,ipk), &
+               hnodes_list(:,ipk), & 
+               hnodes_x(:,ipk) )
+
+          rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) = ridge_x(1:2*nsw+1)
+
+
+#ifdef DEBUGOUTPUT  
+             rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk) )
+             rt_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk)   = rt(:,:)
+             suba_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk) = suba(:,:)
+#endif
 
 end subroutine ANISO_ANA_2
 
 
-!====================================
-!====================================
+subroutine thinout_list( ncube, npeaks,NSW )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  INTEGER,   intent(IN)  ::  ncube,NSW,npeaks
+  integer :: i,j,ipk,bloc,np,ipkx,nalloc
+  real, allocatable     :: anglx_sv(:),quali_sv(:)
+  real    :: max_quali
+  integer, allocatable  :: ipk_sv(:)
 
-   subroutine ridgescales( nsw, ridge, crest, xr, xmn, anglx0 , &
-                           xs0 , ys0, xspk0 , yspk0, clngt0, hwdth0 , & 
-                           suba , &
-                           isoht0, isowd0 , isobs0, ridge_x )
 
-    integer , intent(in   )  :: nsw
-    real,     intent(in   )  :: ridge(nsw+1), crest(nsw+1), xr(nsw+1) 
-    real,     intent(in   )  :: xs0,ys0,anglx0,xmn
-    real,     intent(inout)  :: xspk0,yspk0,clngt0,hwdth0
-    real,     intent(in   )  :: suba( 2*nsw+1 , 2*nsw+1 )
-    real,     intent(inout)  :: ridge_x( 2*nsw+1 )
-    real,     intent(inout)  :: isowd0 , isoht0, isobs0
+  bloc   =  NINT( 1.*NSW/ 4. ) ! 4
+  nalloc =  2*bloc*bloc 
 
-    ! local vars
-    real    :: ang00,xshft,yshft,pcrest(nsw+1),pridge(nsw+1),cran,hran
-    real    :: hwd1,hwd2,isox
-    real    :: rt( 2*nsw+1, 2*nsw+1),rt2d(nsw+1 , nsw+1),iso2d(nsw+1 , nsw+1)
-    integer :: ipkh(1),ns0,ns1,j
-    logical :: Lcount(nsw+1)
+  allocate( anglx_sv( nalloc ) , quali_sv( nalloc ), ipk_sv( nalloc ) )
 
-    ns0=nsw/2+1
-    ns1=ns0+nsw+1
+  do np= 1,6
+  do j = 1-bloc,ncube+bloc,bloc
+  do i = 1-bloc,ncube+bloc,bloc
+     
+     quali_sv(:) = 0.
+     anglx_sv(:) = 0.
+     ipk_sv(:)   = 0
+     ipkx        = 0
 
-    ! XR is just [1,..,nsw+1]. Fine coord for both NORMAL(X) and ALONG(Y) ridge direction
-
-    ipkh    = MAXLOC( ridge ) ! index of MAX peak height in rotated topo avg cross-section
-    xshft   = XR( ipkh(1) ) - xmn
-
-    ang00   = anglx0 * (PI/180.)
-
-    ! Shift peak/crest location NORMAL to ridge - "X"
-    xspk0   = xs0  + xshft * cos( ang00 )
-    yspk0   = ys0  - xshft * sin( ang00 )
-
-    cran      = MAXVAL(crest) - MINVAL(crest)
-    hran      = MAXVAL(ridge) - MINVAL(ridge)
+     do ipk=1,npeaks
+        if ( (xspk(ipk) >= i).AND.(xspk(ipk) < i+bloc) .AND. & 
+             (yspk(ipk) >= j).AND.(yspk(ipk) < j+bloc) .AND. & 
+             (MyPanel(ipk) == np ) ) then
+             ipkx=ipkx+1
+             ipk_sv(ipkx)   = ipk
+             quali_sv(ipkx) = mxdis(ipk)*aniso(ipk)
+             anglx_sv(ipkx) = anglx(ipk)
+        end if
+     end do
  
-    pcrest(:) = crest(:)  -  MINVAL(crest)
-    where (pcrest < 0.1*cran)
-       pcrest = 0.
-    end where
-   
-    ! Now shift peak/crest location ALONG crest - "Y"
-    !  1) Calculate centroid in Y, diff w/ resp center 
-    yshft  = sum( xr * pcrest )/( sum( pcrest )+ 0.1 ) - xmn
-    !  2) Shift in cubed sphere coords. Two +'s not a sign
-    !     error.  Combination of conventions for ridges lead 
-    !     to this: 0 <= ang00 <= +180. w/ ang00=0 eq N-S ridge
-    xspk0  = xspk0  + yshft *sin( ang00 )
-    yspk0  = yspk0  + yshft *cos( ang00 )
+     if (ipkx >=1 ) then
+        max_quali = maxval( quali_sv(1:ipkx) )
+        do ipk=1,ipkx
+           if (quali_sv(ipk) < max_quali ) & 
+             mxdis( ipk_sv(ipk) )= -999.0 ! -mxdis( ipk_sv(ipk) )
+        end do
+     end if
+                       
+  end do
+  end do
+       write(*,*) "Thinning list Panel=",np," with BLOC=",bloc
+  end do
 
-    ! first guess is CLNGT=nsw+1
-    clngt0 = 1.*(nsw+1)
+  deallocate( anglx_sv , quali_sv , ipk_sv )
 
-    if (cran >= hran) then
-    ! If cran is as big as hran
-    ! second guess is nsw minus low parts
-    Lcount = ( pcrest < 0.1*cran ) 
-    clngt0 = 1.0*(nsw+1 - count( Lcount ) )
-    endif
-
-    ! adjust hwdth
-    pridge(:) = ridge(:)  -  MINVAL(ridge)
-    ! 2 sided equlivalent "wedge" ceneterd at ipkh
-    hwd1 =  2.* sum( pridge( 1:ipkh(1) ) )  / ( pridge(ipkh(1))+0.1)
-    hwd2 =  2.* sum( pridge( ipkh(1):  ) )  / ( pridge(ipkh(1))+0.1)
-    ! stop goofy results if a plateau exists on one side
-    hwd1 = min( hwd1 , 4.*nsw )
-    hwd2 = min( hwd2 , 4.*nsw )
-
-    hwdth0 = (hwd1 + hwd2)
-
-    rt  = rotbyx( suba, 2*nsw+1 , anglx0 )
-
-    ridge_x(1:2*nsw+1) = sum( rt( : , ns0:ns1-1) , 2 ) /(ns1-ns0)
-
-    !---------------------------------------------------------
-    ! Now assign some non-ridge variance to an isotropic obstacle
-    !-----
-    ! First make 2D ridge-prism
-    !---------------------------------------------------------
-    do j=1,nsw+1 
-       rt2d(:,j) = ridge(:)
-    end do
-
-    !------------------------------------------------
-    ! Difference of rotated 2D topo from ridge-prism
-    ! = 'isotropic residual'
-    !------------------------------------------------
-    iso2d   = rt(ns0:ns1-1,ns0:ns1-1)  - rt2d 
+      write(*,*) " will ZERO out negative peaks and 'Cuestas' in thinout "
+      do ipk=1,npeaks
+         if( (pkhts(ipk)<0.1*mxdis(ipk)).or.(npks(ipk)<1.0) ) then
+           mxdis(ipk)  = -222.0
+         endif
+      end do
+      do ipk=1,npeaks
+         !!if( hwedge_list(2,ipk)<=1. ) then
+         if( ( minval( hwedge_list(:,ipk))<0.).AND.(hwedge_list(2,ipk)>0.).AND. &
+             ( minval( hwedge_list(:,ipk)) < -4*hwedge_list(2,ipk)) ) then
+           mxdis(ipk)  = -333.0
+         endif
+      end do
+     do ipk=1,npeaks
+         if( hwedge_list(2,ipk)<=1. ) then
+           mxdis(ipk)  = -444.0
+         endif
+     end do
  
-    !-----------------------------------
-    !  Average of +ve isotropic residual
-    !-----------------------------------
-    isox    = sum( iso2d , mask = (iso2d > 0.) ) /( count(  (iso2d > 0.) ) + .1 )
+end subroutine THINOUT_LIST
 
-    !----------------------------------
-    ! maximum value of isotropic residual
-    !-----------------------------------
-    isoht0  = maxval( iso2d )
 
-    !----------------------
-    ! Length scale 
-    !---------------------
-    ! i) straight SQRT of area
-    !isowd0  = sqrt(1.0* count( (iso2d > isox ) ) )
-    ! ii) Assume "isotropy" is smeared out along 
-    !     lenght of ridge.
-    isowd0  = (1.0* count( (iso2d > isox ) ) ) / max( clngt0 , 1. )
-   
-    !----------------------
-    ! Estimate "base" for 
-    ! isotropic residual
-    !----------------------
-    isobs0  = sum( ridge )/(nsw+1.) 
-   
-
-   end subroutine ridgescales
 
 !====================================
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
@@ -1210,21 +1117,6 @@ end subroutine ANISO_ANA_2
      itrgtC = 0.
 
 
-
-    if(lzerovalley)then
-      write(*,*) " will ZERO out negative peaks and 'Cuestas' "
-      do ipk=1,npeaks
-         if( (pkhts(ipk)<0.1*mxdis(ipk)).or.(npks(ipk)<1.0) ) then
-           mxdis(ipk)  = 0.
-           isoht(ipk)  = 0.
-           riseq(ipk)  = 0.
-           fallq(ipk)  = 0.
-           clngth(ipk) = 0.
-         endif
-      end do
-    else
-      write(*,*) " Leave negative peaks ALONE "
-    endif
 
         write(*,*) " about to call paintridge2cube "
 
@@ -1506,10 +1398,6 @@ end subroutine ANISO_ANA_2
  end subroutine latlonangles
 
 
-
-
-
-
 !================================================================
   subroutine importancesort (ntarget)
 !-----------------------------------
@@ -1745,7 +1633,7 @@ write(*,*) " in fleshout_block "
        end do
        rotangl = - anglxC(i,j,ip) 
        subr = rotbyx( suba , 2*nsw+1, rotangl )
-       subdis = subr  * mxdisC(i,j,ip)
+       subdis = subr  *    mxdisC(i,j,ip)
        where(abs(subdis)>=8000.)
            subdis = 0.
        end where
@@ -1784,12 +1672,81 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac ) &
        real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
        real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
        real, dimension(-nsw:nsw)          :: xq,yq
+       real, dimension(2*PSW+1)           :: ridgex
        real :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
 
 write(*,*) " in fleshout_profi "
+!===============================
+! Initialize cube sphere "canvas"
+! for "painting"
+!================================
+  axc  =  0.
+
+  do ip=1,6
+  do j=1,ncube
+  do i=1,ncube
+     if(mxdisC(i,j,ip)>=1.0) then
+       nswx = NINT( nsw / rrfac(i,j,ip) )
+       ipk  = INT( uniqidC ( i,j,ip ) )
+       suba(:,:) = 0.
+       subr(:,:) = 0.
+       do jw=-1,1
+          !!suba(: , jw  ) = rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) 
+          suba(: , jw  ) = hnodes_x(PSW+1-nsw:PSW+1+nsw,ipk) 
+       end do
+       rotangl = - anglxC(i,j,ip) 
+       subr = rotbyx( suba , 2*nsw+1, rotangl )
+       subdis = subr
+       where(abs(subdis)>=8000.)
+           subdis = 0.
+       end where
+                ! Reconstruct 
+                !------------------------
+                do jj = -NSWx/2,NSWx/2
+                do ii = -NSWx/2,NSWx/2
+                    x0 = i ! INT( xspk(ipk) ) + 1
+                    y0 = j ! INT( yspk(ipk) ) + 1
+                    if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
+                       if ( (subdis(ii,jj) <= 0.).and. (AXC( x0+ii, y0+jj, ip )<=0. ) ) then
+                          if ( subdis(ii,jj) <=  AXC( x0+ii, y0+jj, ip ) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                       else
+                          if ( subdis(ii,jj) >=  AXC( x0+ii, y0+jj, ip ) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                       end if
+                    end if
+                end do
+                end do
+     end if
+  end do
+  end do
+  write(*,*)" finished panel=",ip
+  end do
+
+end function fleshout_profi
+
+!++3/30/22 Added 
+function fleshout_wedge ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac ) & 
+                          result( axc )
+   
+       integer, intent(in) :: ncube,nhalo,nsw
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: mxdisC
+       !!real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: hwdthC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: uniqidC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: rrfac
+
+       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
+       real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
+       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real, dimension(-nsw:nsw)          :: xq,yq
+       real :: rotangl,dsq,ssq
+       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
+!---------------------------------------------------
+
+
+write(*,*) " in fleshout_wedge "
 !===============================
 ! Initialize cube sphere "canvas"
 ! for "painting"
@@ -1835,7 +1792,7 @@ write(*,*) " in fleshout_profi "
   write(*,*)" finished panel=",ip
   end do
 
-end function fleshout_profi
+end function fleshout_wedge
 
 !======================================
 function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, crest_weight, all_pixels ) & 
@@ -1852,6 +1809,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: qc
        real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
        real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real, dimension(-nsw:nsw,-nsw:nsw) :: subblk,subblk0
        real, dimension(-nsw:nsw)          :: xq,yq
        real :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
@@ -1986,6 +1944,20 @@ write(*,*) " in paintridge "
              sub1 = rotbyx( sub11 , 2*nsw+1, rotangl )
 #endif
 
+             
+             rotangl = - anglx(ipk) 
+             subblk0(:,:)=0.
+             ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+             nhw  = MIN( INT(hwdth(ipk)/2) , nsw/2 )
+             !nhw  = MAX(nhw/4,1) ! nhw/2
+             do jw=-nhw,nhw
+               !subblk0( jw , -ncl:ncl ) = 1. 
+               subblk0( jw , -ncl:ncl ) = 1. !-1.0*abs(jw)/nhw
+             end do
+             subblk0 = rotbyx( subblk0 , 2*nsw+1, rotangl )
+             subblk  = subblk0 * mxdis(ipk)  !axr(ipk)
+             
+
              !======================================================
              ! Scale sub1 by 1 minus normalized distance 
              ! from current feature location (xs,ys) to diagnosed 
@@ -1997,28 +1969,46 @@ write(*,*) " in paintridge "
              subq   = sub1 * dsq
              NSWx = NSW / RefFac(ipk)
              if (.NOT.(allpixels)) then
-             ! original reconciliation
-             !------------------------
+#if 0
+             ! original reconciliation based on {xs,ys} vs {xspk,yspk} 
+             !-------------------------------------------------------
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
-                !x0 = INT( xspk(ipk) ) + 1  ! original has +1
-                !y0 = INT( yspk(ipk) ) + 1  ! original has +1
-                x0 = INT( xspk(ipk) )      ! why do we need +1 
-                y0 = INT( yspk(ipk) )
+                x0 = INT( xspk(ipk) ) + 1  ! original, original has +1
+                y0 = INT( yspk(ipk) ) + 1  ! original, original has +1
+                !x0 = INT( xspk(ipk) )      ! why do we need +1 
+                !y0 = INT( yspk(ipk) )
                 if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
                        if ( QC( x0+ii, y0+jj, ip ) <= subq(ii,jj) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
                        if ( QC( x0+ii, y0+jj, ip ) <= subq(ii,jj) )  QC( x0+ii, y0+jj, ip )  = subq(ii,jj)
                 endif
              end do
              end do
-             else
+#else
+             ! reconstruction/reconciliation based on a quality measure in rotated rectangle (subblk)
+             !----------------------------------------------------------------------------------------
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
-                !x0 = INT( xspk(ipk) ) + 1  ! original has +1
-                !y0 = INT( yspk(ipk) ) + 1  ! original has +1
-                x0 = INT( xspk(ipk) )      ! why do we need +1 
+                !x0 = INT( xspk(ipk) )      ! do we need +1 
+                !y0 = INT( yspk(ipk) )  
+                x0 = NINT( 1.*xspk(ipk) )      ! do we need +1 
+                y0 = NINT( 1.*yspk(ipk) )  
+                if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
+                       if (subblk(ii,jj) >= QC( x0+ii, y0+jj, ip ))  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                       if (subblk(ii,jj) >= QC( x0+ii, y0+jj, ip ))   QC( x0+ii, y0+jj, ip ) = subblk(ii,jj)
+                 endif
+             end do
+             end do
+#endif
+             else
+             ! allpixels reconstruction/reconcilaition
+             !----------------------------------------
+             do jj = -NSWx/2,NSWx/2
+             do ii = -NSWx/2,NSWx/2
+                ip = peaks(ipk)%ip
+                x0 = INT( xspk(ipk) )
                 y0 = INT( yspk(ipk) )
                 if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
                        if (subdis(ii,jj) >= AXC( x0+ii, y0+jj, ip ))  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
@@ -2367,11 +2357,10 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
        crst_silhous(:,:)=0.d+0
    allocate( MyPanel( npeaks ) )
        MyPanel = -1
+   allocate( NSWx_diag( npeaks ) )
+       NSWx_diag = -1
 
-  allocate( rdg_profiles_x( 2*PSW+1, npeaks ) )
-       rdg_profiles_x(:,:)=0.d+0
 
-!++11/15/21
   allocate( UNIQID( npeaks ) )
        UNIQID(:)=-9999.d+0
 
@@ -2384,6 +2373,29 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
    isobs=0.
   allocate( RefFac(npeaks) )
    RefFac=1.0
+ 
+  allocate( hnodes_list( PSW+1, npeaks ) )
+       hnodes_list(:,:)=0.d+0
+  allocate( xnodes_list( PSW+1, npeaks ) )
+       xnodes_list(:,:)=0
+  allocate( nnodes_list( npeaks ) )
+       nnodes_list(:)=0
+  allocate( dcenter_list( npeaks ) )
+       dcenter_list=-999
+
+  allocate( xwedge_list( 3 , npeaks ) )
+       xwedge_list(:,:)=0
+  allocate( hwedge_list( 3 , npeaks ) )
+       hwedge_list(:,:)=0
+
+
+  allocate( rdg_profiles_x( 2*PSW+1, npeaks ) )
+       rdg_profiles_x(:,:)=0.d+0
+  allocate( hnodes_x( 2*PSW+1, npeaks ) )
+       rdg_profiles_x(:,:)=0.d+0
+  allocate( hwedge_x( 2*PSW+1, npeaks ) )
+       rdg_profiles_x(:,:)=0.d+0
+
 
 
 

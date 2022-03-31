@@ -1,8 +1,10 @@
 pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran $
-              ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi $
-              ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super $
+              ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
+              ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
               ;  overplotting  
-              ,xl=x
+              ,xl=x $
+              ;  control
+              ,stop=stop
 
 if not keyword_set(w0) then w0 =1
 
@@ -41,7 +43,7 @@ window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
 contour,cu.aniso(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
-contour,cu.aniso(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=4
+contour,cu.aniso(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=2
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92," Aniso ",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
@@ -61,12 +63,25 @@ xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
 endif
 
 if keyword_set(sdev) then begin
+lev=(findgen(16)-7.99999)*200.
+window,re=2,xs=1200,ys=900,w0
+wset,w0
+amwgct
+;tvlct ,indgen(16)*16,intarr(16),intarr(16)
+contour,cu.sdev(*,*,p-1),lev=lev,c_colo=indgen(16),/cell,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+contour,cu.dev(*,*,p-1),lev=[1,1000],/foll,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr ,/noer,c_line=2
+xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
+xyouts,/norm,align=.5,.4,.92," 'Profi' ",size=3.
+xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+endif
+
+if keyword_set(nvar) then begin
 lev=(2./16)*findgen(16)
 window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
 ;tvlct ,indgen(16)*16,intarr(16),intarr(16)
-contour,cu.sdev(*,*,p-1),min=-1,lev=lev,c_colo=indgen(16),/cell,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+contour,cu.nvar(*,*,p-1),min=-1,lev=lev,c_colo=indgen(16),/cell,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
 contour,cu.dev(*,*,p-1),lev=[1,1000],/foll,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr ,/noer,c_line=2
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92," 'Profi' ",size=3.
@@ -118,6 +133,17 @@ xyouts,/norm,align=.5,.4,.92," 'Blocks' ",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
 endif
 
+if keyword_set(dblock) then begin
+lev=(findgen(16)-7.99999)*200.
+window,re=2,xs=1200,ys=900,w0
+wset,w0
+amwgct
+contour,cu.block(*,*,p-1) - cu.pdev(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
+xyouts,/norm,align=.5,.4,.92," 'Blocks' ",size=3.
+xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+endif
+
 if keyword_set(super) then begin
 lev=(findgen(16)-7.99999)*200.
 window,re=2,xs=1200,ys=900,w0
@@ -125,12 +151,16 @@ wset,w0
 amwgct
 contour,cu.super(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
 contour,cu.super(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
+contour,cu.super(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 
 if keyword_set(x) then oplot,x.xspk(ox)-1, x.yspk(ox)-1 ,ps=1,syms=.5
 
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92," MXDIS Super-set ",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+
+if keyword_set(stop) then STOP
+
 endif
 
 if keyword_set(mxdis) then begin
@@ -139,7 +169,8 @@ window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
 contour,cu.mxdis(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
-contour,cu.mxdis(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=4
+contour,cu.mxdis(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
+contour,cu.mxdis(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92," MXDIS 'Skeleton' ",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3

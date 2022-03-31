@@ -15,6 +15,7 @@ ox = where( x.panel eq p and $
 
 
 s=size(cu.dev)&nc=s(1)
+uixy = cu.uniqi( xr(0):xr(1) , yr(0):yr(1) , p-1 )
 ui = cu.uniqi( xr(0):xr(1) , yr(0):yr(1) , p-1 )
 ui = ui(where(ui gt 0) )
 
@@ -49,8 +50,8 @@ yv=findgen(nc)+1
 lev=[-1,0,1,10, 20, 50, 100, 200, 500, 1000, 2000, 3000 ]
 window,re=2,1,xs=1100,ys=900
 amwgct
-;contour,cu.mxdis(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
-contour,cu.super(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
+contour,cu.mxdis(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
+;contour,cu.super(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
 contour,cu.dev(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,200,500,1000],/noer,c_line=[2,2,2,0,0,0,0,0],c_thick=[1,1,1,1,1,1,2,2],/fol
 contour,cu.block(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,200,500,1000],/noer,c_line=[2,2,2,0,0,0,0,0],c_thick=[1,1,1,1,1,1,2,2],/fol,c_colo=12
 
