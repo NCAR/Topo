@@ -1,4 +1,4 @@
-pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi
+pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes
 
 s=size(cu.dev)
 nc=s(1)
@@ -15,6 +15,11 @@ endif
 if keyword_set(block) then begin
 f1=cu.block
 f2=cu.pdev
+endif
+
+if keyword_set(nodes) then begin
+f1=cu.nodes
+f2=cu.dev
 endif
 
 for p=0,5 do begin

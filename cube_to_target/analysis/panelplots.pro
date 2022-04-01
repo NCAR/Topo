@@ -1,6 +1,9 @@
 pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran $
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
               ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
+              ,wedge=wedge,nodes=nodes $
+              ;  processing
+              ,nsm=sm $
               ;  overplotting  
               ,xl=x $
               ;  control
@@ -105,9 +108,32 @@ lev=(findgen(16)-7.99999)*200.
 window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
-contour,cu.profi(*,*,p-1) - cu.dev(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+if not keyword_set(sm) then begin
+   contour,cu.profi(*,*,p-1)- cu.dev(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$=''
+endif else begin
+   contour,smoothxyp(cu.profi(*,*,p-1)- cu.dev(*,*,p-1),sm,sm),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$='  - smoothed -'+padstring( sm )
+endelse
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
-xyouts,/norm,align=.5,.4,.92," 'D(Profi,Dev)' ",size=3.
+xyouts,/norm,align=.5,.4,.92," 'D(Profi,Dev)' "+sm$,size=3.
+xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+endif
+
+if keyword_set(wedge) then begin
+lev=(findgen(16)-7.99999)*200.
+window,re=2,xs=1200,ys=900,w0
+wset,w0
+amwgct
+if not keyword_set(sm) then begin
+   contour,cu.wedge(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$=''
+endif else begin
+   contour,smoothxyp(cu.wedge(*,*,p-1),sm,sm),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$='  - smoothed -'+padstring( sm )
+endelse
+xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
+xyouts,/norm,align=.5,.4,.92," 'Wedge' "+sm$,size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
 endif
 
@@ -116,9 +142,32 @@ lev=(findgen(16)-7.99999)*200.
 window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
-contour,cu.profi(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+if not keyword_set(sm) then begin
+   contour,cu.profi(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$=''
+endif else begin
+   contour,smoothxyp(cu.profi(*,*,p-1),sm,sm),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$='  - smoothed -'+padstring( sm )
+endelse
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
-xyouts,/norm,align=.5,.4,.92," 'Profi' ",size=3.
+xyouts,/norm,align=.5,.4,.92," 'Profi' "+sm$,size=3.
+xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
+endif
+
+if keyword_set(nodes) then begin
+lev=(findgen(16)-7.99999)*200.
+window,re=2,xs=1200,ys=900,w0
+wset,w0
+amwgct
+if not keyword_set(sm) then begin
+   contour,cu.nodes(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$=''
+endif else begin
+   contour,smoothxyp(cu.nodes(*,*,p-1),sm,sm),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$='  - smoothed -'+padstring( sm )
+endelse
+xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
+xyouts,/norm,align=.5,.4,.92," 'Nodes' "+sm$,size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3
 endif
 
@@ -193,7 +242,13 @@ lev=(findgen(16)-7.99999)*200.
 window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
-contour,cu.dev(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+if not keyword_set(sm) then begin
+   contour,cu.dev(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$=''
+endif else begin
+   contour,smoothxyp(cu.dev(*,*,p-1),sm,sm),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr
+   sm$='  - smoothed -'+padstring( sm )
+endelse
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit='meters',labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92,"(Raw Topo)-(SmoothTopo), i.e., unresolved topo",size=3.
 xyouts,/norm,align=.5,.5,.02, cu.rf,size=1.3

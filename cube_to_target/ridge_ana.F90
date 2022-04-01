@@ -1032,6 +1032,7 @@ end subroutine THINOUT_LIST
       integer :: nswx,nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: nodesC , wedgeC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC, profiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, clngtC, blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC, itrgxC
@@ -1184,8 +1185,16 @@ end subroutine THINOUT_LIST
      blockC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " fleshing out PROFI "
-     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor )
+     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, rdg_profiles_x )
      profiC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " fleshing out NODES "
+     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hnodes_x )
+     nodesC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " fleshing out WEDGES "
+     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_x )
+     wedgeC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
                    
      !!call relist( uniqidC, mxdisC, 
 
@@ -1324,6 +1333,8 @@ end subroutine THINOUT_LIST
        write(911) isowdC
        write(911) anisoC
        write(911) superC
+       write(911) nodesC
+       write(911) wedgeC
        
 #if 0
        write(911) mxvrxC
@@ -1658,26 +1669,25 @@ write(*,*) " in fleshout_block "
 end function fleshout_block
 !======================================
 !++1/25/22 Added 
-function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac ) & 
+function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) & 
                           result( axc )
    
        integer, intent(in) :: ncube,nhalo,nsw
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: mxdisC
-       !!real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: hwdthC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: uniqidC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: rrfac
+       real,                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
        real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
        real, dimension(-nsw:nsw)          :: xq,yq
-       real, dimension(2*PSW+1)           :: ridgex
        real :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
-
+ 
 write(*,*) " in fleshout_profi "
 !===============================
 ! Initialize cube sphere "canvas"
@@ -1695,7 +1705,7 @@ write(*,*) " in fleshout_profi "
        subr(:,:) = 0.
        do jw=-1,1
           !!suba(: , jw  ) = rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) 
-          suba(: , jw  ) = hnodes_x(PSW+1-nsw:PSW+1+nsw,ipk) 
+          suba(: , jw  ) = shape_x(PSW+1-nsw:PSW+1+nsw,ipk) 
        end do
        rotangl = - anglxC(i,j,ip) 
        subr = rotbyx( suba , 2*nsw+1, rotangl )
@@ -2392,9 +2402,9 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
   allocate( rdg_profiles_x( 2*PSW+1, npeaks ) )
        rdg_profiles_x(:,:)=0.d+0
   allocate( hnodes_x( 2*PSW+1, npeaks ) )
-       rdg_profiles_x(:,:)=0.d+0
+       hnodes_x(:,:)=0.d+0
   allocate( hwedge_x( 2*PSW+1, npeaks ) )
-       rdg_profiles_x(:,:)=0.d+0
+       hwedge_x(:,:)=0.d+0
 
 
 
