@@ -56,18 +56,19 @@ contour,cu.dev(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,20
 contour,cu.block(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,lev=[-500,-200,-100,0,100,200,500,1000],/noer,c_line=[2,2,2,0,0,0,0,0],c_thick=[1,1,1,1,1,1,2,2],/fol,c_colo=12
 
 circlesym
+stdcolo
 oplot,x.xspk(idx),x.yspk(idx),ps=8,syms=3
 for l=0,n_elements( idx )-1 do begin
    id$ = strtrim(  string(    long(x.uniqid( idx(l) ) )),2) 
    idx$ = strtrim(  string(    long(idx(l)) ),2)
-   xyouts,/data, x.xspk(idx(l)),x.yspk(idx(l)) , '  '+idx$,size=2
+   xyouts,/data, x.xspk(idx(l)),x.yspk(idx(l)) , '  '+idx$,size=2, colo=1
 endfor
 circlesym,nv=4
 oplot,x.xs(idx),x.ys(idx),ps=8,syms=3
 for l=0,n_elements( idx )-1 do begin
    id$ = strtrim(  string(    long(x.uniqid( idx(l) ) )),2) 
    idx$ = strtrim(  string(    long(idx(l)) ),2) 
-   xyouts,/data, x.xs(idx(l)),x.ys(idx(l)) , '  '+idx$,size=2
+   xyouts,/data, x.xs(idx(l)),x.ys(idx(l)) , '  '+idx$,size=2, colo=1
 endfor
 
 STOP

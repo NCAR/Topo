@@ -820,14 +820,9 @@ end subroutine find_ridges
 !      Raw:        SUBARW( 2*nsw+1, 2*nsw+1)
 !===============================================================
 
-
         call ridgeshift( nsw, rdg_profiles(:,ipk), crst_silhous(:,ipk), &
              anglx(ipk), xs(ipk) , ys(ipk), & 
              xspk(ipk) , yspk(ipk)  )
-
-
-
-
 
   deallocate( rt)
   deallocate( rtrw)
@@ -922,7 +917,7 @@ end subroutine ANISO_ANA_2
 subroutine thinout_list( ncube, npeaks,NSW )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,   intent(IN)  ::  ncube,NSW,npeaks
-  integer :: i,j,ipk,bloc,np,ipkx,nalloc
+  integer :: i,j,ipk,bloc,np,ipkx,nalloc,ipk0,ib0,ib1,jb0,jb1
   real, allocatable     :: anglx_sv(:),quali_sv(:)
   real    :: max_quali
   integer, allocatable  :: ipk_sv(:)
@@ -933,6 +928,14 @@ subroutine thinout_list( ncube, npeaks,NSW )
 
   allocate( anglx_sv( nalloc ) , quali_sv( nalloc ), ipk_sv( nalloc ) )
 
+#if 0
+  !------------------------------------------------------------
+  ! This form of thinning gives good metrics and is intuitively
+  ! clear, but is extremely slow when 'bloc' is small and 
+  ! npeaks is large, e.g., nc=3000, co=15 ...
+  !
+  ! Keep it in code base for now, maybe an be sped up
+  !-------------------------------------------------------------
   do np= 1,6
   do j = 1-bloc,ncube+bloc,bloc
   do i = 1-bloc,ncube+bloc,bloc
@@ -957,14 +960,67 @@ subroutine thinout_list( ncube, npeaks,NSW )
         max_quali = maxval( quali_sv(1:ipkx) )
         do ipk=1,ipkx
            if (quali_sv(ipk) < max_quali ) & 
-             mxdis( ipk_sv(ipk) )= -999.0 ! -mxdis( ipk_sv(ipk) )
+             mxdis( ipk_sv(ipk) )= -999.0
         end do
      end if
                        
   end do
   end do
-       write(*,*) "Thinning list Panel=",np," with BLOC=",bloc
+        write(*,*) "Thinning list Panel=",np," with BLOC=",bloc
   end do
+#else
+  !----------------------------------------------------
+  ! This form of thinning seems to give marginally better
+  ! metrics than other forms, or than no thinning, and is 
+  ! also much faster when 'bloc' is small
+  !----------------------------------------------------
+  do ipk0=1,npeaks
+     quali_sv(:) = 0.
+     anglx_sv(:) = 0.
+     ipk_sv(:)   = 0
+     ipkx        = 0
+
+     !!i  = NINT( 1.* xspk(ipk0) )
+     !!j  = NINT( 1.* yspk(ipk0) )
+     i  = INT( xspk(ipk0) )
+     j  = INT( yspk(ipk0) )
+     np = MyPanel(ipk0)
+
+     ! ib0=i-bloc/2
+     ! ib1=i+bloc/2
+     ! jb0=j-bloc/2
+     ! jb1=j+bloc/2
+
+
+     ib0=bloc*INT(i/bloc) + 1
+     ib1=ib0 + bloc
+     jb0=bloc*INT(j/bloc) + 1
+     jb1=jb0 + bloc
+
+     do ipk=1,npeaks
+        if ( ( INT(xspk(ipk)) >= ib0 ).AND.( INT(xspk(ipk)) <= ib1 ) .AND. & 
+             ( INT(yspk(ipk)) >= jb0 ).AND.( INT(yspk(ipk)) <= jb1 ) .AND. & 
+             (MyPanel(ipk) == np ) ) then
+             ipkx=ipkx+1
+             ipk_sv(ipkx)   = ipk
+             quali_sv(ipkx) = mxdis(ipk)*aniso(ipk)
+             anglx_sv(ipkx) = anglx(ipk)
+        end if
+     end do
+ 
+     if (ipkx >=1 ) then
+        max_quali = maxval( quali_sv(1:ipkx) )
+        do ipk=1,ipkx
+           if (quali_sv(ipk) < max_quali ) & 
+             mxdis( ipk_sv(ipk) )= -999.0
+        end do
+     end if
+                       
+       write(*,900,advance='no') achar(13) , ipk0,npeaks,bloc
+    end do
+
+900 format( a1, "  Thinning peaks ",i8," out of ",i8 , " bloc=" ,i4)
+#endif
 
   deallocate( anglx_sv , quali_sv , ipk_sv )
 
@@ -988,8 +1044,6 @@ subroutine thinout_list( ncube, npeaks,NSW )
      end do
  
 end subroutine THINOUT_LIST
-
-
 
 !====================================
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
