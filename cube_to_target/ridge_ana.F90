@@ -16,13 +16,12 @@ public find_local_maxes
 public find_ridges
 public remapridge2target
 public remapridge2tiles
-public paintridgeoncube
 
 public anglx_target,aniso_target,mxdis_target,hwdth_target
 public mxvrx_target,mxvry_target,bsvar_target,wghts_target,riseq_target
 public ang22_target,anixy_target,clngt_target,cwght_target,count_target
 public nsubr,grid_length_scale,fallq_target,isoht_target,isowd_target
-public isohtq_target,isowdq_target
+public isovar_target
 
 public peak_type
 
@@ -46,7 +45,7 @@ public peak_type
   REAL, allocatable  :: hwedge_list(:,:)
 
 
-  REAL, allocatable  :: hwedge_x(:,:),hnodes_x(:,:)
+  REAL, allocatable  :: hwedge_o(:,:),hwedge_x(:,:),hnodes_x(:,:),hnodes_o(:,:)
 
 !================================================================================
 
@@ -59,7 +58,7 @@ public peak_type
   real(r8), allocatable, dimension(:,:) :: ang22_target,anixy_target,clngt_target,cwght_target
   real(r8), allocatable, dimension(:,:) :: count_target,riseq_target,fallq_target
   real(r8), allocatable, dimension(:,:) :: isoht_target,isowd_target
-  real(r8), allocatable, dimension(:)   :: isohtq_target,isowdq_target
+  real(r8), allocatable, dimension(:)   :: isovar_target
   !!,rwpks_target
 
     INTEGER (KIND=int_kind),allocatable :: UQRID(:) 
@@ -340,7 +339,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
     INTEGER (KIND=int_kind) :: ispk,jspk
-    INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge
+    INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
 
 
     REAL (KIND=dbl_kind),                                            &
@@ -356,7 +355,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
 
     !! real :: SUBA(2*nsw+1, 2*nsw+1 ), SUBARW(2*nsw+1, 2*nsw+1 ), SUBX(2*nsw+1), SUBY(2*nsw+1)
-    real , allocatable :: SUBA(: , : ), SUBARW( : , : ), SUBX(:), SUBY(:)
+    real , allocatable :: SUBA(: , : ), SUBARW( : , : ), SUBX(:), SUBY(:),subrot(:,:)
 
     REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
     REAL(KIND=dbl_kind)  :: ggaa,ggbb,ggab,irho
@@ -484,10 +483,20 @@ write(*,*) " SHAPE ", shape( peaks%i )
         jspk = NINT(1.*yspk(ipk) )
         suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
         call ANISO_ANA_2( SUBA,NSWx,IPK )
-         write(*,903,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
+  
+        deallocate( suba, subarw, subx, suby )
+#if 0
+        allocate( suba( 2*PSW+1 , 2*PSW+1 ) )
+        allocate( subrot( 2*PSW+1 , 2*PSW+1 ) )
+        suba    = terr_dev_halo_r4( ispk-PSW:ispk+PSW , jspk-PSW:jspk+PSW, np )
+        subrot  = rotbyx( suba, 2*PSW+1 , anglx(ipk) )
+        where(subrot < -8000.) subrot=0.
+        rdg_profiles_x(:,ipk) = sum( subrot( : , PSW-nsw/2:PSW+nsw/2 ) , 2 ) /(nsw+1) 
+        deallocate( suba, subrot )
+#endif
+        write(*,903,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
  
-           deallocate( suba, subarw, subx, suby )
-    end do
+   end do
 
     write(*,*)
 
@@ -573,6 +582,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
       write(31) nnodes_list
       write(31) hwedge_x
       write(31) hnodes_x
+      write(31) hwedge_o
+      write(31) hnodes_o
 
       CLOSE(31)
 
@@ -885,10 +896,22 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
           clngth(ipk), hwdth(ipk), & 
           aniso(ipk), mxdis(ipk), & 
           npks(ipk), pkhts(ipk), &
-          isoht(ipk), isowd(ipk), isobs(ipk), ridge_x )
+          ridge_x )
 
 
 
+
+          call rebuild_nodes( nsw , PSW, &
+               3 , &
+               xwedge_list(:,ipk), &
+               hwedge_list(:,ipk), & 
+               hwedge_o(:,ipk) ,  lextend_profiles=.FALSE.)
+
+          call rebuild_nodes( nsw , PSW, &
+               nnodes_list(ipk) , &
+               xnodes_list(:,ipk), &
+               hnodes_list(:,ipk), & 
+               hnodes_o(:,ipk),  lextend_profiles=.FALSE. )
 
           call rebuild_nodes( nsw , PSW, &
                3 , &
@@ -1031,8 +1054,7 @@ subroutine thinout_list( ncube, npeaks,NSW )
          endif
       end do
       do ipk=1,npeaks
-         !!if( hwedge_list(2,ipk)<=1. ) then
-         if( ( minval( hwedge_list(:,ipk))<0.).AND.(hwedge_list(2,ipk)>0.).AND. &
+          if( ( minval( hwedge_list(:,ipk))<0.).AND.(hwedge_list(2,ipk)>0.).AND. &
              ( minval( hwedge_list(:,ipk)) < -4*hwedge_list(2,ipk)) ) then
            mxdis(ipk)  = -333.0
          endif
@@ -1049,7 +1071,7 @@ end subroutine THINOUT_LIST
    subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
          nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
-         output_grid,ldevelopment_diags,lregional_refinement,rr_factor )
+         output_grid,ldevelopment_diags,lregional_refinement,rr_factor,terr_dev )
 !==========================================
 ! Some key inputs
 !      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
@@ -1073,6 +1095,8 @@ end subroutine THINOUT_LIST
                           intent(in) :: rr_factor(ncube,ncube,6)
       LOGICAL,            intent(in) :: lregional_refinement
 
+      REAL (KIND=dbl_kind), &
+            DIMENSION(ncube*ncube*6),           INTENT(IN) :: terr_dev
 
 
       real(r8):: f(ntarget)
@@ -1086,12 +1110,12 @@ end subroutine THINOUT_LIST
       integer :: nswx,nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: nodesC , wedgeC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: nodesC , wedgeC, nodosC , wedgoC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC, profiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, clngtC, blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC, itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,isohtC,bumpsC,isowdC,superC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,isohtC,bumpsC,isowdC,superC,tempC
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -1152,20 +1176,9 @@ end subroutine THINOUT_LIST
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_target'; stop; endif
     bsvar_target = 0.
 
-!++ 12/../21
-    allocate (isowd_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
-    isowd_target = 0.
-    allocate (isoht_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
-    isoht_target = 0.
-
-    allocate (isowdq_target(ntarget),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
-    isowdq_target = 0.
-    allocate (isohtq_target(ntarget),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
-    isohtq_target = 0.
+    allocate (isovar_target(ntarget),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for isovar_target'; stop; endif
+    isovar_target = 0.
 
      npeaks=size(mxdis)
 
@@ -1222,14 +1235,8 @@ end subroutine THINOUT_LIST
      cwghtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      bumpsC = 0.
-
-     write(*,*) " painting ISOHT "
-     tmpx6 = paintridge2cube ( isoht ,  ncube,nhalo,nsw,lzerovalley )
-     isohtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-
-     write(*,*) " painting ISOWD "
-     tmpx6 = paintridge2cube ( isowd ,  ncube,nhalo,nsw,lzerovalley )
-     isowdC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     isohtC = 0.
+     isowdC = 0.
 
      !----------------------------------------------
      ! New approach to add volume ...
@@ -1249,6 +1256,14 @@ end subroutine THINOUT_LIST
      write(*,*) " fleshing out WEDGES "
      tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_x )
      wedgeC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " fleshing out NODOS "
+     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hnodes_o )
+     nodosC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " fleshing out WEDGO "
+     tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_o )
+     wedgoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
                    
      !!call relist( uniqidC, mxdisC, 
 
@@ -1266,15 +1281,12 @@ end subroutine THINOUT_LIST
 
 !++jtb 
 ! 
-!      In the following loop "count" is the index of a piece of 
+!      In the following loop "counti" is the index of a piece of 
 !      the "exchange grid" - created by cutting the cubed-sphere topo
 !      and target grid into each other.  
     do counti=1,jall
      
       i    = weights_lgr_index_all(counti)
-      !if( itracker_target(i) == 0 ) then ! If true this is first time target cell i has been visited
-      !   itracker_target(i)=1
-      !end if
 
       ix  = weights_eul_index_all(counti,1)
       iy  = weights_eul_index_all(counti,2)
@@ -1290,22 +1302,17 @@ end subroutine THINOUT_LIST
       itrgtC(ii) = i
       if (mxdisC(ii) > 0.1)  itrgxC(ii) = i
       isubr = INT( anglxC(ii) * nsubr/180. ) + 1
-
       if ( (isubr >= 1).and.(isubr <= nsubr) ) then
       wghts_target( i , isubr ) = wghts_target( i , isubr ) + wt
-      hwdth_target( i , isubr ) = hwdth_target( i , isubr ) + wt*hwdthC(ii) *cwghtC(ii)
-      mxvrx_target( i , isubr ) = mxvrx_target( i , isubr ) + wt*mxvrxC(ii) *cwghtC(ii)
-      mxvry_target( i , isubr ) = mxvry_target( i , isubr ) + wt*mxvryC(ii) *cwghtC(ii)
-      mxdis_target( i , isubr ) = mxdis_target( i , isubr ) + wt*mxdisC(ii) *cwghtC(ii)
-      aniso_target( i , isubr ) = aniso_target( i , isubr ) + wt*anisoC(ii) *cwghtC(ii)
-      anglx_target( i , isubr ) = anglx_target( i , isubr ) + wt*anglxC(ii) *cwghtC(ii)
-      !! clngt_target( i , isubr ) = clngt_target( i , isubr ) + wt*clngtC(ii) *cwghtC(ii)
+      hwdth_target( i , isubr ) = hwdth_target( i , isubr ) + wt*hwdthC(ii)
+      mxvrx_target( i , isubr ) = mxvrx_target( i , isubr ) + wt*mxvrxC(ii)
+      mxvry_target( i , isubr ) = mxvry_target( i , isubr ) + wt*mxvryC(ii)
+      mxdis_target( i , isubr ) = mxdis_target( i , isubr ) + wt*mxdisC(ii)
+      aniso_target( i , isubr ) = aniso_target( i , isubr ) + wt*anisoC(ii)
+      anglx_target( i , isubr ) = anglx_target( i , isubr ) + wt*anglxC(ii)
       clngt_target( i , isubr ) = clngt_target( i , isubr ) + wt*cwghtC(ii)/dA(iip)
       cwght_target( i , isubr ) = cwght_target( i , isubr ) + wt*cwghtC(ii) 
       count_target( i , isubr ) = count_target( i , isubr ) + wt/dA(iip)
-!++ 12/../21
-      isoht_target( i , isubr ) = isoht_target( i , isubr ) + wt*isohtC(ii) *cwghtC(ii)
-      isowd_target( i , isubr ) = isowd_target( i , isubr ) + wt*isowdC(ii) *cwghtC(ii)
       endif
 
       i_last = i
@@ -1314,24 +1321,19 @@ end subroutine THINOUT_LIST
     ! change width (and length) to km
     hwdth_target = hwdth_target * grid_length_scale
     clngt_target = clngt_target * grid_length_scale
-    isowd_target = isowd_target * grid_length_scale
-
 
 
      !==========================================
-     ! Note: This weighting by CWGHT saved your 
+     ! Note: Weighting by CWGHT saved your 
      ! ass in the presence of the WGHTS bug.
      !==========================================
-     where( cwght_target > 1.e-15 )
-        !clngt_target = clngt_target / cwght_target
-        mxdis_target = mxdis_target / cwght_target
-        aniso_target = aniso_target / cwght_target
-        anglx_target = anglx_target / cwght_target
-        hwdth_target = hwdth_target / cwght_target
-        mxvrx_target = mxvrx_target / cwght_target
-        mxvry_target = mxvry_target / cwght_target
-        isoht_target = isoht_target / cwght_target
-        isowd_target = isowd_target / cwght_target
+     where( wghts_target > 1.e-15 )
+        mxdis_target = mxdis_target / wghts_target
+        aniso_target = aniso_target / wghts_target
+        anglx_target = anglx_target / wghts_target
+        hwdth_target = hwdth_target / wghts_target
+        mxvrx_target = mxvrx_target / wghts_target
+        mxvry_target = mxvry_target / wghts_target
      elsewhere      
         clngt_target = 0.
         mxdis_target = 0.
@@ -1340,8 +1342,6 @@ end subroutine THINOUT_LIST
         hwdth_target = 0.
         mxvrx_target = 0.
         mxvry_target = 0.
-        isoht_target = 0. 
-        isowd_target = 0. 
      end where
 
 #if 1
@@ -1355,8 +1355,25 @@ end subroutine THINOUT_LIST
      call latlonangles (target_center_lon,target_center_lat,ntarget)
 
 
-     isowdq_target  = SUM( isowd_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
-     isohtq_target  = SUM( isoht_target * clngt_target , 2 ) / ( SUM( clngt_target , 2 ) + 1.0 )
+     tempC = nodesC
+     where( terr_dev < 0. ) tempC = terr_dev
+!--------------------------------------------------------------------------
+!      In the following loop "counti" is the index of a piece of 
+!      the "exchange grid" - created by cutting the cubed-sphere topo
+!      and target grid into each other.  
+    do counti=1,jall
+       i    = weights_lgr_index_all(counti)
+
+       ix  = weights_eul_index_all(counti,1)
+       iy  = weights_eul_index_all(counti,2)
+       ip  = weights_eul_index_all(counti,3)
+       !
+       ! convert to 1D indexing of cubed-sphere
+       !
+       ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+       wt = weights_all(counti,1)
+       isovar_target( i ) = isovar_target( i ) + wt*( (tempC(ii)-terr_dev(ii))**2 )/area_target(i)
+    end do
 
      if (ldevelopment_diags) then
        nrs_junk=0
@@ -1389,6 +1406,8 @@ end subroutine THINOUT_LIST
        write(911) superC
        write(911) nodesC
        write(911) wedgeC
+       write(911) nodosC
+       write(911) wedgoC
        
 #if 0
        write(911) mxvrxC
@@ -1609,21 +1628,6 @@ end subroutine THINOUT_LIST
      do JJ = 1,nsubr
         count_target(i,JJ) = tmp2( insrt(JJ) )
      end do
-
-     do JJ = 1,nsubr
-        tmp2(JJ) =  isoht_target(i,JJ)
-     end do
-     do JJ = 1,nsubr
-        isoht_target(i,JJ) = tmp2( insrt(JJ) )
-     end do
- 
-     do JJ = 1,nsubr
-        tmp2(JJ) =  isowd_target(i,JJ)
-     end do
-     do JJ = 1,nsubr
-        isowd_target(i,JJ) = tmp2( insrt(JJ) )
-     end do
-
   end do
 
 
@@ -1631,35 +1635,6 @@ end subroutine importancesort
 
 !======================================
 
-function mapridge2cube ( a, norx, nory,xs,ys,xv,yv,ncube,nhalo ) result( axc )
-   
-       integer, intent(in) :: norx,nory,ncube,nhalo
-       real, intent(in), dimension(norx,nory,6) :: a
-       real, intent(in), dimension(norx) :: xs
-       real, intent(in), dimension(nory) :: ys
-       real, intent(in), DIMENSION(1-nhalo:ncube+nhalo ) :: xv,yv
-
-       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
-       integer:: i,j,x0,x1,y0,y1,ip
-       integer:: n_what ! not sure what this doing
-!---------------------------------------------------
-     n_what=1
-     do ip=1,6
-       do j=1,nory
-          y0 = int( ys(j) )+1 - n_what
-          y1 = int( ys(j) )  +  N_what 
-          do i=1,norx
-             x0 = int( xs(i) )+1 - N_what 
-             x1 = int( xs(i) )  +  N_what
-             if( (x0>-900).and.(x1>-900).and.(y0>-900).and.(y1>-900) ) then
-                AXC( x0:x1, y0:y1, ip ) = A( i , j , ip )
-             endif
-          end do
-       end do
-     end do
-
-end function mapridge2cube
-!======================================
 !++1/22/22 Added 
 function fleshout_block ( ncube,nhalo,nsw,mxdisC,hwdthC,anglxC,rrfac ) result( axc )
    
@@ -2087,30 +2062,6 @@ write(*,*) " in paintridge "
      
   end function paintridge2cube
 
-
-!======================================
-subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
-   
-       integer, intent(in) :: ncube,nhalo,nsw
-       REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN) :: terr
-
-       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
-       logical :: lzero=.false.
-!---------------------------------------------------
-
-     mxdsp = mxdis
-     where( pkhts < 0)
-       mxdsp=0.
-     end where
-     axc =  paintridge2cube ( mxdsp , ncube,nhalo,nsw,lzero )
-
-     write(411) ncube
-     write(411) axc(1:ncube,1:ncube,:)
-     write(411) terr
-
-  end subroutine paintridgeoncube
-
 !====================================
    subroutine remapridge2tiles(area_target,target_center_lon,target_center_lat,  &
          weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
@@ -2189,36 +2140,6 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
     allocate (bgnpk_tiles(ntarget,ntiles),stat=alloc_error )
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bgnpk_tiles'; stop; endif
     bgnpk_tiles = 0.
-
-     norx=size(mxdis)
-     nory=size(mxdis)
-
-     tmpx6 = mapridge2cube ( mxdis , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( anglx , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     anglxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( aniso , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     anisoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( mxvrx , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     mxvrxC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( mxvry , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     mxvryC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( bsvar , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     bsvarC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( hwdth , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     hwdthC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( xspk , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     xspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-     tmpx6 = mapridge2cube ( yspk , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     yspkC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-
-
-     tmpx6 = mapridge2cube ( 1.*uqrid , norx, nory,xs,ys,xv,yv,ncube,nhalo )
-     uqridC = INT(reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) ) )
-
-
-       !mxdis_target = remap_field(tmp,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
-       !weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
 
 
 
@@ -2457,8 +2378,12 @@ subroutine paintridgeoncube ( ncube,nhalo,nsw , terr  )
        rdg_profiles_x(:,:)=0.d+0
   allocate( hnodes_x( 2*PSW+1, npeaks ) )
        hnodes_x(:,:)=0.d+0
+  allocate( hnodes_o( 2*PSW+1, npeaks ) )
+       hnodes_o(:,:)=0.d+0
   allocate( hwedge_x( 2*PSW+1, npeaks ) )
        hwedge_x(:,:)=0.d+0
+  allocate( hwedge_o( 2*PSW+1, npeaks ) )
+       hwedge_o(:,:)=0.d+0
 
 
 

@@ -97,7 +97,6 @@ contains
               clngt0,   hwdth0, &
               aniso0,   mxdis0,  &
               rnpks0,   pkhts0, & 
-              isoht0,   isowd0, isobs0, & 
               ridge_x )
 
     integer , intent(in   )  :: nsw
@@ -109,7 +108,6 @@ contains
     real,     intent(  out)  :: clngt0,hwdth0,aniso0,mxdis0,pkhts0,rnpks0
     real,     intent(in   )  :: suba( 2*nsw+1 , 2*nsw+1 )
     real,     intent(inout)  :: ridge_x( 2*nsw+1 )
-    real,     intent(  out)  :: isowd0 , isoht0, isobs0
 
     ! local vars
     real    :: xr(nsw+1),xmn, yr(nsw+1),ymn,yshft,ycrst,ycvar
@@ -140,9 +138,6 @@ contains
     ridge_x(1:2*nsw+1) = sum( rt( : , ns0:ns1-1) , 2 ) /(ns1-ns0)  
     ridge = sum( rt(ns0:ns1-1,ns0:ns1-1) , 2 ) /( ns1-ns0 ) ! Y-average 
            
-    !  rty = sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ) /( ns1-ns0 ) ! X-average
-
-
     call rnodes (nsw , ridge , & 
          xnodes , &
          hnodes , & 
@@ -151,19 +146,9 @@ contains
          hwedge,  &
          npks0,nvls0,nnode0 )
 
-
-     
-
-
-#if 0
-    do j=ns0,ns1-1
-       crest(j-ns0+1) = maxval(  rt( ns0:ns1-1, j) )
-    end do
-#else                   
     do j=ns0,ns1-1
        crest(j-ns0+1) = maxval(  rt( xwedge(1):xwedge(3), j) )
-    end do
-#endif                     
+    end do                   
  
     ang00   = anglx0 * (PI/180.)
     pcrest = crest - minval( crest )
@@ -173,10 +158,7 @@ contains
        xspk0  = xspk0  + yshft *sin( ang00 )
        yspk0  = yspk0  + yshft *cos( ang00 )
     end if
-    ycvar  = SUM( pcrest * (yr-ycrst)**2 ) / (SUM( pcrest )+0.1)
-    clngt0 =  MIN( 1.*(nsw+1) , 4.*SQRT(ycvar) )
-
-   
+    ycvar  = SUM( pcrest * (yr-ycrst)**2 ) / (SUM( pcrest )+0.1)   
     rnpks0 = 1.*npks0
     pkhts0 = maxval( hnodes )
 
@@ -205,46 +187,6 @@ contains
     mxdis0 = maxval( hwedge) - minval(hwedge)
     clngt0 = min( 1.*(nsw+1) , aniso0*(nsw+1) )
 
-    !---------------------------------------------------------
-    ! Now assign some non-ridge variance to an isotropic obstacle
-    !-----
-    ! First make 2D ridge-prism
-    !---------------------------------------------------------
-    do j=1,nsw+1 
-       rt2d(:,j) = ridge(:)
-    end do
-
-    !------------------------------------------------
-    ! Difference of rotated 2D topo from ridge-prism
-    ! = 'isotropic residual'
-    !------------------------------------------------
-    iso2d   = rt(ns0:ns1-1,ns0:ns1-1)  - rt2d 
- 
-    !-----------------------------------
-    !  Average of +ve isotropic residual
-    !-----------------------------------
-    isox    = sum( iso2d , mask = (iso2d > 0.) ) /( count(  (iso2d > 0.) ) + .1 )
-
-    !----------------------------------
-    ! maximum value of isotropic residual
-    !-----------------------------------
-    isoht0  = maxval( iso2d )
-
-    !----------------------
-    ! Length scale 
-    !---------------------
-    ! i) straight SQRT of area
-    !isowd0  = sqrt(1.0* count( (iso2d > isox ) ) )
-    ! ii) Assume "isotropy" is smeared out along 
-    !     lenght of ridge.
-    isowd0  = (1.0* count( (iso2d > isox ) ) ) / max( clngt0 , 1. )
-   
-    !----------------------
-    ! Estimate "base" for 
-    ! isotropic residual
-    !----------------------
-    isobs0  = sum( ridge )/(nsw+1.) 
-   
 
  end subroutine ridgescales
 
@@ -406,15 +348,30 @@ contains
 
 end subroutine rnodes
 !==================================================
-subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge )
+subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_profiles )
     integer , intent(in   )  :: nsw,psw,nnodes
     real,     intent(  out)  :: ridge(2*psw+1)
     integer,  intent(in   )  :: xnodes(nnodes) 
     real,     intent(in   )  :: hnodes(nnodes) 
+!--------- optional arguments
+    logical, optional, intent(in   )  :: lextend_profiles
 
 !--------- local variables
     integer :: xridge( 2*psw + 1),xnodes_s(nnodes)
     integer :: i,j,i0,ishft
+    logical :: do_extend_profiles
+
+    !---------------------------------------
+    ! Default is to extend rebuilt profiles
+    ! to range x := [1,2*psw+1].
+    ! Set false in call to limit rebuild to
+    ! range of xnodes input.
+    !---------------------------------------- 
+    if ( PRESENT(lextend_profiles)) then
+       do_extend_profiles = lextend_profiles
+    else
+       do_extend_profiles = .TRUE.
+    end if
 
     i0    = psw - (nsw+1)/2
     ishft = i0 !- 1
@@ -435,7 +392,7 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge )
     end do
 
 
-   
+    if (do_extend_profiles) then
     j=0
        do i=1,xnodes_s(j+1)
           ridge(i) = 0. + &
@@ -450,7 +407,7 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge )
                      ( 0. - hnodes(j) ) / &
                      ( 2*psw + 1 - xnodes_s(j) ) 
        end do
-
+    end if
 
 end subroutine rebuild_nodes
 !==================================================

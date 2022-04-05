@@ -307,6 +307,7 @@ program convterr
     if (lfind_ridges) then
       if (nwindow_halfwidth<=0) then
         nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+        !nwindow_halfwidth = ncube_sph_smooth_coarse
         !
         ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
         !
@@ -812,9 +813,15 @@ program convterr
            nreconstruction,ntarget,nhalo,nsw, &
            ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
            output_grid, ldevelopment_diags,&
+           lregional_refinement,           &
+           rrfac, & 
+           terr_dev)
+#if 0
            lregional_refinement=lregional_refinement,           &
-           rr_factor = rrfac  )
-    
+           rr_factor = rrfac, & 
+           terr_dev=terr_dev)
+#endif    
+
       if (lridgetiles) then 
          call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
               weights_eul_index_all(1:jall,:), & 
@@ -938,7 +945,7 @@ program convterr
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
-         fallq_target
+         fallq_target, isovar_target
     
     
     
@@ -973,7 +980,7 @@ program convterr
     integer            :: sghid,sgh30id,landm_coslatid
     !---ARH
     integer             :: mxdisid, ang22id, anixyid, anisoid, mxvrxid, mxvryid, hwdthid, wghtsid, anglxid, gbxarid
-    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid
+    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid,isovarid
     
     integer            :: status    ! return value for error control of netcdf routin
     !  integer, dimension(2) :: nc_lat_vid,nc_lon_vid
@@ -1063,9 +1070,16 @@ program convterr
       call handle_err(status)
       write(*,*) "lon error"
     end if
-    
+
+   
     if (Lfind_ridges) then 
       
+      status = nf_def_var (foutid,'ISOVAR', NF_DOUBLE, 1, nid(1), isovarid)
+      if (status .ne. NF_NOERR) then
+        call handle_err(status)
+        write(*,*) "ISOVAR error"
+      end if
+#if 0
       status = nf_def_var (foutid,'SGH_UF', NF_DOUBLE, 1, nid(1), sghufid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1076,6 +1090,7 @@ program convterr
         call handle_err(status)
         write(*,*) "TERR_UF error"
       end if
+#endif
       status = nf_def_var (foutid,'GBXAR', NF_DOUBLE, 1, nid(1), gbxarid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1196,18 +1211,18 @@ program convterr
     status = nf_put_att_double (foutid, landm_coslatid, '_FillValue'   , nf_double, 1, fillvalue)
     status = nf_put_att_text   (foutid, landm_coslatid, 'long_name' , 23, 'smoothed land fraction')
     status = nf_put_att_text   (foutid, landm_coslatid, 'filter'    , 4, 'none')
-    !+++ARH  
-    !status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
-    !status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
-    !status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
-    !!        status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
-    !---ARH  
     
     status = nf_put_att_double (foutid, areaid, 'missing_value', nf_double, 1, fillvalue)
     status = nf_put_att_double (foutid, areaid, '_FillValue'   , nf_double, 1, fillvalue)
     status = nf_put_att_text   (foutid, areaid, 'long_name' , 24, &
          'area of target grid cell')
     status = nf_put_att_text   (foutid, areaid, 'units'     , 1, 'm+2')
+
+    status = nf_put_att_double (foutid, isovarid, 'missing_value', nf_double, 1, fillvalue)
+    status = nf_put_att_double (foutid, isovarid, '_FillValue'   , nf_double, 1, fillvalue)
+    status = nf_put_att_text   (foutid, isovarid, 'long_name' , 30, &
+         'residual variance after ridges')
+    status = nf_put_att_text   (foutid, isovarid, 'units'     , 1, 'm+2')
     
     status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
     if (status .ne. NF_NOERR) call handle_err(status)
@@ -1292,6 +1307,11 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing MXDIS data"
       
+      print*,"writing ISOVAR data",MINVAL(isovar_target),MAXVAL(isovar_target)
+      status = nf_put_var_double (foutid, isovarid, isovar_target )
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing ISOVAR data"
+      
       print*,"writing RISEQ  data",MINVAL(riseq_target),MAXVAL(riseq_target)
       status = nf_put_var_double (foutid, riseqid, riseq_target)
       if (status .ne. NF_NOERR) call handle_err(status)
@@ -1356,8 +1376,7 @@ program convterr
       status = nf_put_var_double (foutid, countid, count_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing COUNT data"
-      
-      
+#if 0      
       print*,"writing TERR_UF  data",MINVAL(terr_uf_target),MAXVAL(terr_uf_target)
       status = nf_put_var_double (foutid, terrufid, terr_uf_target)
       if (status .ne. NF_NOERR) call handle_err(status)
@@ -1367,7 +1386,7 @@ program convterr
       status = nf_put_var_double (foutid, sghufid, sgh_uf_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing SGH_UF data"
-      
+#endif 
       print*,"writing GBXAR  data",MINVAL(area_target),MAXVAL(area_target)
       status = nf_put_var_double (foutid, gbxarid, area_target)
       if (status .ne. NF_NOERR) call handle_err(status)

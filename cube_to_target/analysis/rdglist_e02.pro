@@ -44,6 +44,8 @@ npks=0L & m=0L & NSW=0L & PSW=0L
 
  hnodes_x = fltarr( 2*Psw+1,npks )
  hwedge_x = fltarr( 2*Psw+1,npks )
+ hnodos_x = fltarr( 2*Psw+1,npks )
+ hwedgo_x = fltarr( 2*Psw+1,npks )
  rdg_profiles_x = fltarr( 2*Psw+1,npks )
  rdg_profiles = fltarr( Psw+1,npks )
  crst_profiles = fltarr( Psw+1,npks )
@@ -113,6 +115,8 @@ if not (eof(1) ) then readu, 1, xwedge_list,hwedge_list
 if not (eof(1) ) then readu, 1, nnodes_list
 if not (eof(1) ) then readu, 1, hwedge_x
 if not (eof(1) ) then readu, 1, hnodes_x
+if not (eof(1) ) then readu, 1, hwedge_o
+if not (eof(1) ) then readu, 1, hnodes_o
 
 close,1
 

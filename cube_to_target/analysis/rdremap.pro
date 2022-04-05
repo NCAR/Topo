@@ -27,6 +27,8 @@ aniso=dblarr(nc,nc,6)
 super=dblarr(nc,nc,6)
 nodes=dblarr(nc,nc,6)
 wedge=dblarr(nc,nc,6)
+nodos=dblarr(nc,nc,6)
+wedgo=dblarr(nc,nc,6)
 
 ;++ more and more
 isoht=dblarr(nc,nc,6)
@@ -73,6 +75,8 @@ if not eof(1) then begin
    if not eof(1) then readu,1,super
    if not eof(1) then readu,1,nodes
    if not eof(1) then readu,1,wedge
+   if not eof(1) then readu,1,nodos
+   if not eof(1) then readu,1,wedgo
    print,' Extended remap file '
 endif
 
@@ -91,7 +95,8 @@ endif else begin
 cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
      ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
-     ,super:super,nodes:nodes,wedge:wedge,rf:fn0}
+     ,super:super,nodes:nodes,wedge:wedge  $
+     ,nodos:nodos,wedgo:wedgo,rf:fn0}
 endelse
 
 
