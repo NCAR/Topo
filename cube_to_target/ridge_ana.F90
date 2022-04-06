@@ -896,8 +896,9 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
           dcenter_list(ipk) , &             
           anglx(ipk) , &
           clngth(ipk), hwdth(ipk), & 
-          aniso(ipk), mxdis(ipk), & 
-          npks(ipk), pkhts(ipk), &
+          aniso(ipk),  mxdis(ipk), & 
+          npks(ipk),   pkhts(ipk), &
+          riseq(ipk),  fallq(ipk), &
           ridge_x )
 
 
@@ -1232,7 +1233,16 @@ end subroutine THINOUT_LIST
      tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsw,lzerovalley, crest_weight=.true. )
      cwghtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
-    !----------------------------------------------
+     write(*,*) " painting FALLQ "
+     tmpx6 = paintridge2cube ( fallq ,  ncube,nhalo,nsw,lzerovalley )
+     fallqC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " painting RISEQ "
+     tmpx6 = paintridge2cube ( riseq ,  ncube,nhalo,nsw,lzerovalley )
+     riseqC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+
+     !----------------------------------------------
      ! New approach to add volume ...
      !----------------------------------------------
      write(*,*) " fleshing out BLOCK "
@@ -1305,6 +1315,8 @@ end subroutine THINOUT_LIST
       clngt_target( i , isubr ) = clngt_target( i , isubr ) + wt*cwghtC(ii)/dA(iip)
       cwght_target( i , isubr ) = cwght_target( i , isubr ) + wt*cwghtC(ii) 
       count_target( i , isubr ) = count_target( i , isubr ) + wt/dA(iip)
+      fallq_target( i , isubr ) = fallq_target( i , isubr ) + wt*fallqC(ii)
+      riseq_target( i , isubr ) = riseq_target( i , isubr ) + wt*riseqC(ii)
       endif
 
       i_last = i
@@ -1321,6 +1333,8 @@ end subroutine THINOUT_LIST
      !==========================================
      where( wghts_target > 1.e-15 )
         mxdis_target = mxdis_target / wghts_target
+        fallq_target = fallq_target / wghts_target
+        riseq_target = riseq_target / wghts_target
         aniso_target = aniso_target / wghts_target
         anglx_target = anglx_target / wghts_target
         hwdth_target = hwdth_target / wghts_target
@@ -1329,6 +1343,8 @@ end subroutine THINOUT_LIST
      elsewhere      
         clngt_target = 0.
         mxdis_target = 0.
+        fallq_target = 0.
+        riseq_target = 0.
         aniso_target = 0.
         anglx_target = -9000.
         hwdth_target = 0.
@@ -1366,6 +1382,7 @@ end subroutine THINOUT_LIST
        wt = weights_all(counti,1)
        isovar_target( i ) = isovar_target( i ) + wt*( (tempC(ii)-terr_dev(ii))**2 )/area_target(i)
     end do
+    isovar_target = SQRT( isovar_target )
 
      if (ldevelopment_diags) then
        nrs_junk=0
@@ -1400,6 +1417,9 @@ end subroutine THINOUT_LIST
 
        write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
               
+       write(911) riseqC
+       write(911) fallqC
+
        close(911)
        
        write( ofile , &

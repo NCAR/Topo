@@ -2,6 +2,7 @@ pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,s
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
               ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
               ,wedge=wedge,nodes=nodes,wedgo=wedgo,nodos=nodos,dnodes=dnodes,fnodes=fnodes $
+              ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm $
               ;  processing
               ,nsm=sm $
               ;  overplotting  
@@ -74,6 +75,26 @@ if keyword_set(mxdis) then begin
    f=cu.mxdis
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Mxdis' " & unit$='m'
+endif
+if keyword_set(asymm) then begin
+   f=abs(abs(cu.riseq)-abs(cu.fallq))
+   lev=(findgen(16)-7.99999)*200.
+   title$=" 'Asymmetry (left-to-right)' " & unit$='m'
+endif
+if keyword_set(fasymm) then begin
+   f= abs(abs(cu.riseq)-abs(cu.fallq)) / (cu.mxdis+1)
+   lev=(findgen(16)-1)*.1
+   title$=" 'fractional Asymmetry ' " & unit$='m'
+endif
+if keyword_set(riseq) then begin
+   f=cu.riseq
+   lev=(findgen(16)-7.99999)*200.
+   title$=" 'Rise (left-to-right)' " & unit$='m'
+endif
+if keyword_set(fallq) then begin
+   f=-1*cu.fallq
+   lev=(findgen(16)-7.99999)*200.
+   title$=" 'Fall' " & unit$='m'
 endif
 if keyword_set(block) then begin
    f=cu.block
@@ -154,8 +175,8 @@ wset,w0
 amwgct
 contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr,cell=cell_fill
 
-if keyword_set(mxdis) or keyword_set(super) then begin
-   contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
+if keyword_set(mxdis) or keyword_set(fallq) or keyword_set(riseq)  or keyword_set(asymm)  or keyword_set(fasymm)  then begin
+   contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=2
    contour,f(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 endif
 if keyword_set(sdev) then begin

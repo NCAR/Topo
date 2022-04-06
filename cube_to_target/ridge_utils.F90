@@ -97,6 +97,7 @@ contains
               clngt0,   hwdth0, &
               aniso0,   mxdis0,  &
               rnpks0,   pkhts0, & 
+              riseq0,   fallq0, &
               ridge_x )
 
     integer , intent(in   )  :: nsw,ipk
@@ -106,6 +107,7 @@ contains
     real,     intent(inout)  :: xspk0, yspk0
     real,     intent(in   )  :: anglx0
     real,     intent(  out)  :: clngt0,hwdth0,aniso0,mxdis0,pkhts0,rnpks0
+    real,     intent(  out)  :: riseq0,fallq0
     real,     intent(in   )  :: suba( 2*nsw+1 , 2*nsw+1 )
     real,     intent(inout)  :: ridge_x( 2*nsw+1 )
 
@@ -174,25 +176,18 @@ contains
     !    rtx in ANISO_ANA  <==> ridge here
     !    rt in ANISO_ANA   <==> rt here     
     !----------------------------------------
-    mxdis_upd  = MAXVAL(ridge)-MINVAL(ridge)
+    mxdis0  = maxval( hwedge) - minval(hwedge)
+    riseq0  = hwedge(2)-hwedge(1)
+    fallq0  = hwedge(3)-hwedge(2)
+    hwdth0  = xwedge(3)-xwedge(1)
 
     mnt = sum( ridge )/( ns1-ns0 ) 
-
-    var = sum( ( ridge - mnt )**2 )/( ns1-ns0 ) 
-
-    
+    var = sum( ( ridge - mnt )**2 )/( ns1-ns0 )    
     rotmn  =  sum( sum( rt(ns0:ns1-1,ns0:ns1-1) , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
     rotvar =  sum( sum( (rt(ns0:ns1-1,ns0:ns1-1)-rotmn)**2 , 1 ), 1) /(( ns1-ns0 )*(ns1-ns0))
-    qual_upd=0.
-    if (rotvar>0.) qual_upd = var/rotvar
-
-    aniso0 = qual_upd
-    mxdis0 = mxdis_upd 
-
-
-    hwdth0 = xwedge(3)-xwedge(1)
-    mxdis0 = maxval( hwedge) - minval(hwedge)
-    clngt0 = min( 1.*(nsw+1) , aniso0*(nsw+1) )
+    aniso0 =  0.
+    if (rotvar>0.) aniso0 = var/rotvar
+    clngt0  = min( 1.*(nsw+1) , aniso0*(nsw+1) )
 
 
  end subroutine ridgescales

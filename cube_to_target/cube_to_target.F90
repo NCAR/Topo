@@ -977,6 +977,7 @@ program convterr
     !---ARH
     integer             :: mxdisid, ang22id, anixyid, anisoid, mxvrxid, mxvryid, hwdthid, wghtsid, anglxid, gbxarid
     integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid,isovarid
+    integer             :: ThisId
     
     integer            :: status    ! return value for error control of netcdf routin
     !  integer, dimension(2) :: nc_lat_vid,nc_lon_vid
@@ -1069,31 +1070,16 @@ program convterr
 
    
     if (Lfind_ridges) then 
-      
       status = nf_def_var (foutid,'ISOVAR', NF_DOUBLE, 1, nid(1), isovarid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "ISOVAR error"
       end if
-#if 0
-      status = nf_def_var (foutid,'SGH_UF', NF_DOUBLE, 1, nid(1), sghufid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "SGH_UF error"
-      end if
-      status = nf_def_var (foutid,'TERR_UF', NF_DOUBLE, 1, nid(1), terrufid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "TERR_UF error"
-      end if
-#endif
       status = nf_def_var (foutid,'GBXAR', NF_DOUBLE, 1, nid(1), gbxarid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "GBXAR error"
       end if
-      
-      
       status = nf_def_var (foutid,'MXDIS', NF_DOUBLE, 2, nid , mxdisid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1109,19 +1095,16 @@ program convterr
         call handle_err(status)
         write(*,*) "FALLQ error"
       endif
-      
       status = nf_def_var (foutid,'MXVRX', NF_DOUBLE, 2, nid , mxvrxid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "MXVRX error"
       end if
-      
       status = nf_def_var (foutid,'MXVRY', NF_DOUBLE, 2, nid , mxvryid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "MXVRY"
       end if
-      
       status = nf_def_var (foutid,'ANGLL', NF_DOUBLE, 2, nid , ang22id)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1132,7 +1115,6 @@ program convterr
         call handle_err(status)
         write(*,*) "ANGLX error"
       endif
-      
       status = nf_def_var (foutid,'ANISO', NF_DOUBLE, 2, nid , anisoid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1143,7 +1125,6 @@ program convterr
         call handle_err(status)
         write(*,*) "ANIXY error"
       end if
-      
       status = nf_def_var (foutid,'HWDTH', NF_DOUBLE, 2, nid , hwdthid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1169,7 +1150,6 @@ program convterr
         call handle_err(status)
         write(*,*) "COUNT error"
       end if
-      
     endif
     
     
@@ -1233,12 +1213,127 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     !        status = nf_put_att_text (foutid,lonvid,'units' , 21, 'cell center locations')
     !        if (status .ne. NF_NOERR) call handle_err(status)
+
+#if 1
+    if (Lfind_ridges) then 
+       ThisId = mxdisid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 48, &
+       'Obtsacle height diagnosed by ridge-finding alg. ')
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = riseqid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 38, &
+       'Rise to peak from left (ridge_finding)')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = fallqid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 43, &
+       'Fall from peak toward right (ridge_finding)')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = ang22id
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 48, &
+       'Ridge orientation clockwise from true north     ')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'degrees')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anglxid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 61, &
+       'Ridge orientation clockwise from b-axis in cubed sphere panel')
+       !1234567890123456789012345678901234567890123456789012345678901
+       !         10        20        30        40        50        60
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'degrees')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = hwdthid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 21, &
+       'Estimated Ridge width')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 2, 'km')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = clngtid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 34, &
+       'Estimated Ridge length along crest')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 2, 'km')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anixyid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 42, &
+       'Variance ratio: cross/(cross+length) -wise')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anisoid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 36, &
+       'Variance fraction explained by ridge')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = isovarid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 50, &
+       'SQRT(Variance) from topo NOT represented by ridges')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId=gbxarid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 46, &
+       'angular area of target grid cell from scheme')
+       !12345678901234567890123456789012345678901234
+       !              10        20        30        40
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'm+2 m-2')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+    end if
+
+#endif
     call wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)
     !
     ! End define mode for output file
     !
     status = nf_enddef (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
+
+
     !
     ! Write variable for output
     !

@@ -31,6 +31,8 @@ wedgo=dblarr(nc,nc,6)
 anglx=dblarr(nc,nc,6)
 hwdth=dblarr(nc,nc,6)
 clngt=dblarr(nc,nc,6)
+riseq=dblarr(nc,nc,6)
+fallq=dblarr(nc,nc,6)
 
 xs=fltarr(npeaks)
 ys=fltarr(npeaks)
@@ -60,10 +62,10 @@ readu,1,wedge
 readu,1,nodos
 readu,1,wedgo
    
-;if not eof(1) then readu,1,wedgo
-
 readu,1,xs,ys,xspk,yspk,ipks,jpks
 
+if not eof(1) then readu,1,riseq
+if not eof(1) then readu,1,fallq
 
 
 
@@ -75,7 +77,7 @@ print,f
 cube={mxdis:mxdis  $ 
      ,block:block,profi:profi,uniqi:uniqi  $ 
      ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
-     ,nodes:nodes,wedge:wedge  $
+     ,nodes:nodes,wedge:wedge,riseq:riseq,fallq:fallq  $
      ,nodos:nodos,wedgo:wedgo,rf:fn0}
 
 
