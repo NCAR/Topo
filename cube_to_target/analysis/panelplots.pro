@@ -158,7 +158,9 @@ if keyword_set(mxdis) or keyword_set(super) then begin
    contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
    contour,f(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 endif
-
+if keyword_set(sdev) then begin
+   contour,cu.raw(*,*,p-1),lev=[1,100,500,1000,2000],/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr
+endif
 if keyword_set(x) then begin 
    oplot,x.xspk(ox)-1, x.yspk(ox)-1 ,ps=1,syms=.5
 endif

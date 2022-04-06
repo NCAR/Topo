@@ -3,6 +3,8 @@ pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes
 s=size(cu.dev)
 nc=s(1)
 
+cube_tensors,cu=cu,gg=gg
+
 corr=cu.profi*0.
 sdev=cu.profi*0.-999999.
 nvar=cu.profi*0.-999999.
@@ -34,10 +36,12 @@ endfor
 for p=0,5 do begin
 for j=0,nc/nb-1 do begin
 for i=0,nc/nb-1 do begin
-    e = total (  (f1 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) - f2 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) )^2 )
-    d = total (  f2 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) ^2 )
+    e = total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 )  * ( f1 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) - f2 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) )^2   ) $
+       /total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 ) ) 
+    d = total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 )  * f2 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) ^2 ) $
+       /total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 ) )  
     if ( d gt 10. ) then nvar ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = e / d
-    sdev ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = SQRT( e /(nb^2) )
+    sdev ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = SQRT( e  )
 endfor
 endfor
 endfor

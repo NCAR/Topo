@@ -126,49 +126,59 @@ subroutine allocate_target_vars(ntarget)
     print*,'Program could not allocate space for terr_target'
     stop
   end if
-!+++ARH
-  !allocate (landfrac_target(ntarget),stat=alloc_error )
-  !if( alloc_error /= 0 ) then
-  !  print*,'Program could not allocate space for landfrac_target'
-  !  stop
-  !end if
-!---ARH
+     print*,'Allocated space for terr_target'
+
   allocate (landm_coslat_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for landfrac_target'
     stop
   end if
+     print*,'Allocated space for landm_coslat_target'
+
   allocate (sgh30_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh30_target'
     stop
   end if
+     print*,'Allocated space for sgh30_target'
+
   allocate (sgh_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh_target'
     stop
   end if
+     print*,'Allocated space for sgh_target'
 
   allocate (terr_uf_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for terr_uf_target'
     stop
   end if
+     print*,'Allocated space for terr_uf_target'
+
   allocate (sgh_uf_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh_uf_target'
     stop
   end if
 !+++ARH
+     print*,'Allocated space for sgh_uf_target'
+
   allocate (sumwgts_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for sgh_target'
-    stop
+    print*,'Program could not allocate space for sumwgts_target'
+     stop
   end if
 !---ARH
+     print*,'Allocated space for sumwgts_target'
+
+
   allocate (area_target(ntarget),stat=alloc_error )
 
   area_target = 0.0
+     print*,'Allocated space for area_target'
+
+
 end subroutine allocate_target_vars
 
 

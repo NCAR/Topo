@@ -1,6 +1,6 @@
 #define ROTATEBRUSH
 #define DETGDEP
-#define DEBUGOUTPUT
+#undef DEBUGOUTPUT
 module ridge_ana
 
 use rotation, only : rotbyx => rotby4
@@ -507,11 +507,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 903 format( a1, "  Analyzed Ridges (two-Phase) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 901 format(" Ridge coords ", i6,i6,i3 )
 
-
-
     call thinout_list( ncube, npeaks, nsw )
-
-
 
     if (ldevelopment_diags) then
       write( ofile, &
@@ -587,6 +583,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
       CLOSE(31)
 
+#ifdef DEBUGOUTPUT
       write( ofile , &
            "('./output/TerrXY_list_nc',i0.4, '_Nsw',i0.3,  &
            '_Co',i0.3,'_Fi',i0.3 )" ) & 
@@ -607,7 +604,9 @@ write(*,*) " SHAPE ", shape( peaks%i )
         write(32) suba_diag(:,:,ipk)
       end do
       
-      close(32) 
+      close(32)
+#endif
+ 
     end if
 end subroutine find_ridges
 !----------------------------------------------------------
@@ -885,7 +884,7 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
   ns0=nsw/2+1
   ns1=ns0+nsw+1
 
-     call ridgescales( nsw, suba, & 
+     call ridgescales( nsw, ipk, suba, & 
           rdg_profiles(:,ipk), &
           crst_silhous(:,ipk), &
           xnodes_list(:,ipk), &
@@ -950,7 +949,7 @@ subroutine thinout_list( ncube, npeaks,NSW )
 
 
   bloc   =  NINT( 1.*NSW/ 4. ) ! 4
-  nalloc =  2*bloc*bloc 
+  nalloc =  2*(bloc+1)*(bloc+1)
 
   allocate( anglx_sv( nalloc ) , quali_sv( nalloc ), ipk_sv( nalloc ) )
 
@@ -1028,12 +1027,12 @@ subroutine thinout_list( ncube, npeaks,NSW )
              ( INT(yspk(ipk)) >= jb0 ).AND.( INT(yspk(ipk)) <= jb1 ) .AND. & 
              (MyPanel(ipk) == np ) ) then
              ipkx=ipkx+1
+             if (ipkx >nalloc) STOP "not enough space in thinout bloc"
              ipk_sv(ipkx)   = ipk
              quali_sv(ipkx) = mxdis(ipk)*aniso(ipk)
              anglx_sv(ipkx) = anglx(ipk)
         end if
      end do
- 
      if (ipkx >=1 ) then
         max_quali = maxval( quali_sv(1:ipkx) )
         do ipk=1,ipkx
@@ -1041,16 +1040,18 @@ subroutine thinout_list( ncube, npeaks,NSW )
              mxdis( ipk_sv(ipk) )= -999.0
         end do
      end if
-                       
+    
        write(*,900,advance='no') achar(13) , ipk0,npeaks,bloc
     end do
+
 
 900 format( a1, "  Thinning peaks ",i8," out of ",i8 , " bloc=" ,i4)
 #endif
 
-  deallocate( anglx_sv , quali_sv , ipk_sv )
-
+    deallocate( anglx_sv , quali_sv , ipk_sv )
+ 
       write(*,*) " will ZERO out negative peaks and 'Cuestas' in thinout "
+
       do ipk=1,npeaks
          if( (pkhts(ipk)<0.1*mxdis(ipk)).or.(npks(ipk)<1.0) ) then
            mxdis(ipk)  = -222.0

@@ -88,7 +88,7 @@ contains
  end subroutine ridgeshift
 
 !====================================================================
-   subroutine ridgescales( nsw, suba, & 
+   subroutine ridgescales( nsw, ipk, suba, & 
               ridge,    crest,  &
               xnodes,   hnodes, nnode0, &
               xwedge,   hwedge, &
@@ -99,7 +99,7 @@ contains
               rnpks0,   pkhts0, & 
               ridge_x )
 
-    integer , intent(in   )  :: nsw
+    integer , intent(in   )  :: nsw,ipk
     real,     intent(inout)  :: ridge(nsw+1), crest(nsw+1)
     integer,  intent(  out)  :: xnodes(nsw+1) , xwedge(3) , dcenter0, nnode0
     real,     intent(  out)  :: hnodes(nsw+1) , hwedge(3)
@@ -146,18 +146,48 @@ contains
          hwedge,  &
          npks0,nvls0,nnode0 )
 
+    ! Note that rt is 2*nsw+1 coords so xwedge has to shifted
+    !--------------------------------------------------------
     do j=ns0,ns1-1
-       crest(j-ns0+1) = maxval(  rt( xwedge(1):xwedge(3), j) )
+       crest(j-ns0+1) = maxval(  rt( (ns0+xwedge(1)):(ns0+xwedge(3)), j) )
     end do                   
  
     ang00   = anglx0 * (PI/180.)
     pcrest = crest - minval( crest )
     ycrst = SUM( pcrest * yr ) / (SUM( pcrest )+0.1)
     yshft = (ycrst - ymn)
+
+#if 0
+!++ debug
+    if (ipk==246828) then
+         write(*,*) "    "
+         write(*,*) "S Georgia weirdness "
+         write(*,*) "Wedge coords ",xwedge
+         write(*,*) "Angle in rad ", ang00
+         write(*,*) "sin cos ", sin(ang00),cos(ang00)
+         write(*,*) "beginning x,y", xspk0,yspk0
+         write(*,*) " Delta_Y ",yshft," Y-crest ",ycrst," Y-mean ",ymn
+    endif
+#endif
+
     if (abs(yshft) > 1) then
        xspk0  = xspk0  + yshft *sin( ang00 )
        yspk0  = yspk0  + yshft *cos( ang00 )
     end if
+
+#if 0
+!++ debug
+    if (ipk==246828) then
+       write(*,*) "ENDing x,y", xspk0,yspk0
+       write(*,*) pcrest
+       write(*,*) crest
+       write(633) nsw
+       write(633) suba,rt,pcrest,crest
+       close(unit=633)
+       STOP
+    endif
+#endif
+
     ycvar  = SUM( pcrest * (yr-ycrst)**2 ) / (SUM( pcrest )+0.1)   
     rnpks0 = 1.*npks0
     pkhts0 = maxval( hnodes )

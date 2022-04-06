@@ -619,6 +619,7 @@ program convterr
 
     endif
     
+
     !*********************************************************
     !
     ! Begin actual remapping calculations
@@ -816,11 +817,6 @@ program convterr
            lregional_refinement,           &
            rrfac, & 
            terr_dev)
-#if 0
-           lregional_refinement=lregional_refinement,           &
-           rr_factor = rrfac, & 
-           terr_dev=terr_dev)
-#endif    
 
       if (lridgetiles) then 
          call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
