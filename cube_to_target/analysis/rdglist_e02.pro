@@ -27,6 +27,7 @@ npks=0L & m=0L & NSW=0L & PSW=0L
   pki=lonarr(npks) & pkj=lonarr(npks)&pkip=lonarr(npks)
  
   xs=  fltarr(npks) &ys=fltarr(npks)&xspk=fltarr(npks)&yspk=fltarr(npks)
+  xs01=  fltarr(npks) &ys01=fltarr(npks)
   mypanel = lonarr( npks )
   nswx_diag = lonarr( npks )
 
@@ -67,8 +68,8 @@ readu, 1, anglx
 readu, 1, aniso
 readu, 1 ;, mnslp
 readu, 1, angll
-readu, 1, xspk
-readu, 1, yspk
+readu, 1, xspk , xs01
+readu, 1, yspk , ys01
 readu, 1 ;, mxds0
 readu, 1 ;, mxds1
 readu, 1 ;, sft0
@@ -124,7 +125,7 @@ close,1
 
 if keyword_set(stop) then STOP
 
-xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, panel:mypanel, nswx:nswx_diag, $ 
+xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, xs01:xs01, ys01:ys01, panel:mypanel, nswx:nswx_diag, $ 
           mxdis:mxdis, pkhts:pkhts, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, $ 
           ridge:rdg_profiles , crest:crst_profiles, silh:crst_silhous, $ 
           rdg_profiles_x:rdg_profiles_x, xnodes:xnodes_list,hnodes:hnodes_list,dcenter:dcenter_list, $ 

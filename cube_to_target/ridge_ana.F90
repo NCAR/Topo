@@ -37,7 +37,7 @@ public peak_type
   INTEGER, allocatable ::  MyPanel(:), NSWx_diag(:)
   REAL, allocatable  :: rt_diag(:,:,:), suba_diag(:,:,:),rdg_profiles_x(:,:)
 
-  REAL, allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:)
+  REAL, allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:),xs01(:),ys01(:)
   REAL, allocatable  :: RefFac(:)
   REAL, allocatable  :: hnodes_list(:,:)
   INTEGER, allocatable  :: xnodes_list(:,:), dcenter_list(:), nnodes_list(:)
@@ -536,8 +536,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
       write(31) aniso
       write(31) mnslp
       write(31) angll
-      write(31) xspk
-      write(31) yspk
+      write(31) xspk , xs01
+      write(31) yspk , ys01
       write(31) mxds0
       write(31) mxds1
       write(31) sft0
@@ -835,6 +835,9 @@ end subroutine find_ridges
              anglx(ipk), xs(ipk) , ys(ipk), & 
              xspk(ipk) , yspk(ipk)  )
 
+  xs01(ipk) =  xspk(ipk)
+  ys01(ipk) =  yspk(ipk)
+
   deallocate( rt)
   deallocate( rtrw)
   deallocate( rtx)
@@ -1115,7 +1118,7 @@ end subroutine THINOUT_LIST
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, clngtC, blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC, itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,isohtC,bumpsC,isowdC,superC,tempC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,tempC
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -1184,8 +1187,6 @@ end subroutine THINOUT_LIST
 
      itrgtC = 0.
 
-
-
         write(*,*) " about to call paintridge2cube "
 
      ! "Paint" basic ridge quanitities back onto 3km cubed-sphere
@@ -1199,10 +1200,6 @@ end subroutine THINOUT_LIST
      write(*,*) " painting MXDIS "
      tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsw,lzerovalley )
      mxdisC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-
-     write(*,*) " painting SUPER "
-     tmpx6 = paintridge2cube ( mxdis ,  ncube,nhalo,nsw,lzerovalley,all_pixels=.TRUE. )
-     superC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
      write(*,*) " painting HWDTH "
      tmpx6 = paintridge2cube ( hwdth ,  ncube,nhalo,nsw,lzerovalley )
@@ -1234,11 +1231,7 @@ end subroutine THINOUT_LIST
      tmpx6 = paintridge2cube ( clngth ,  ncube,nhalo,nsw,lzerovalley, crest_weight=.true. )
      cwghtC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
-     bumpsC = 0.
-     isohtC = 0.
-     isowdC = 0.
-
-     !----------------------------------------------
+    !----------------------------------------------
      ! New approach to add volume ...
      !----------------------------------------------
      write(*,*) " fleshing out BLOCK "
@@ -1388,35 +1381,26 @@ end subroutine THINOUT_LIST
        OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
        
        write(911) ncube,npeaks
+       write(911) uniqidC
+       write(911) anisoC
+       write(911) anglxC
+
        write(911) mxdisC
+       write(911) hwdthC
+       write(911) clngtC
+
        write(911) blockC
        write(911) profiC
-       write(911) uniqidC
-       write(911) isohtC
-       write(911) bumpsC
-       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
-       
-#if 1
-       write(911) anglxC
-       write(911) hwdthC
-       write(911) cwghtC
-       write(911) clngtC
-       write(911) isowdC
-       write(911) anisoC
-       write(911) superC
+
        write(911) nodesC
        write(911) wedgeC
+
        write(911) nodosC
        write(911) wedgoC
-       
-#if 0
-       write(911) mxvrxC
-       write(911) mxvryC
-       write(911) fallqC
-       write(911) riseqC
-#endif
-#endif
-       
+
+
+       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
+              
        close(911)
        
        write( ofile , &
@@ -2279,6 +2263,10 @@ write(*,*) " in paintridge "
    xspk=0.
   allocate( yspk(npeaks) )
    yspk=0.
+  allocate( xs01(npeaks) )
+   xs01=0.
+  allocate( ys01(npeaks) )
+   ys01=0.
   allocate( mxdsp(npeaks) )
    mxdsp=0.
   allocate( mxds0(npeaks) )

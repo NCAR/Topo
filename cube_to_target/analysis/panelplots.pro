@@ -87,7 +87,7 @@ endif
 if keyword_set(fnodes) then begin
    f=cu.nodes
    g=cu.dev
-   oo=where( g lt 0.)
+   oo=where( g lt 0. and f lt 0 )
    f(oo)=g(oo)
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Nodes' fixed over Dev<0 " & unit$='m'

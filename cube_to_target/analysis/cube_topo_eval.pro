@@ -30,6 +30,7 @@ for p=0,5 do begin
 
 endfor
 
+print," Nodes-Dev "
 print,err1,' : ',total(err1)
 
 err2=fltarr(6)
@@ -39,6 +40,7 @@ for p=0,5 do begin
 
 endfor
 
+print," Profi-Dev "
 print,err2,' : ',total(err2)
 
 

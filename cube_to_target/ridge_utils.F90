@@ -153,7 +153,7 @@ contains
     ang00   = anglx0 * (PI/180.)
     pcrest = crest - minval( crest )
     ycrst = SUM( pcrest * yr ) / (SUM( pcrest )+0.1)
-    yshft = -1*(ycrst - ymn)
+    yshft = (ycrst - ymn)
     if (abs(yshft) > 1) then
        xspk0  = xspk0  + yshft *sin( ang00 )
        yspk0  = yspk0  + yshft *cos( ang00 )
