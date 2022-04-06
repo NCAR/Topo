@@ -1263,7 +1263,6 @@ end subroutine THINOUT_LIST
 
     i_last = -9999
 
-!++jtb (10/22/21) 
 ! Previous calculation of wghts_target was bad because "flat" areas had ANGLX=0.
 ! Fix by setting ANGLX to "bad" value in "flats" before remap
      where( mxdisC < 0.1 )
@@ -1273,7 +1272,6 @@ end subroutine THINOUT_LIST
      itrgxC = -1
 
 
-!++jtb 
 ! 
 !      In the following loop "counti" is the index of a piece of 
 !      the "exchange grid" - created by cutting the cubed-sphere topo
