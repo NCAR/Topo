@@ -1,4 +1,4 @@
-pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes
+pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes,fnodes=fnodes,wedge=wedge,fwedge=fwedge
 
 s=size(cu.dev)
 nc=s(1)
@@ -10,18 +10,25 @@ sdev=cu.profi*0.-999999.
 nvar=cu.profi*0.-999999.
 
 if keyword_set(profi) then begin
-f1=cu.profi
-f2=cu.dev
+   f1=cu.profi
+   f2=cu.dev
 endif
 
 if keyword_set(block) then begin
-f1=cu.block
-f2=cu.pdev
+   f1=cu.block
+   f2=cu.pdev
 endif
 
 if keyword_set(nodes) then begin
-f1=cu.nodes
-f2=cu.dev
+   f1=cu.nodes
+   f2=cu.dev
+endif
+
+if keyword_set(fnodes) then begin
+   f1=cu.nodes
+   f2=cu.dev
+   oo=where( f2 lt 0. and abs(f1) lt 1. )
+   f1(oo)=f2(oo)
 endif
 
 for p=0,5 do begin
@@ -42,6 +49,16 @@ for i=0,nc/nb-1 do begin
        /total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 ) )  
     if ( d gt 10. ) then nvar ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = e / d
     sdev ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = SQRT( e  )
+endfor
+endfor
+endfor
+
+for p=0,5 do begin
+for j=0,nc/nb-1 do begin
+for i=0,nc/nb-1 do begin
+    e = total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 )  * ( f1 ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p )  )^2   ) $
+       /total (  gg( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1 ) ) 
+    nvar ( i*nb :(i+1)*nb-1, j*nb :(j+1)*nb-1, p ) = SQRT( e  )
 endfor
 endfor
 endfor

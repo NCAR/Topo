@@ -16,6 +16,7 @@ public find_local_maxes
 public find_ridges
 public remapridge2target
 public remapridge2tiles
+public remapridge2cube
 
 public anglx_target,aniso_target,mxdis_target,hwdth_target
 public mxvrx_target,mxvry_target,bsvar_target,wghts_target,riseq_target
@@ -1073,10 +1074,10 @@ subroutine thinout_list( ncube, npeaks,NSW )
 end subroutine THINOUT_LIST
 
 !====================================
-   subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
-         weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
-         nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
-         output_grid,ldevelopment_diags,lregional_refinement,rr_factor,terr_dev )
+   subroutine remapridge2cube(ncube,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
+         ldevelopment_diags,lregional_refinement,rr_factor, &
+         uniqidC,uniqwgC,anisoC,anglxC,mxdisC,hwdthC,clngtC,riseqC, &
+         fallqC,mxvrxC,mxvryC,nodesC,cwghtC )
 !==========================================
 ! Some key inputs
 !      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
@@ -1089,22 +1090,21 @@ end subroutine THINOUT_LIST
       use remap
       use reconstruct !, only : EquiangularAllAreas
       implicit none
-      real(r8),           intent(in) :: weights_all(jall,nreconstruction)
-      integer ,           intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-      integer ,           intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo,nsw,nsmcoarse,nsmfine
-      real(r8),           intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      integer ,           intent(in) :: ncube,nhalo,nsw,nsmcoarse,nsmfine
       logical,            intent(in) :: lzerovalley
-      character(len=1024),intent(in) :: output_grid
       logical,            intent(in) :: ldevelopment_diags
       REAL (KIND=dbl_kind), &
                           intent(in) :: rr_factor(ncube,ncube,6)
       LOGICAL,            intent(in) :: lregional_refinement
 
-      REAL (KIND=dbl_kind), &
-            DIMENSION(ncube*ncube*6),           INTENT(IN) :: terr_dev
-
-
-      real(r8):: f(ntarget)
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(out) :: uniqidC, uniqwgC, mxdisC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(out) :: anglxC,  anisoC,  hwdthC, clngtC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(out) :: riseqC,  fallqC,  mxvrxC,  mxvryC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(out) :: nodesC,  cwghtC
   
       REAL  ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
@@ -1115,12 +1115,12 @@ end subroutine THINOUT_LIST
       integer :: nswx,nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: nodesC , wedgeC, nodosC , wedgoC
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC, profiC
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, clngtC, blockC
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: cwghtC , itrgtC, fallqC, riseqC, rwpksC, itrgxC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: wedgeC, nodosC , wedgoC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: profiC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: bsvarC,  blockC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC,  rwpksC, itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: uniqidC,tempC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tempC
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -1136,55 +1136,6 @@ end subroutine THINOUT_LIST
        yv(i)=1.*i
     END DO
  
-    allocate (wghts_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_target'; stop; endif
-    wghts_target = 0.
-    allocate (mxdis_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxdis_target'; stop; endif
-    mxdis_target = 0.
-    allocate (anglx_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_target'; stop; endif
-    anglx_target = 0.
-    allocate (aniso_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for aniso_target'; stop; endif
-    aniso_target = 0.
-    allocate (anixy_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anixy_target'; stop; endif
-    anixy_target = 0.
-    allocate (mxvrx_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvrx_target'; stop; endif
-    mxvrx_target = 0.
-    allocate (mxvry_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvry_target'; stop; endif
-    mxvry_target = 0.
-    allocate (hwdth_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for hwdth_target'; stop; endif
-    hwdth_target = 0.
-    allocate (clngt_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for clngt_target'; stop; endif
-    clngt_target = 0.
-    allocate (cwght_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for cwght_target'; stop; endif
-    cwght_target = 0.
- 
-
-    allocate (count_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for count_target'; stop; endif
-    count_target = 0.
-    allocate (riseq_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for riseq_target'; stop; endif
-    riseq_target = 0.
-    allocate (fallq_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
-    fallq_target = 0.
-    allocate (bsvar_target(ntarget,nsubr),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_target'; stop; endif
-    bsvar_target = 0.
-
-    allocate (isovar_target(ntarget),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for isovar_target'; stop; endif
-    isovar_target = 0.
-
      npeaks=size(mxdis)
 
      itrgtC = 0.
@@ -1268,9 +1219,11 @@ end subroutine THINOUT_LIST
      write(*,*) " fleshing out WEDGO "
      tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_o )
      wedgoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
-                   
-     !!call relist( uniqidC, mxdisC, 
 
+     write(*,*) " Painting IDs on top of WEDGO "
+     tmpx6  = color_on_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_o, uniqid )
+     uniqwgC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+                   
     i_last = -9999
 
 ! Previous calculation of wghts_target was bad because "flat" areas had ANGLX=0.
@@ -1279,7 +1232,157 @@ end subroutine THINOUT_LIST
        anglxC = -999.
      end where
 
-     itrgxC = -1
+
+     if (ldevelopment_diags) then
+       nrs_junk=0
+       call DATE_AND_TIME( DATE=date,TIME=time)
+       
+       write( ofile , &
+            "('./output/remap_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
+            '_Co',i0.3,'_Fi',i0.3)" ) & 
+            ncube, nsw, nrs_junk, nsmcoarse, nsmfine
+       ofile= trim(ofile)//'_vX_'//date//'_'//time(1:4)//'.dat'
+       
+       OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
+       
+       write(911) ncube,npeaks
+       write(911) uniqidC
+       write(911) anisoC
+       write(911) anglxC
+
+       write(911) mxdisC
+       write(911) hwdthC
+       write(911) clngtC
+
+       write(911) blockC
+       write(911) profiC
+
+       write(911) nodesC
+       write(911) wedgeC
+
+       write(911) nodosC
+       write(911) wedgoC
+
+
+       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
+              
+       write(911) riseqC
+       write(911) fallqC
+       write(911) uniqwgC
+
+       close(911)
+              
+       write(*,*) " GOT OUT OF remapridge2cube "
+     end if
+       
+  end subroutine remapridge2cube
+     
+!====================================
+   subroutine remapridge2target(area_target,target_center_lon,target_center_lat,  &
+         weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall, &
+         nreconstruction,ntarget, & 
+         output_grid,ldevelopment_diags,terr_dev, &
+         uniqidC,uniqwgC,anisoC,anglxC,mxdisC,hwdthC,clngtC, & 
+         riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC )
+!==========================================
+! Some key inputs
+!      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
+!              about SQRT(2)*coarse_smoothing_radius (in # of 3km pixels), i.e., size of
+!              inscribed square for rotation etc.. Winds up in file names, e.g., 
+!                      fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_20211102.nc
+!===========================================
+
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      use remap
+      use reconstruct !, only : EquiangularAllAreas
+      implicit none
+      real(r8),           intent(in) :: weights_all(jall,nreconstruction)
+      integer ,           intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer ,           intent(in) :: ncube,jall,nreconstruction,ntarget
+      real(r8),           intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      character(len=1024),intent(in) :: output_grid
+      logical,            intent(in) :: ldevelopment_diags
+
+      REAL (KIND=dbl_kind), &
+            DIMENSION(ncube*ncube*6),           INTENT(IN)  :: terr_dev
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(IN)  :: uniqidC, uniqwgC, mxdisC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(IN)  :: anglxC,  anisoC,  hwdthC, clngtC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(IN)  :: riseqC,  fallqC,  mxvrxC,  mxvryC
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(IN)  :: nodesC,  cwghtC
+
+      real(r8):: f(ntarget)
+        
+      integer :: alloc_error
+
+      integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,iip,j,ipk,npeaks
+      integer :: nswx,nrs_junk
+      real(r8):: wt
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC, itrgxC
+      real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tempC
+
+      CHARACTER(len=1024) :: ofile
+      character(len=8)  :: date
+      character(len=10) :: time
+
+!----------------------------------------------------------------------------------------------------
+
+    !!allocate ( dA(ncube,ncube),stat=alloc_error )
+    CALL EquiangularAllAreas(ncube, dA)
+
+    allocate (wghts_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_target'; stop; endif
+    wghts_target = 0.
+    allocate (mxdis_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxdis_target'; stop; endif
+    mxdis_target = 0.
+    allocate (anglx_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_target'; stop; endif
+    anglx_target = 0.
+    allocate (aniso_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for aniso_target'; stop; endif
+    aniso_target = 0.
+    allocate (anixy_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anixy_target'; stop; endif
+    anixy_target = 0.
+    allocate (mxvrx_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvrx_target'; stop; endif
+    mxvrx_target = 0.
+    allocate (mxvry_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvry_target'; stop; endif
+    mxvry_target = 0.
+    allocate (hwdth_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for hwdth_target'; stop; endif
+    hwdth_target = 0.
+    allocate (clngt_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for clngt_target'; stop; endif
+    clngt_target = 0.
+    allocate (cwght_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for cwght_target'; stop; endif
+    cwght_target = 0.
+    allocate (count_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for count_target'; stop; endif
+    count_target = 0.
+    allocate (riseq_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for riseq_target'; stop; endif
+    riseq_target = 0.
+    allocate (fallq_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for fallq_target'; stop; endif
+    fallq_target = 0.
+    allocate (bsvar_target(ntarget,nsubr),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_target'; stop; endif
+    bsvar_target = 0.
+    allocate (isovar_target(ntarget),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for isovar_target'; stop; endif
+    isovar_target = 0.
+
+    itrgtC = 0.
+    i_last = -9999
+    itrgxC = -1
 
 
 ! 
@@ -1352,19 +1455,14 @@ end subroutine THINOUT_LIST
         mxvry_target = 0.
      end where
 
-#if 1
-    anixy_target = mxvrx_target /( mxvrx_target + mxvry_target + 0.0001 )
-    !!anixy_target = 2.*( ( mxvrx_target /( mxvrx_target + mxvry_target + 0.0001) )-0.5 )
-#endif
-     
-
+     anixy_target = mxvrx_target /( mxvrx_target + mxvry_target + 0.0001 )
+      
      call importancesort (ntarget)
 
      call latlonangles (target_center_lon,target_center_lat,ntarget)
 
-
      tempC = nodesC
-     where( terr_dev < 0. ) tempC = terr_dev
+     where( (terr_dev < 0.) .AND. (abs(nodesC)<1.0) ) tempC = terr_dev
 !--------------------------------------------------------------------------
 !      In the following loop "counti" is the index of a piece of 
 !      the "exchange grid" - created by cutting the cubed-sphere topo
@@ -1384,44 +1482,8 @@ end subroutine THINOUT_LIST
     end do
     isovar_target = SQRT( isovar_target )
 
-     if (ldevelopment_diags) then
-       nrs_junk=0
-       call DATE_AND_TIME( DATE=date,TIME=time)
-       
-       write( ofile , &
-            "('./output/remap_nc',i0.4, '_Nsw',i0.3,'_Nrs',i0.3  &
-            '_Co',i0.3,'_Fi',i0.3)" ) & 
-            ncube, nsw, nrs_junk, nsmcoarse, nsmfine
-       ofile= trim(ofile)//'_vX_'//date//'_'//time(1:4)//'.dat'
-       
-       OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
-       
-       write(911) ncube,npeaks
-       write(911) uniqidC
-       write(911) anisoC
-       write(911) anglxC
 
-       write(911) mxdisC
-       write(911) hwdthC
-       write(911) clngtC
-
-       write(911) blockC
-       write(911) profiC
-
-       write(911) nodesC
-       write(911) wedgeC
-
-       write(911) nodosC
-       write(911) wedgoC
-
-
-       write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
-              
-       write(911) riseqC
-       write(911) fallqC
-
-       close(911)
-       
+    if (ldevelopment_diags) then
        write( ofile , &
             "('./output/grid_remap_nc',i0.4 )" ) ncube
        ofile= trim(ofile)//'_'//trim(output_grid)//'.dat'
@@ -1436,8 +1498,9 @@ end subroutine THINOUT_LIST
        
        write(*,*) " GOT OUT OF remapridge2target "
      end if
+
        
-     end subroutine remapridge2target
+  end subroutine remapridge2target
      
      
 !================================================================
@@ -1719,8 +1782,6 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) 
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
- 
-write(*,*) " in fleshout_profi "
 !===============================
 ! Initialize cube sphere "canvas"
 ! for "painting"
@@ -1768,27 +1829,29 @@ write(*,*) " in fleshout_profi "
 
 end function fleshout_profi
 
-!++3/30/22 Added 
-function fleshout_wedge ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac ) & 
-                          result( axc )
+!======================================
+function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,colors ) & 
+                          result( bxc )
    
        integer, intent(in) :: ncube,nhalo,nsw
-       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: mxdisC
-       !!real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: hwdthC
-       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
-       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: uniqidC
-       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: rrfac
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: mxdisC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: anglxC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: uniqidC
+       real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: rrfac
+       real,                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
+       real,                intent(in), dimension( size(xs) )          :: colors
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
+       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: bxc
        real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis,subcolo
        real, dimension(-nsw:nsw)          :: xq,yq
        real :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
-
-write(*,*) " in fleshout_wedge "
+ 
+!write(*,*) " in fleshout_profi "
 !===============================
 ! Initialize cube sphere "canvas"
 ! for "painting"
@@ -1803,15 +1866,19 @@ write(*,*) " in fleshout_wedge "
        ipk  = INT( uniqidC ( i,j,ip ) )
        suba(:,:) = 0.
        subr(:,:) = 0.
+       subcolo(:,:) = 0.
        do jw=-1,1
-          !!suba(: , jw  ) = rdg_profiles_x(1:2*nsw+1,ipk)
-          suba(: , jw  ) = rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) 
+          !!suba(: , jw  ) = rdg_profiles_x(PSW+1-nsw:PSW+1+nsw,ipk) 
+          suba(: , jw  ) = shape_x(PSW+1-nsw:PSW+1+nsw,ipk) 
        end do
        rotangl = - anglxC(i,j,ip) 
        subr = rotbyx( suba , 2*nsw+1, rotangl )
        subdis = subr
        where(abs(subdis)>=8000.)
            subdis = 0.
+       end where
+       where((subdis)>0.001)
+           subcolo = colors(ipk)
        end where
                 ! Reconstruct 
                 !------------------------
@@ -1821,9 +1888,15 @@ write(*,*) " in fleshout_wedge "
                     y0 = j ! INT( yspk(ipk) ) + 1
                     if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+ii>=1-nhalo).and.(Y0+ii<=ncube+nhalo) ) then
                        if ( (subdis(ii,jj) <= 0.).and. (AXC( x0+ii, y0+jj, ip )<=0. ) ) then
-                          if ( subdis(ii,jj) <=  AXC( x0+ii, y0+jj, ip ) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                          if ( subdis(ii,jj) <=  AXC( x0+ii, y0+jj, ip ) ) then
+                             AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                             BXC( x0+ii, y0+jj, ip ) = subcolo(ii,jj)
+                          end if
                        else
-                          if ( subdis(ii,jj) >=  AXC( x0+ii, y0+jj, ip ) )  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                          if ( subdis(ii,jj) >=  AXC( x0+ii, y0+jj, ip ) )  then 
+                             AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                             BXC( x0+ii, y0+jj, ip ) = subcolo(ii,jj)
+                          end if
                        end if
                     end if
                 end do
@@ -1834,7 +1907,8 @@ write(*,*) " in fleshout_wedge "
   write(*,*)" finished panel=",ip
   end do
 
-end function fleshout_wedge
+end function color_on_profi
+
 
 !======================================
 function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, crest_weight, all_pixels ) & 

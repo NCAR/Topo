@@ -1,8 +1,9 @@
-pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran $
+pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt $
+              ,w0=w0,window=win,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran,clevs=clevs $
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
               ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
-              ,wedge=wedge,nodes=nodes,wedgo=wedgo,nodos=nodos,dnodes=dnodes,fnodes=fnodes $
-              ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm $
+              ,wedge=wedge,nodes=nodes,wedgo=wedgo,nodos=nodos,dnodes=dnodes,fnodes=fnodes,fwedge=fwedge $
+              ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm,uniqw=uniqw,uniqi=uniqi $
               ;  processing
               ,nsm=sm $
               ;  overplotting  
@@ -10,7 +11,9 @@ pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,w0=w0,zoom=zoom,swcorner=swc,s
               ;  control
               ,stop=stop
 
-if not keyword_set(w0) then w0 =1
+
+if     keyword_set(win) then w0 = win
+if not keyword_set(w0)  then w0 = 1
 
 if keyword_set(xran) then begin
    xr=xran
@@ -96,6 +99,20 @@ if keyword_set(fallq) then begin
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Fall' " & unit$='m'
 endif
+if keyword_set(uniqw) then begin
+   f = 0*cu.uniqw -1
+   oo=where( cu.uniqw ge 1 )
+   f(oo) = cu.uniqw(oo) mod 14
+   lev=(findgen(16)-1.9999)
+   title$=" 'UniqW' " & unit$='m'
+endif
+if keyword_set(uniqi) then begin
+   f = 0*cu.uniqi -1
+   oo=where( cu.uniqi ge 1 )
+   f(oo) = cu.uniqi(oo) mod 14
+   lev=(findgen(16)-1.9999)
+   title$=" 'UniqI' " & unit$='m'
+endif
 if keyword_set(block) then begin
    f=cu.block
    lev=(findgen(16)-7.99999)*200.
@@ -108,7 +125,15 @@ endif
 if keyword_set(fnodes) then begin
    f=cu.nodes
    g=cu.dev
-   oo=where( g lt 0. and f lt 0 )
+   oo=where( g lt 0. and abs(f) lt 1. )
+   f(oo)=g(oo)
+   lev=(findgen(16)-7.99999)*200.
+   title$=" 'Nodes' fixed over Dev<0 " & unit$='m'
+endif
+if keyword_set(fwedge) then begin
+   f=cu.wedge
+   g=cu.dev
+   oo=where( g lt 0. and abs(f) lt 1. )
    f(oo)=g(oo)
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Nodes' fixed over Dev<0 " & unit$='m'
@@ -144,6 +169,11 @@ if keyword_set(aniso) then begin
    lev=(findgen(16)-1)/16.
 endif
 
+if keyword_set(nvar) then begin
+   f=cu.nvar
+   lev=(findgen(16)-7.99999)*200.
+   cell_fill=1
+endif
 if keyword_set(sdev) then begin
    f=cu.sdev
    lev=(findgen(16)-7.99999)*200.
@@ -165,6 +195,9 @@ if keyword_set(sm) then begin
    sm$='  - smoothed -'+padstring( sm )
 endif
 
+if keyword_set(clevs) then begin
+   lev=clevs
+endif
 
 ;Plotting ...
 rex
@@ -179,7 +212,7 @@ if keyword_set(mxdis) or keyword_set(fallq) or keyword_set(riseq)  or keyword_se
    contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=2
    contour,f(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 endif
-if keyword_set(sdev) then begin
+if keyword_set(sdev) or keyword_set(nvar) then begin
    contour,cu.raw(*,*,p-1),lev=[1,100,500,1000,2000],/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr
 endif
 if keyword_set(x) then begin 

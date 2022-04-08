@@ -116,7 +116,11 @@ program convterr
 !++JTB
   logical :: lread_pre_smoothtopo = .FALSE.
   integer :: iopt_ridge_seed = 0
-!--JTB
+  ! cube quantities for remapping
+  real(r8), allocatable, dimension(:) :: uniqiC , uniqwC,  cwghtC
+  real(r8), allocatable, dimension(:) :: anglxC,  anisoC,  hwdthC, clngtC, mxdisC
+  real(r8), allocatable, dimension(:) :: riseqC,  fallqC,  mxvrxC, mxvryC, nodesC
+  !--JTB
   logical :: lwrite_rrfac_to_topo_file = .FALSE.
 
   !
@@ -808,15 +812,29 @@ program convterr
     end do
     
     if(lfind_ridges) then
+      allocate( uniqiC( ncube*ncube*6 ), uniqwC( ncube*ncube*6 )  )
+      allocate( anisoC( ncube*ncube*6 ), anglxC( ncube*ncube*6 ), mxdisC( ncube*ncube*6 )  )
+      allocate( hwdthC( ncube*ncube*6 ), clngtC( ncube*ncube*6 )  )
+      allocate( riseqC( ncube*ncube*6 ), fallqC( ncube*ncube*6 )  )
+      allocate( mxvrxC( ncube*ncube*6 ), mxvryC( ncube*ncube*6 )  )
+      allocate( nodesC( ncube*ncube*6 ), cwghtC( ncube*ncube*6 )  )
+  
+      call remapridge2cube( ncube,nhalo,nsw, &
+           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           ldevelopment_diags,lregional_refinement,  &
+           rrfac, & 
+           uniqiC, uniqwC, anisoC, &
+           anglxC,mxdisC,hwdthC,clngtC, &
+           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC  )
+
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-           nreconstruction,ntarget,nhalo,nsw, &
-           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           nreconstruction,ntarget, &
            output_grid, ldevelopment_diags,&
-           lregional_refinement,           &
-           rrfac, & 
-           terr_dev)
+           terr_dev, uniqiC, uniqwC, anisoC, &
+           anglxC,mxdisC,hwdthC,clngtC, &
+           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC  )
 
       if (lridgetiles) then 
          call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
@@ -824,6 +842,8 @@ program convterr
               weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
               nreconstruction,ntarget,nhalo,ldevelopment_diags)
       endif
+      deallocate( uniqiC,uniqwC,anisoC,anglxC,mxdisC,hwdthC,clngtC, &
+                  riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC   )
     endif
 
     if (lwrite_rrfac_to_topo_file) then
@@ -1095,16 +1115,6 @@ program convterr
         call handle_err(status)
         write(*,*) "FALLQ error"
       endif
-      status = nf_def_var (foutid,'MXVRX', NF_DOUBLE, 2, nid , mxvrxid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "MXVRX error"
-      end if
-      status = nf_def_var (foutid,'MXVRY', NF_DOUBLE, 2, nid , mxvryid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "MXVRY"
-      end if
       status = nf_def_var (foutid,'ANGLL', NF_DOUBLE, 2, nid , ang22id)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1130,26 +1140,38 @@ program convterr
         call handle_err(status)
         write(*,*) "HWDTH error"
       end if
-      status = nf_def_var (foutid,'WGHTS', NF_DOUBLE, 2, nid , wghtsid)
+      status = nf_def_var (foutid,'CLNGT', NF_DOUBLE, 2, nid , clngtid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
-        write(*,*) "WGHTS error"
+        write(*,*) "CLNGT error"
+      end if
+#if 0 
+      status = nf_def_var (foutid,'COUNT', NF_DOUBLE, 2, nid , countid)
+      if (status .ne. NF_NOERR) then
+        call handle_err(status)
+        write(*,*) "COUNT error"
       end if
       status = nf_def_var (foutid,'CWGHT', NF_DOUBLE, 2, nid , cwghtid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "CWGHT error"
       end if
-      status = nf_def_var (foutid,'CLNGT', NF_DOUBLE, 2, nid , clngtid)
+      status = nf_def_var (foutid,'WGHTS', NF_DOUBLE, 2, nid , wghtsid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
-        write(*,*) "CLNGT error"
+        write(*,*) "WGHTS error"
       end if
-      status = nf_def_var (foutid,'COUNT', NF_DOUBLE, 2, nid , countid)
+      status = nf_def_var (foutid,'MXVRX', NF_DOUBLE, 2, nid , mxvrxid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
-        write(*,*) "COUNT error"
+        write(*,*) "MXVRX error"
       end if
+      status = nf_def_var (foutid,'MXVRY', NF_DOUBLE, 2, nid , mxvryid)
+      if (status .ne. NF_NOERR) then
+        call handle_err(status)
+        write(*,*) "MXVRY"
+      end if
+#endif
     endif
     
     
@@ -1413,16 +1435,6 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing FALLQ data"
       
-      print*,"writing MXVRX  data",MINVAL(mxvrx_target),MAXVAL(mxvrx_target)
-      status = nf_put_var_double (foutid, mxvrxid, mxvrx_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing MXVRX data"
-      
-      print*,"writing MXVRY  data",MINVAL(mxvry_target),MAXVAL(mxvry_target)
-      status = nf_put_var_double (foutid, mxvryid, mxvry_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing MXVRY data"
-      
       print*,"writing ANGLL data",MINVAL(ang22_target),MAXVAL(ang22_target)
       status = nf_put_var_double (foutid, ang22id, ang22_target )
       if (status .ne. NF_NOERR) call handle_err(status)
@@ -1448,25 +1460,18 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing HWDTH data"
       
-      print*,"writing WGHTS  data",MINVAL(wghts_target),MAXVAL(wghts_target)
-      status = nf_put_var_double (foutid, wghtsid, wghts_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing WGHTS data"
       
       print*,"writing CLNGT  data",MINVAL(clngt_target),MAXVAL(clngt_target)
       status = nf_put_var_double (foutid, clngtid, clngt_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing CLNGT data"
       
-      print*,"writing CWGHT  data",MINVAL(cwght_target),MAXVAL(cwght_target)
-      status = nf_put_var_double (foutid, cwghtid, cwght_target)
+
+      print*,"writing GBXAR  data",MINVAL(area_target),MAXVAL(area_target)
+      status = nf_put_var_double (foutid, gbxarid, area_target)
       if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing CWGHT data"
-      
-      print*,"writing COUNT  data",MINVAL(count_target),MAXVAL(count_target)
-      status = nf_put_var_double (foutid, countid, count_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing COUNT data"
+      print*,"done writing GBXAR data"
+
 #if 0      
       print*,"writing TERR_UF  data",MINVAL(terr_uf_target),MAXVAL(terr_uf_target)
       status = nf_put_var_double (foutid, terrufid, terr_uf_target)
@@ -1477,11 +1482,32 @@ program convterr
       status = nf_put_var_double (foutid, sghufid, sgh_uf_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing SGH_UF data"
-#endif 
-      print*,"writing GBXAR  data",MINVAL(area_target),MAXVAL(area_target)
-      status = nf_put_var_double (foutid, gbxarid, area_target)
+
+      print*,"writing MXVRX  data",MINVAL(mxvrx_target),MAXVAL(mxvrx_target)
+      status = nf_put_var_double (foutid, mxvrxid, mxvrx_target)
       if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing GBXAR data"
+      print*,"done writing MXVRX data"
+      
+      print*,"writing MXVRY  data",MINVAL(mxvry_target),MAXVAL(mxvry_target)
+      status = nf_put_var_double (foutid, mxvryid, mxvry_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing MXVRY data"
+      
+      print*,"writing CWGHT  data",MINVAL(cwght_target),MAXVAL(cwght_target)
+      status = nf_put_var_double (foutid, cwghtid, cwght_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing CWGHT data"
+      
+      print*,"writing COUNT  data",MINVAL(count_target),MAXVAL(count_target)
+      status = nf_put_var_double (foutid, countid, count_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing COUNT data"
+
+      print*,"writing WGHTS  data",MINVAL(wghts_target),MAXVAL(wghts_target)
+      status = nf_put_var_double (foutid, wghtsid, wghts_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing WGHTS data"
+#endif 
       
     endif
     
