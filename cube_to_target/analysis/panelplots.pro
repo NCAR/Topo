@@ -3,7 +3,7 @@ pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt $
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
               ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
               ,wedge=wedge,nodes=nodes,wedgo=wedgo,nodos=nodos,dnodes=dnodes,fnodes=fnodes,fwedge=fwedge $
-              ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm,uniqw=uniqw,uniqi=uniqi $
+              ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm,uniqw=uniqw,uniqi=uniqi,wedgi=wedgi $
               ;  processing
               ,nsm=sm $
               ;  overplotting  
@@ -78,6 +78,11 @@ if keyword_set(mxdis) then begin
    f=cu.mxdis
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Mxdis' " & unit$='m'
+endif
+if keyword_set(wedgi) then begin
+   f=cu.wedgi
+   lev=(findgen(16)-7.99999)*200.
+   title$=" 'WedgI' " & unit$='m'
 endif
 if keyword_set(asymm) then begin
    f=abs(abs(cu.riseq)-abs(cu.fallq))

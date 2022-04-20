@@ -15,8 +15,8 @@ private
 public find_local_maxes
 public find_ridges
 public remapridge2target
-public remapridge2tiles
 public remapridge2cube
+public remapridge2tiles
 
 public anglx_target,aniso_target,mxdis_target,hwdth_target
 public mxvrx_target,mxvry_target,bsvar_target,wghts_target,riseq_target
@@ -31,7 +31,7 @@ public peak_type
   REAL, allocatable  :: MXVRX(:),MXDIS(:),MNSLP(:),ANGLX(:),ANISO(:),XS(:),YS(:) 
   REAL, allocatable  :: XSPK(:),YSPK(:),MXDS0(:),MXDS1(:),SFT0(:),SFT1(:)
   REAL, allocatable  :: PKHTS(:),VLDPS(:),RWPKS(:),RWVLS(:),ANGLL(:)
-  REAL, allocatable  :: BSVAR(:),HWDTH(:),NPKS(:),NVLS(:),MXVRY(:)
+  REAL, allocatable  :: BSVAR(:),HWDTH(:),NPKS(:),NVLS(:),MXVRY(:),CLNGT2(:)
   REAL, allocatable  :: RISEQ(:),FALLQ(:),ANIXY(:),MXDSP(:),CLNGTH(:),MXDS2(:)
 
   REAL, allocatable  :: rdg_profiles(:,:) , crst_profiles(:,:), crst_silhous(:,:)
@@ -65,10 +65,7 @@ public peak_type
     INTEGER (KIND=int_kind),allocatable :: UQRID(:) 
 
   real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
-  real(r8), allocatable, dimension(:,:) :: mxvrx_tiles,mxvry_tiles,bsvar_tiles,wghts_tiles 
-  real(r8), allocatable, dimension(:,:) :: ang22_tiles,agnpk_tiles,bgnpk_tiles
-  integer,  allocatable, dimension(:,:) :: uqrid_tiles
-  integer,  allocatable, dimension(:)   :: numbr_tiles,error_tiles
+  real(r8), allocatable, dimension(:,:) :: clngt_tiles
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -1077,7 +1074,7 @@ end subroutine THINOUT_LIST
    subroutine remapridge2cube(ncube,nhalo,nsw,nsmcoarse,nsmfine,lzerovalley, & 
          ldevelopment_diags,lregional_refinement,rr_factor, &
          uniqidC,uniqwgC,anisoC,anglxC,mxdisC,hwdthC,clngtC,riseqC, &
-         fallqC,mxvrxC,mxvryC,nodesC,cwghtC )
+         fallqC,mxvrxC,mxvryC,nodesC,cwghtC,wedgoC )
 !==========================================
 ! Some key inputs
 !      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
@@ -1104,7 +1101,7 @@ end subroutine THINOUT_LIST
       real(KIND=dbl_kind), & 
            dimension(ncube*ncube*6),            INTENT(out) :: riseqC,  fallqC,  mxvrxC,  mxvryC
       real(KIND=dbl_kind), & 
-           dimension(ncube*ncube*6),            INTENT(out) :: nodesC,  cwghtC
+           dimension(ncube*ncube*6),            INTENT(out) :: nodesC,  cwghtC, wedgoC
   
       REAL  ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
@@ -1115,7 +1112,7 @@ end subroutine THINOUT_LIST
       integer :: nswx,nrs_junk
       real(r8):: wt
       real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: wedgeC, nodosC , wedgoC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: wedgeC, nodosC , wedgiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: profiC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: bsvarC,  blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC,  rwpksC, itrgxC
@@ -1191,6 +1188,10 @@ end subroutine THINOUT_LIST
      write(*,*) " painting RISEQ "
      tmpx6 = paintridge2cube ( riseq ,  ncube,nhalo,nsw,lzerovalley )
      riseqC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+
+     write(*,*) " painting WEDGI "
+     tmpx6 = paintridge2cube ( hwedge_list(2,:) ,  ncube,nhalo,nsw,lzerovalley )
+     wedgiC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
 
      !----------------------------------------------
@@ -1269,6 +1270,7 @@ end subroutine THINOUT_LIST
        write(911) riseqC
        write(911) fallqC
        write(911) uniqwgC
+       write(911) wedgiC
 
        close(911)
               
@@ -1283,7 +1285,8 @@ end subroutine THINOUT_LIST
          nreconstruction,ntarget, & 
          output_grid,ldevelopment_diags,terr_dev, &
          uniqidC,uniqwgC,anisoC,anglxC,mxdisC,hwdthC,clngtC, & 
-         riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC )
+         riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, &
+         itrgtC )
 !==========================================
 ! Some key inputs
 !      NSW:  = 'nwindow_halfwidth' which comes from topo namelist, but should always be 
@@ -1303,6 +1306,8 @@ end subroutine THINOUT_LIST
       character(len=1024),intent(in) :: output_grid
       logical,            intent(in) :: ldevelopment_diags
 
+      integer,dimension(ncube*ncube*6),intent(out)  :: itrgtC
+
       REAL (KIND=dbl_kind), &
             DIMENSION(ncube*ncube*6),           INTENT(IN)  :: terr_dev
       real(KIND=dbl_kind), & 
@@ -1321,7 +1326,8 @@ end subroutine THINOUT_LIST
       integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,iip,j,ipk,npeaks
       integer :: nswx,nrs_junk
       real(r8):: wt
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC, itrgxC
+      !!real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC, itrgxC
+      integer,            dimension(ncube*ncube*6) :: itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tempC
 
@@ -1455,6 +1461,13 @@ end subroutine THINOUT_LIST
         mxvry_target = 0.
      end where
 
+     do isubr=1,nsubr
+     do i=1,ntarget 
+        if (anglx_target(i,isubr) > -9000. ) &
+        clngt_target(i,isubr) = clngt_target(i,isubr)*length_in_square( anglx_target(i,isubr) )
+     end do
+     end do
+
      anixy_target = mxvrx_target /( mxvrx_target + mxvry_target + 0.0001 )
       
      call importancesort (ntarget)
@@ -1482,6 +1495,8 @@ end subroutine THINOUT_LIST
     end do
     isovar_target = SQRT( isovar_target )
 
+      write(*,*) " remap--target "
+      write(*,*) "Min Max ITRGT  " , minval(itrgtC),maxval(itrgtC)
 
     if (ldevelopment_diags) then
        write( ofile , &
@@ -1490,8 +1505,8 @@ end subroutine THINOUT_LIST
        
        OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
        write(911) ncube,npeaks
-       write(911) itrgtC
-       write(911) itrgxC
+       write(911) dble(itrgtC)
+       write(911) dble(itrgxC)
        write(911) xs,ys,xspk,yspk,peaks%i,peaks%j
        close(911)
        
@@ -1501,8 +1516,446 @@ end subroutine THINOUT_LIST
 
        
   end subroutine remapridge2target
-     
-     
+   
+
+!====================================
+   subroutine remapridge2tiles ( ntarget,ncube,jall,nreconstruction,     &
+              area_target,target_center_lon,target_center_lat,         &
+              weights_eul_index_all,weights_lgr_index_all,weights_all, &
+              uniqidC,uniqwgC,itrgtC,wedgoC )
+
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      use remap
+      use reconstruct
+
+      implicit none
+      real(r8),           intent(in) :: weights_all(jall,nreconstruction)
+      integer ,           intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
+      integer ,           intent(in) :: ncube,jall,nreconstruction,ntarget
+      real(r8),           intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
+      !character(len=1024),intent(in) :: output_grid
+      !logical,            intent(in) :: ldevelopment_diags
+
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6), INTENT(IN)  :: uniqidC, uniqwgC, wedgoC
+      integer, & 
+           dimension(ncube*ncube*6), INTENT(IN)  :: itrgtC
+
+      real(r8):: f(ntarget)
+        
+      integer :: alloc_error
+      integer :: npack,NobMin,NobMax,iir,iic,maxtiles,npeaks
+      integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,iip,j,ipk,ir
+      integer :: nswx,nrs_junk,ig,nalloc,n,ird,ThisRidge,k,nf1,nf2,IdxMin,IdxMax
+      real(r8):: wt,wght
+      integer,             dimension(ncube*ncube*6) :: xcoord,ycoord,pcoord
+      real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA     
+      real(KIND=dbl_kind), dimension(ncube,ncube,6) :: tempC
+      integer,             dimension(ntarget)       :: ncells
+
+      integer, allocatable, dimension(:)             :: gxv,gyv,gyp,gid,idcoun,NumRidges,NumCrests,idx1,idx2
+      integer, allocatable, dimension(:)             :: NumObjects,idxU,IdxOc,IdxPack,IdxPackRdg,IdxPackCst
+      integer, allocatable, dimension(:,:)           :: idxmap,MyRidges,MyCrests,MyObject,panel_tiles
+      real(r8),allocatable, dimension(:,:)           :: WtRidges,LnCrests,WtObject,LnObject
+      integer, allocatable, dimension(:)             :: xpack,ypack
+      real(r8),allocatable, dimension(:)             :: hpack
+      real(r8),allocatable, dimension(:,:)           :: xlext_tiles,ylext_tiles,clext_tiles
+      real(r8),allocatable, dimension(:,:)           :: xwoid_tiles,ywoid_tiles,xloid_tiles,yloid_tiles
+      real(r8),allocatable, dimension(:,:)           :: lonc_tiles,latc_tiles
+      real(r8),allocatable, dimension(:,:)           :: lonw_tiles,latw_tiles
+
+      integer, allocatable, dimension(:)             :: uniqwgMap,uniqidMap,xcoordMap,ycoordMap
+      real(r8),allocatable, dimension(:)             :: wedgoMap
+
+      real(r8) :: alph,beta,lono,lato,xobj,yobj
+      integer  :: pobj       
+
+      CHARACTER(len=1024) :: ofile
+      character(len=8)  :: date
+      character(len=10) :: time
+
+      CALL EquiangularAllAreas(ncube, dA)
+      write(*,*) "Max target grid area   ",maxval( area_target )
+      write(*,*) "Min cubetopo grid area ",maxval( dA )
+      write(*,*) "                     Ratio: ",  maxval( area_target ) / minval( dA )
+      nalloc = 5*NINT(  maxval( area_target ) / minval( dA ) )
+
+      write(*,*) " remap--xxx "
+      write(*,*) " nalloc     ",nalloc
+      write(*,*) "Min Max ITRGT  " , minval(itrgtC),maxval(itrgtC)
+      write(*,*)
+
+      allocate( WtRidges(ntarget, nalloc) )
+      allocate( MyRidges(ntarget, nalloc) )
+      allocate( LnCrests(ntarget, nalloc) )
+      allocate( MyCrests(ntarget, nalloc) )
+      allocate( NumRidges(ntarget) )
+      allocate( NumCrests(ntarget) )
+
+      allocate( NumObjects(ntarget) )
+      allocate( MyObject(ntarget, nalloc) )
+      allocate( WtObject(ntarget, nalloc) , LnObject(ntarget, nalloc)  )
+
+      allocate( idxmap(nalloc, ntarget) )
+      allocate( idcoun(ntarget) )
+      allocate( idx1(nalloc) , idx2(nalloc) )
+      allocate( IdxOc(nalloc) )
+      idxmap = -1      
+      idcoun = 0   
+      NumRidges = 0
+      MyRidges  = 0
+      WtRidges  = 0._r8
+      NumCrests = 0
+      MyCrests  = 0
+      LnCrests  = 0._r8
+
+      do counti=1,jall
+         i   = weights_lgr_index_all(counti)
+         ix  = weights_eul_index_all(counti,1)
+         iy  = weights_eul_index_all(counti,2)
+         ip  = weights_eul_index_all(counti,3)
+         !
+         ! convert to 1D indexing of cubed-sphere
+         !
+         ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+         if (itrgtC(ii)==i) then
+            idcoun(i)   = idcoun(i)+1
+            idxmap(idcoun(i),i)= ii
+         end if
+      write(*,900,advance='no') achar(13) , counti, jall
+      end do
+      write(*,*)" "
+      !--------------------------------------------
+      ! idxmap stores the 1D index for cube arrays 
+      ! in each target cell: idxmap ( [cube] , [target] ). 
+      ! idcoun stores the number of cube cells in each
+      ! target cell
+      !--------------------------------------------
+
+      do j=1,ntarget
+         ird=0
+         IdxOc(:) = 0.
+         do i=1,idcoun(j)
+            IdxOc(i) = uniqwgC( idxmap(i,j) )
+         end do
+         IdxPack = pack( IdxOc, (IdxOc>0) )
+         npack   = size( IdxPack )
+         if (npack > 0 ) then
+            IdxMin  = minval(IdxPack)
+            IdxMax  = maxval(IdxPack)
+            do ii   = IdxMin,IdxMax
+               wght  = count( IdxPack == ii )
+               if (wght > 0) then 
+                  ird=ird+1
+                  MyRidges(j,ird) =  ii
+                  WtRidges(j,ird) =  wght
+               end if
+            end do
+         end if
+         NumRidges(j)=ird
+         !deallocate( IdxPack )
+         write(*,901,advance='no') achar(13), 1 ,j,ntarget,ird
+      end do
+      write(*,*)" "
+ 
+      ! Crests
+      do j=1,ntarget
+         ird=0
+         IdxOc(:) = 0.
+         do i=1,idcoun(j)
+            IdxOc(i) = uniqidC( idxmap(i,j) )
+         end do
+         IdxPack = pack( IdxOc, (IdxOc>0) )
+         npack   = size( IdxPack )
+         if (npack > 0 ) then
+            IdxMin  = minval(IdxPack)
+            IdxMax  = maxval(IdxPack)
+            do ii   = IdxMin,IdxMax
+               wght  = count( IdxPack == ii )
+               if (wght > 0) then 
+                  ird=ird+1
+                  MyCrests(j,ird) =  ii
+                  LnCrests(j,ird) =  wght
+               end if
+            end do
+         end if
+         NumCrests(j)=ird
+         !deallocate( IdxPack )
+         write(*,901,advance='no') achar(13), 2 ,j,ntarget,ird
+      end do
+      write(*,*) ' '
+
+      ! Merge to general objects
+      do i=1,ntarget
+         IdxOc = MyRidges(i,: )
+         IdxPackRdg  = pack( IdxOc, (IdxOc>0) )
+         IdxOc = MyCrests(i,: )
+         IdxPackCst = pack( IdxOc, (IdxOc>0) )
+         NobMin   = min( minval(IdxPackRdg),minval(IdxPackCst) )
+         NobMax   = max( maxval(IdxPackRdg),maxval(IdxPackCst) )
+         ird = 0          
+
+         do j=NobMin,NobMax
+            if ( (any(IdxPackRdg==j)) .and. (any(IdxPackCst==j)) ) then ! both ridge and crest
+               ird = ird+1 
+               MyObject(i,ird)=j   
+               do ii=1,numridges(i)
+                  if (MyRidges(i,ii)==j) iir=ii
+               end do
+               do ii=1,numcrests(i)
+                  if (MyCrests(i,ii)==j) iic=ii
+               end do
+               WtObject(i,ird) = WtRidges(i,iir)
+               LnObject(i,ird) = LnCrests(i,iic)
+            end if
+            if ( (any(IdxPackRdg==j)) .and. .not.(any(IdxPackCst==j)) ) then ! just ridge NOT crest
+               ird = ird+1 
+               MyObject(i,ird)=j   
+               do ii=1,numridges(i)
+                  if (MyRidges(i,ii)==j) iir=ii
+               end do
+               WtObject(i,ird) = WtRidges(i,iir)
+               LnObject(i,ird) = 0._r8
+            end if
+            if ( .not.(any(IdxPackRdg==j)) .and. (any(IdxPackCst==j)) ) then ! just crest NOT crest. Shouldn't happen much, ...
+               ird = ird+1 
+               MyObject(i,ird)=j   
+               do ii=1,numcrests(i)
+                  if (MyCrests(i,ii)==j) iic=ii
+               end do
+               WtObject(i,ird) = 0._r8
+               LnObject(i,ird) = LnCrests(i,iic)
+            end if
+         end do
+         NumObjects(i)=ird
+         !deallocate( IdxPack )
+         write(*,901,advance='no') achar(13), 3 ,i,ntarget,ird
+      end do
+      maxtiles = maxval( NumObjects )
+
+
+!------------------------------------------------
+! AT this you have 4 arrays on the target grid
+!
+! NumObjects( ntarget ) - the number of objects
+!    in each target cell
+! MyObject( ntarget ,: ) - the unique ID of each
+!    object derived in remapridge2cube
+! WtObject( ntarget, : ) - the number of topo cells
+!    associated with the 3pt 'WEDGE' of each object
+! LnObject( ntarget, : ) - the number of topo cells
+!    associated with the 'crest' of each object
+!
+! Note the 2D arrays only really need to go to 
+! maxtiles in the 2nd dimension
+!--------------------------------------------------
+ 
+      do ip=1,6
+      do iy=1,ncube
+      do ix=1,ncube
+         ! convert to 1D indexing of cubed-sphere
+         !---------------------------------------
+         ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
+         xcoord(ii) = 1.*ix
+         ycoord(ii) = 1.*iy
+         pcoord(ii) = 1.*ip
+      end do
+      end do
+      end do
+  
+    
+      write(*,*) " "
+      allocate( xwoid_tiles(ntarget,maxtiles ) )
+      allocate( ywoid_tiles(ntarget,maxtiles ) )
+      xwoid_tiles(:,:)=-9999._r8  
+      ywoid_tiles(:,:)=-9999._r8
+      allocate( xloid_tiles(ntarget,maxtiles ) )
+      allocate( yloid_tiles(ntarget,maxtiles ) )
+      xloid_tiles(:,:)=-9999._r8  
+      yloid_tiles(:,:)=-9999._r8
+      allocate( panel_tiles(ntarget,maxtiles ) )
+      panel_tiles(:,:)=-1
+      allocate( clext_tiles(ntarget,maxtiles ) )
+      clext_tiles(:,:)=0._r8
+
+!--------------------------------------------------------
+! Following 2 #if-blocks are supposed to do exactly 
+! the same calculations.  First block is a bit more
+! readable. Second block is about 100x (or more) faster
+!--------------------------------------------------------- 
+#if 0
+      do i=1,ntarget
+         n=NumObjects(i)
+         do ir=1,n
+            ThisRidge = MyObject(i,ir)  !
+            xpack = pack( xcoord, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) ) 
+            ypack = pack( ycoord, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) )
+            hpack = pack( wedgoC, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) )
+            npack = size(xpack)
+            if (npack > 0) then 
+               xwoid_tiles(i,ir) = sum( xpack *hpack )/ sum(hpack) !npack
+               ywoid_tiles(i,ir) = sum( ypack *hpack )/ sum(hpack) !npack
+            end if
+            xpack = pack( xcoord, ( (uniqidC == ThisRidge).AND.(itrgtC == i) ) )
+            ypack = pack( ycoord, ( (uniqidC == ThisRidge).AND.(itrgtC == i) ) )
+            npack = size(xpack)
+            if (npack > 0) then 
+               xloid_tiles(i,ir) = sum( xpack )/ npack
+               yloid_tiles(i,ir) = sum( ypack )/ npack
+               !clext_tiles(i,ir) = sqrt( 1.*(maxval(xpack)-minval(xpack))**2 &
+               !                        + 1.*(maxval(ypack)-minval(ypack))**2 )
+               clext_tiles(i,ir) = 1._r8 * npack 
+            end if
+          end do
+          write(*,902,advance='no') achar(13), i,ntarget
+     end do
+#else
+      allocate( uniqwgMap(nalloc),uniqidMap(nalloc),xcoordMap(nalloc),ycoordMap(nalloc), &
+                wedgoMap(nalloc)  )
+      do j=1,ntarget
+         n=NumObjects(j)
+         uniqwgMap(:) = -1 
+         uniqidMap(:) = -1
+         xcoordMap(:) = -1
+         ycoordMap(:) = -1
+         wedgoMap(:)  = -1._r8
+         do i=1,idcoun(j)
+            uniqwgMap(i) = uniqwgC( idxmap(i,j) )
+            uniqidMap(i) = uniqidC( idxmap(i,j) )
+            xcoordMap(i) = xcoord ( idxmap(i,j) )
+            ycoordMap(i) = ycoord ( idxmap(i,j) )
+            wedgoMap(i)  = wedgoC ( idxmap(i,j) )
+         end do
+         do ir=1,n
+            ThisRidge = MyObject(j,ir)  !
+            xpack = pack( xcoordMap, (uniqwgMap == ThisRidge) ) 
+            ypack = pack( ycoordMap, (uniqwgMap == ThisRidge) )
+            hpack = pack( wedgoMap,  (uniqwgMap == ThisRidge) )
+            npack = size(xpack)
+            if (npack > 0) then 
+               xwoid_tiles(j,ir) = sum( xpack *hpack )/ sum(hpack) !npack
+               ywoid_tiles(j,ir) = sum( ypack *hpack )/ sum(hpack) !npack
+            end if
+            xpack = pack( xcoordMap, (uniqidMap == ThisRidge) )
+            ypack = pack( ycoordMap, (uniqidMap == ThisRidge) )
+            npack = size(xpack)
+            if (npack > 0) then 
+               xloid_tiles(j,ir) = sum( xpack )/ npack
+               yloid_tiles(j,ir) = sum( ypack )/ npack
+               clext_tiles(j,ir) = sqrt( 1.*(maxval(xpack)-minval(xpack))**2 &
+                                       + 1.*(maxval(ypack)-minval(ypack))**2 )
+            end if
+          end do
+          write(*,902,advance='no') achar(13), j,ntarget
+       end do
+#endif
+      allocate( mxdis_tiles(ntarget,maxtiles ), aniso_tiles(ntarget,maxtiles ), & 
+                anglx_tiles(ntarget,maxtiles ), hwdth_tiles(ntarget,maxtiles ), &  
+                clngt_tiles(ntarget,maxtiles ), lonc_tiles(ntarget,maxtiles ) , &
+                latc_tiles(ntarget,maxtiles ) , lonw_tiles(ntarget,maxtiles ) , &
+                latw_tiles(ntarget,maxtiles ) )
+
+      latc_tiles(:,:)  =-9999._r8 
+      lonc_tiles(:,:)  =-9999._r8  
+      latw_tiles(:,:)  =-9999._r8 
+      lonw_tiles(:,:)  =-9999._r8  
+      aniso_tiles(:,:) =-9999._r8  
+      anglx_tiles(:,:) =-9999._r8  
+      mxdis_tiles(:,:) =-9999._r8  
+      hwdth_tiles(:,:) =-9999._r8  
+      clngt_tiles(:,:) =-9999._r8  
+
+      write(*,*) ' '
+
+
+      do i=1,ntarget
+         n=NumObjects(i)
+         do ir=1,n
+            ThisRidge = MyObject(i,ir)
+            write(*,903,advance='no') achar(13), i,ir,ThisRidge
+            panel_tiles(i,ir) = MyPanel(ThisRidge)
+            mxdis_tiles(i,ir) = mxdis(ThisRidge)
+            aniso_tiles(i,ir) = aniso(ThisRidge)
+            anglx_tiles(i,ir) = anglx(ThisRidge)
+            hwdth_tiles(i,ir) = hwdth(ThisRidge)
+            clngt_tiles(i,ir) = clngth(ThisRidge)
+            clngt2(ThisRidge) = clngt2(ThisRidge)+clext_tiles(i,ir)
+         end do
+         !write(*,903,advance='no') achar(13), i,ntarget
+      end do
+#if 1     
+       do j=1,ntarget
+          n=NumObjects(j)
+          do ir=1,n
+             xobj = xloid_tiles(j,ir)
+             yobj = yloid_tiles(j,ir)
+             pobj = panel_tiles(j,ir)
+             if ((xobj>-999.).AND.(yobj>-999.).AND.(pobj>-1)) then
+                alph =  ( xobj - 0.5 - ncube/2 )*(pi/2.)/ncube
+                beta =  ( yobj - 0.5 - ncube/2 )*(pi/2.)/ncube
+                call CubedSphereRLLFromABP(alph, beta, pobj, lono, lato)
+                lonc_tiles(j,ir) = lono
+                latc_tiles(j,ir) = lato
+             end if
+             xobj = xwoid_tiles(j,ir)
+             yobj = ywoid_tiles(j,ir)
+             pobj = panel_tiles(j,ir)
+             if ((xobj>-999.).AND.(yobj>-999.).AND.(pobj>-1)) then
+                alph =  ( xobj - 0.5 - ncube/2 )*(pi/2.)/ncube
+                beta =  ( yobj - 0.5 - ncube/2 )*(pi/2.)/ncube
+                call CubedSphereRLLFromABP(alph, beta, pobj, lono, lato)
+                lonw_tiles(j,ir) = lono
+                latw_tiles(j,ir) = lato
+             end if
+          end do
+       end do
+#endif
+
+! Logging ....
+      write(*,*)" "
+      write(*,*)"  max (NumObjects) ",maxtiles
+      write(*,*) " writing IDXMAP to file "
+900   format( a1, "  Remapping -2- Tiles 01 ",i8," out of ",i8  )
+901   format( a1, "  Remapping -2- Tiles Phase ",i2," ",i6," out of ",i8 ," # ridges ",i6 )
+902   format( a1, "  More remapping stuff ",i8," out of ",i8  )
+903   format( a1, "  Matching ID's stuff; i= ",i6," ir= ",i6," uniqid=",i8  )
+!903   format( a1, "  Matching ID's stuff ",i8," out of ",i8  )
+!902   format( a1, "  Doing more stuff; i=",i6," ir=",i6," npack=",i6  )
+! -------------------------------------
+
+      npeaks = size(clngt2 )
+
+      ofile="output/Ridge_tile_map.dat"
+      OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
+      write(911) ntarget,nalloc,maxtiles,npeaks
+      write(911) idxmap,idcoun
+      write(911) NumObjects
+      write(911) MyObject(:,1:maxtiles )
+      write(911) WtObject(:,1:maxtiles )
+      write(911) LnObject(:,1:maxtiles )
+      write(911) xwoid_tiles
+      write(911) ywoid_tiles
+      write(911) xloid_tiles
+      write(911) yloid_tiles
+      write(911) panel_tiles
+      write(911) lonc_tiles
+      write(911) latc_tiles
+      write(911) lonw_tiles
+      write(911) latw_tiles
+      write(911) aniso_tiles
+      write(911) anglx_tiles
+      write(911) mxdis_tiles
+      write(911) hwdth_tiles
+      write(911) clngt_tiles
+      write(911) clext_tiles
+      write(911) clngt2
+              close(911)
+
+
+      deallocate(idxmap,idcoun,MyRidges,WtRidges,NumRidges)
+            write(*,*) " GOT OUT OF remapridge2tiles "
+
+  end subroutine remapridge2tiles
 !================================================================
   subroutine latlonangles (target_center_lon,target_center_lat,ntarget)
 !-----------------------------------
@@ -2061,19 +2514,14 @@ write(*,*) " in paintridge "
 #endif
 
              
-             rotangl = - anglx(ipk) 
-             subblk0(:,:)=0.
-             ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
-             nhw  = MIN( INT(hwdth(ipk)/2) , nsw/2 )
-             !nhw  = MAX(nhw/4,1) ! nhw/2
-             do jw=-nhw,nhw
-               !subblk0( jw , -ncl:ncl ) = 1. 
-               subblk0( jw , -ncl:ncl ) = 1. !-1.0*abs(jw)/nhw
-             end do
-             subblk0 = rotbyx( subblk0 , 2*nsw+1, rotangl )
-             subblk  = subblk0 * mxdis(ipk)  !axr(ipk)
              
+             NSWx = NSW / RefFac(ipk)
 
+             if (.NOT.(allpixels)) then
+#if 0
+             !-------------------------------------------------------
+             ! original reconciliation based on {xs,ys} vs {xspk,yspk} 
+             !-------------------------------------------------------
              !======================================================
              ! Scale sub1 by 1 minus normalized distance 
              ! from current feature location (xs,ys) to diagnosed 
@@ -2083,11 +2531,6 @@ write(*,*) " in paintridge "
              !======================================================
              dsq    = 1.0 - SQRT( (xs(ipk)-xspk(ipk))**2 + (ys(ipk)-yspk(ipk))**2 )/nsw
              subq   = sub1 * dsq
-             NSWx = NSW / RefFac(ipk)
-             if (.NOT.(allpixels)) then
-#if 0
-             ! original reconciliation based on {xs,ys} vs {xspk,yspk} 
-             !-------------------------------------------------------
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
@@ -2102,8 +2545,36 @@ write(*,*) " in paintridge "
              end do
              end do
 #else
-             ! reconstruction/reconciliation based on a quality measure in rotated rectangle (subblk)
-             !----------------------------------------------------------------------------------------
+             !------------------------------------------------------------
+             ! reconstruction/reconciliation based on a quality/amplitude
+             ! measure in rotated rectangle (subblk)
+             !------------------------------------------------------------
+             rotangl = - anglx(ipk) 
+             subblk0(:,:)=0.
+             ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+             nhw  = MIN( INT(hwdth(ipk)/2) , nsw/2 )
+#if 1
+             do jw=-nhw,nhw
+               subblk0( jw , -ncl:ncl ) = 1.
+             end do
+#else
+             if (ncl>0) then
+             do jw=-ncl,ncl
+             do iw=-nhw,nhw
+               subblk0( iw , jw ) = 1. * (1. - abs(jw)/ncl )
+             end do
+             end do
+             else
+             do jw=-ncl,ncl
+             do iw=-nhw,nhw
+               subblk0( iw , jw ) = 1. 
+             end do
+             end do
+             end if
+#endif
+             subblk0 = rotbyx( subblk0 , 2*nsw+1, rotangl )
+             subblk  = subblk0 * mxdis(ipk) 
+
              do jj = -NSWx/2,NSWx/2
              do ii = -NSWx/2,NSWx/2
                 ip = peaks(ipk)%ip
@@ -2139,187 +2610,7 @@ write(*,*) " in paintridge "
      
   end function paintridge2cube
 
-!====================================
-   subroutine remapridge2tiles(area_target,target_center_lon,target_center_lat,  &
-         weights_eul_index_all,weights_lgr_index_all,weights_all,ncube,jall,&
-         nreconstruction,ntarget,nhalo,ldevelopment_diags)
-
-      use shr_kind_mod, only: r8 => shr_kind_r8
-      use remap
-      implicit none
-      real(r8), intent(in) :: weights_all(jall,nreconstruction)
-      integer , intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
-      integer , intent(in) :: ncube,jall,nreconstruction,ntarget,nhalo
-      real(r8), intent(in) :: area_target(ntarget),target_center_lon(ntarget),target_center_lat(ntarget)
-      logical,  intent(in) :: ldevelopment_diags
-      real(r8):: f(ntarget)
-  
-      REAL  ,                                                          &
-         DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
-      
-      integer :: alloc_error
-
-      integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,itile,itili,current_uqrid
-      real(r8):: wt
-      real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: tmpx6
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxdisC , anglxC, anisoC, hwdthC
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: mxvrxC , mxvryC, bsvarC, xspkC, yspkC
-      integer, dimension(ncube*ncube*6)  :: uqridC 
-
-!----------------------------------------------------------------------------------------------------
-
-        write(*,*) " YOU ASKED FOR TILES !!!!!!!!!!!! "
-
-
-    DO i=1-nhalo,ncube+nhalo
-       xv(i)=1.*i
-       yv(i)=1.*i
-    END DO
-
-    allocate (uqrid_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for uqrid_tiles'; stop; endif
-    uqrid_tiles = -1
-
-    allocate (numbr_tiles(ntarget),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for numbr_tiles'; stop; endif
-    numbr_tiles = 0
-    allocate (error_tiles(ntarget),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for error_tiles'; stop; endif
-    error_tiles = 0
-
-    allocate (wghts_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for wghts_tiles'; stop; endif
-    wghts_tiles = 0.
-    allocate (mxdis_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxdis_tiles'; stop; endif
-    mxdis_tiles = 0.
-    allocate (anglx_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for anglx_tiles'; stop; endif
-    anglx_tiles = 0.
-    allocate (aniso_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for aniso_tiles'; stop; endif
-    aniso_tiles = 0.
-    allocate (mxvrx_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvrx_tiles'; stop; endif
-    mxvrx_tiles = 0.
-    allocate (mxvry_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for mxvry_tiles'; stop; endif
-    mxvry_tiles = 0.
-    allocate (bsvar_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bsvar_tiles'; stop; endif
-    bsvar_tiles = 0.
-    allocate (hwdth_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for hwdth_tiles'; stop; endif
-    hwdth_tiles = 0.
-    allocate (agnpk_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for agnpk_tiles'; stop; endif
-    agnpk_tiles = 0.
-    allocate (bgnpk_tiles(ntarget,ntiles),stat=alloc_error )
-    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for bgnpk_tiles'; stop; endif
-    bgnpk_tiles = 0.
-
-
-
-    do counti=1,jall
-      i   = weights_lgr_index_all(counti)
-      ix  = weights_eul_index_all(counti,1)
-      iy  = weights_eul_index_all(counti,2)
-      ip  = weights_eul_index_all(counti,3)
-      !
-      ! convert to 1D indexing of cubed-sphere
-      !
-      ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
-      wt = weights_all(counti,1)
-
-      current_uqrid = INT( uqridC( ii ) )
-      ! find tile index for current ridge 
-      itile=-1
-      do itili = 1,ntiles
-         if (uqrid_tiles(i,itili) == current_uqrid ) then 
-            itile=itili
-            numbr_tiles(i)=itili
-         endif
-      end do   
-      ! if itile is still -1 then this is a new ridge for this target
-      ! cell
-      if (itile == -1 ) then 
-      do itili = 1,ntiles
-         if (uqrid_tiles(i,itili) == -1) then 
-            itile=itili
-            uqrid_tiles(i,itili) = current_uqrid
-            numbr_tiles(i)=itili
-            go to 611
-         end if
-      end do
-      end if
- 611  continue
-      ! if itile is still -1 then we have more ridges 
-      ! than allocated tiles - punt, stuff into last tile
-      ! set error=1
-      if (itile == -1 ) then
-         itile=ntiles 
-         error_tiles(i)=1
-         numbr_tiles(i)=numbr_tiles(i)+1
-      endif
-      
-      wghts_tiles( i , itile ) = wghts_tiles( i , itile ) + wt
-      agnpk_tiles( i , itile ) = xspkC(ii)   
-      bgnpk_tiles( i , itile ) = yspkC(ii)   
-      !agnxg_tiles( i , itile ) = agnxg_tiles( i , itile ) + wt*agnom(ix)
-      !bgnxg_tiles( i , itile ) = bgnxg_tiles( i , itile ) + wt*bgnom(iy)
-      bsvar_tiles( i , itile ) = bsvarC(ii)
-      mxdis_tiles( i , itile ) = mxdisC(ii)
-      mxvrx_tiles( i , itile ) = mxvrxC(ii)
-      mxvry_tiles( i , itile ) = mxvryC(ii)
-      aniso_tiles( i , itile ) = anisoC(ii)
-      hwdth_tiles( i , itile ) = hwdthC(ii)
-      anglx_tiles( i , itile ) = anglxC(ii)
-      !rwpks_tiles( i , itile ) = rwpks(ii)
-      !rwvls_tiles( i , itile ) = rwvls(ii)
-      !npks_tiles( i , itile )  = npks(ii)
-      !nvls_tiles( i , itile )  = nvls(ii)
-
-    enddo
-
-
-       write(*,*) " Max Tiles Needed ",maxval( numbr_tiles ) 
-
-    where( wghts_tiles > 0.)
-     !agnxg_tiles = agnxg_tiles/wghts_tiles
-     !bgnxg_tiles = bgnxg_tiles/wghts_tiles
-    elsewhere
-                                 !where( wghts_tiles <= 0.)
-     agnpk_tiles = -9999._r8
-     bgnpk_tiles = -9999._r8
-     !agnxg_tiles = -9999._r8
-     !bgnxg_tiles = -9999._r8
-    end where
-    if (ldevelopment_diags) then
-      !OPEN (unit = 611, file= trim(tfile) ,form="UNFORMATTED" )
-      OPEN (unit = 611, file= 'RidgeTile.dat' ,form="UNFORMATTED" )
-      write( 611 ) ntarget,ntiles
-      write( 611 ) error_tiles
-      write( 611 ) uqrid_tiles
-      write( 611 ) wghts_tiles
-      write( 611 ) mxdis_tiles
-      write( 611 ) anglx_tiles
-      write( 611 ) agnpk_tiles
-      write( 611 ) bgnpk_tiles
-      !write( 611 ) agnxg_tiles
-      !write( 611 ) bgnxg_tiles
-      write( 611 ) mxvrx_tiles
-      write( 611 ) mxvry_tiles
-      write( 611 ) aniso_tiles
-      write( 611 ) hwdth_tiles
-      
-    end if
-      
-    write(*,*) " GOT OUT OF remapridge2tiles OK "
-      
-      
-    end subroutine remapridge2tiles
-    
-    !==================================================================
+ !==================================================================
 
  subroutine alloc_ridge_qs (npeaks , NSW )
 
@@ -2389,9 +2680,11 @@ write(*,*) " in paintridge "
   allocate( riseq(npeaks) )
    riseq=-1.
   allocate( fallq(npeaks) )
-   fallq=1.
+   fallq=0.
   allocate( clngth(npeaks) )
-   clngth=1.
+   clngth=0.
+  allocate( clngt2(npeaks) )
+   clngt2=0.
 
           allocate( ALP0(npeaks))
             ALP0  = -9999.d+0

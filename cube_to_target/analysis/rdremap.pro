@@ -28,6 +28,7 @@ nodes=dblarr(nc,nc,6)
 wedge=dblarr(nc,nc,6)
 nodos=dblarr(nc,nc,6)
 wedgo=dblarr(nc,nc,6)
+wedgi=dblarr(nc,nc,6)
 anglx=dblarr(nc,nc,6)
 hwdth=dblarr(nc,nc,6)
 clngt=dblarr(nc,nc,6)
@@ -68,6 +69,7 @@ readu,1,xs,ys,xspk,yspk,ipks,jpks
 if not eof(1) then readu,1,riseq
 if not eof(1) then readu,1,fallq
 if not eof(1) then readu,1,uniqw
+if not eof(1) then readu,1,wedgi
 
 
 
@@ -80,7 +82,8 @@ cube={mxdis:mxdis  $
      ,block:block,profi:profi,uniqi:uniqi  $ 
      ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
      ,nodes:nodes,wedge:wedge,riseq:riseq,fallq:fallq  $
-     ,nodos:nodos,wedgo:wedgo,uniqw:uniqw,rf:fn0}
+     ,nodos:nodos,wedgo:wedgo,uniqw:uniqw,wedgi:wedgi  $
+     ,rf:fn0}
 
 
 if keyword_set(fvgrid) then begin

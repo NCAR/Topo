@@ -1,7 +1,7 @@
 pro fnames,xcase=xcase,repo=repo $ 
           ,co=co,fi=fi,nsw=nsw,ogrid=ogrid,nc=nc $
           ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg $
-          ,list=list,trxy=trxy
+          ,list=list,trxy=trxy,tile=tile
 
  ;d='/project/amp/juliob/Topo-generate-devel/Topo/Ridge-Finding.git/output/'
 
@@ -60,7 +60,7 @@ soo=file_search( d+fn+'*.dat')
 nsoo=n_elements(soo)
 trxy=soo( nsoo -1 )
 
-
+tile= d + 'Ridge_tile_map.dat' 
 
 
 print,'tg =   ',tg
@@ -70,6 +70,7 @@ print,'grem = ',grem
 print,'list = ',list
 print,'fcam = ',fcam
 print,'trxy = ',trxy
+print,'tile = ',tile
 
 
 

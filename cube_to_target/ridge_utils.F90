@@ -11,6 +11,7 @@ public ridgeshift
 public ridgescales
 public rnodes
 public rebuild_nodes
+public length_in_square
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL (KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -413,5 +414,21 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_prof
 
 end subroutine rebuild_nodes
 !==================================================
+function length_in_square( anglx ) result(d)
+real(r8),intent(in) :: anglx 
+real(r8) :: d
+real(r8) :: angrad
+
+    angrad = anglx*PI/180._r8
+
+    if ( ( angrad > -pi/4.  ) .and. ( angrad <= pi/4.    ) ) d = 1./ cos(angrad) 
+    if ( ( angrad > pi/4.   ) .and. ( angrad <= pi*3./4. ) ) d = 1./ cos(angrad-pi/2) 
+    if ( ( angrad > pi*3./4.) .and. ( angrad <= pi*5./4. ) ) d = 1./ cos(angrad-pi)  
+    if ( ( angrad > pi*5./4.) .and. ( angrad <= pi*7./4. ) ) d =-1./ cos(angrad-pi/2) 
+    if ( ( angrad > pi*7./4.) .and. ( angrad <= pi*9./4. ) ) d = 1./ cos(angrad) 
+
+end function length_in_square
+!==================================================
+
 end module ridge_utils
 

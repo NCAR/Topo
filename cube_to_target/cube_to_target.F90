@@ -117,9 +117,10 @@ program convterr
   logical :: lread_pre_smoothtopo = .FALSE.
   integer :: iopt_ridge_seed = 0
   ! cube quantities for remapping
-  real(r8), allocatable, dimension(:) :: uniqiC , uniqwC,  cwghtC
+  real(r8), allocatable, dimension(:) :: uniqiC , uniqwC,  cwghtC, wedgoC
   real(r8), allocatable, dimension(:) :: anglxC,  anisoC,  hwdthC, clngtC, mxdisC
   real(r8), allocatable, dimension(:) :: riseqC,  fallqC,  mxvrxC, mxvryC, nodesC
+  integer,  allocatable, dimension(:) :: itrgtC
   !--JTB
   logical :: lwrite_rrfac_to_topo_file = .FALSE.
 
@@ -181,7 +182,7 @@ program convterr
     
     ! Process options one by one
     do
-      select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:", opts ) ) ! opts is optional (for longopts only)
+      select case( getopt( "c:f:g:hi:o:prxy:z01t:du:n:q:a:", opts ) ) ! opts is optional (for longopts only)
       case( char(0) )
         exit
       case( 'c' )
@@ -482,7 +483,8 @@ program convterr
     end if
     
     jmax_segments = MIN( jmax_segments, 5000 )
-    
+    jmax_segments = 10000    
+
     nreconstruction = 1
     allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
     allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
@@ -812,20 +814,23 @@ program convterr
     end do
     
     if(lfind_ridges) then
-      allocate( uniqiC( ncube*ncube*6 ), uniqwC( ncube*ncube*6 )  )
+      allocate( uniqiC( ncube*ncube*6 ), uniqwC( ncube*ncube*6 ), wedgoC( ncube*ncube*6 )  )
       allocate( anisoC( ncube*ncube*6 ), anglxC( ncube*ncube*6 ), mxdisC( ncube*ncube*6 )  )
       allocate( hwdthC( ncube*ncube*6 ), clngtC( ncube*ncube*6 )  )
       allocate( riseqC( ncube*ncube*6 ), fallqC( ncube*ncube*6 )  )
       allocate( mxvrxC( ncube*ncube*6 ), mxvryC( ncube*ncube*6 )  )
-      allocate( nodesC( ncube*ncube*6 ), cwghtC( ncube*ncube*6 )  )
+      allocate( nodesC( ncube*ncube*6 ), cwghtC( ncube*ncube*6 ) )
+      allocate( itrgtC( ncube*ncube*6 )  )
   
+ 
       call remapridge2cube( ncube,nhalo,nsw, &
            ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
            ldevelopment_diags,lregional_refinement,  &
            rrfac, & 
            uniqiC, uniqwC, anisoC, &
            anglxC,mxdisC,hwdthC,clngtC, &
-           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC  )
+           riseqC,fallqC,mxvrxC,mxvryC, & 
+           nodesC,cwghtC,wedgoC  )
 
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
@@ -834,14 +839,17 @@ program convterr
            output_grid, ldevelopment_diags,&
            terr_dev, uniqiC, uniqwC, anisoC, &
            anglxC,mxdisC,hwdthC,clngtC, &
-           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC  )
+           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, itrgtC  )
 
       if (lridgetiles) then 
-         call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
-              weights_eul_index_all(1:jall,:), & 
-              weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-              nreconstruction,ntarget,nhalo,ldevelopment_diags)
-      endif
+      call remapridge2tiles ( ntarget,ncube,jall,nreconstruction,     &
+           area_target,target_center_lon,target_center_lat,         &
+           weights_eul_index_all(1:jall,:), &
+           weights_lgr_index_all(1:jall),  &
+           weights_all(1:jall,:), &
+           uniqiC,uniqwC,itrgtC,wedgoC )
+      end if      
+
       deallocate( uniqiC,uniqwC,anisoC,anglxC,mxdisC,hwdthC,clngtC, &
                   riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC   )
     endif

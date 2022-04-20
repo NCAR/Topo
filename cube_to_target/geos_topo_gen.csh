@@ -41,17 +41,22 @@ set Co = "$argv[$n]"
 set n = 3
 set Fi = "$argv[$n]"
 
-if ( $ogrid == 'ne30pg3' ) then
-   set scrip='ne30pg3.nc'
+if ( $ogrid == 'geos_fv_c12' ) then
+   set scrip='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/PE12x72-CF.nc4'
 endif
-if ( $ogrid == 'SA' ) then
-   set scrip='ne0_15x2.nc' 
-   set Yfac = '2'
+if ( $ogrid == 'geos_fv_c24' ) then
+   set scrip='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/PE24x144-CF.nc4'
+endif
+if ( $ogrid == 'geos_fv_c48' ) then
+   set scrip='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/PE48x288-CF.nc4'
+endif
+if ( $ogrid == 'geos_fv_c90' ) then
+   set scrip='/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/PE90x540-CF.nc4'
 endif
 
 
 
-./cube_to_target --grid_descriptor_file='../../regression-test-data/'$scrip --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'userid@ucar.edu' -q 'output/' -z -a 2 -1
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'userid@ucar.edu' -q 'output/' -z -a 2
 
 # Variable res
 #./cube_to_target --grid_descriptor_file='../../regression-test-data/'$scrip --intermediate_cs_name='../../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid='ne0_15x2_SA' --coarse_radius=$Co --fine_radius=001 -r -y $Yfac -u 'userid@ucar.edu' -q 'output/'

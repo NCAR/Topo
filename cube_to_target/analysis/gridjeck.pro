@@ -1,5 +1,5 @@
 pro gridjeck,xcase=xcase,xtag=xtag,repo=repo,fi=fi,co=co,nsw0=nsw0,nc=nc,ogrid=ogrid,quick=quick,stops=stops $
-            ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg,list=list $
+            ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg,list=list,tile=tile $
             ,cu=cu,latt=latt,lont=lont,itrgt=itrgt,xlist=xlist,xy=xy,terroutput=terroutput,xloutput=xloutput $
             ,rr=rr
 
@@ -27,7 +27,7 @@ endif
 
 ;topo_smooth_gmted2010_bedmachine_nc0540_Co012_Fi001.nc
 
-fnames,xc=xcase,repo=repo,co=co,fi=fi,ns=nsw,og=ogrid,fcam=fcam,grem=grem,rema=rema,topo=topo,tg=tg,list=list,nc=nc,trxy=trxy
+fnames,xc=xcase,repo=repo,co=co,fi=fi,ns=nsw,og=ogrid,fcam=fcam,grem=grem,rema=rema,topo=topo,tg=tg,list=list,nc=nc,trxy=trxy,tile=tile
 
 
 rdgrid,grem=grem,itrgt=itrgt
@@ -61,6 +61,7 @@ cu=create_struct( cu, 'smooth',smooth )
 cu=create_struct( cu, 'lon',lont )
 cu=create_struct( cu, 'lat',latt )
 if keyword_set(rr) then cu=create_struct( cu, 'rrfac',rrfac )
+cu=create_struct( cu, 'itrgt',itrgt )
 
         if keyword_set(STOPS) then STOP
 
