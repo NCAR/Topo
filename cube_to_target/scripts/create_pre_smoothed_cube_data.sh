@@ -28,9 +28,13 @@ foreach dir ( $topo_dir $raw_data_dir $output_dir )
   endif
 end
 
-foreach c ( 60 )
+echo "raw_data_dir = "$raw_data_dir
+echo "topo_dir     = "$topo_dir
+echo "output_dir   = "$output_dir
+foreach c ( 30 )
   echo "creating pre-smoothed file using smoothing c="$c
-  $topo_dir/cube_to_target/cube_to_target -i $raw_data_dir/gmted2010_bedmachine-ncube3000.nc -c $c -p -x -q $output_dir
+#  $topo_dir/cube_to_target/cube_to_target -i $raw_data_dir/gmted2010_bedmachine-ncube3000.nc -c $c -p -x -q $output_dir
+  qcmd -l walltime=12:00:00 -- $topo_dir/cube_to_target/cube_to_target -i $raw_data_dir/gmted2010_bedmachine-ncube3000.nc -c $c -p -x -q $output_dir >& out &
 end
 #foreach c ( 2 4 )
 #  echo "creating pre-smoothed file using smoothing c="$c

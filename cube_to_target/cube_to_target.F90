@@ -87,6 +87,7 @@ program convterr
   integer :: rrfac_max = 1
   logical :: lread_pre_smoothtopo = .FALSE.     !use pre-smoothed (on intermediate cubed-sphere grid) topo file
   logical :: lwrite_rrfac_to_topo_file = .FALSE.!for debugging write rrfac on target grid to topo file
+  logical :: linterp_phis = .FALSE.             !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
   !
   INTEGER :: UNIT, ioptarg
   
@@ -103,7 +104,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(19)
+  type(option_s):: opts(20)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -127,6 +128,7 @@ program convterr
   opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
   opts(18) = option_s( "output_data_directory"    ,.true.    , 'q'   ,.false.       ,.false.)
   opts(19) = option_s( "grid_descriptor_file_gll" ,.true.    , 'a'   ,.false.       ,.false.)
+  opts(20) = option_s( "interpolate_phis"         ,.false.   , 's'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -140,7 +142,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:s", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -237,6 +239,10 @@ program convterr
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' -a '//TRIM(ADJUSTL(str))
       opts(19)%specified = .true.
+    case( 's' )
+      linterp_phis = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -s '
+      opts(20)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -323,7 +329,6 @@ program convterr
   write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
   write(*,*) "str_source                      = ",str_source
   
-  
   !*********************************************************
   !
   ! script for plotting
@@ -351,7 +356,11 @@ program convterr
   
   ! Read in topo data on cubed sphere grid
   !------------------------------------------------------------------------------------------------
+
   call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
+#ifdef idealized_test
+  call idealized(terr,ncube)
+#endif
   
   allocate ( dA(ncube,ncube),stat=alloc_error )
   CALL EquiangularAllAreas(ncube, dA)
@@ -549,7 +558,7 @@ program convterr
   write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
   write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
   
-  terr_sm = (volterr/volterr_sm)*terr_sm
+  terr_sm = (volterr/volterr_sm)*terr_sm! should we do this? xxx
   volterr_sm=0.
   do np=1,6 
     volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
@@ -757,7 +766,13 @@ program convterr
       sgh_uf_target(i) = sgh_uf_target(i)+wt*((terr_uf_target(i)-terr(ii))**2)/area_target(i)
       
     end do
-    
+
+    if (linterp_phis) then
+      write(*,*) "bilinear interpolation of PHIS from intermediate cubed-sphere grid to target grid"
+      CALL bilinear_interp(ncube,ntarget,target_center_lon,target_center_lat,terr_sm(1:ncube,1:ncube,:),terr_target)
+    end if
+
+
     if(lfind_ridges) then
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
@@ -795,7 +810,7 @@ program convterr
         rrfac_target  (i) = rrfac_target  (i) + wt*rrfac(ix,iy,ip)/area_target(i)
       end do
     end if
-
+    DEALLOCATE(weights_all,weights_eul_index_all)
     
     write(*,*) " !!!!!!!!  ******* maxval terr_target " , maxval(terr_target)
     
@@ -856,55 +871,55 @@ program convterr
     if (lphis_gll) then
       call read_target_grid(grid_descriptor_fname_gll,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
            target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
-
-      deallocate(target_corner_lat, target_corner_lon)
-      ncorner = 4
-      allocate(target_corner_lat(ncorner,ntarget), target_corner_lon(ncorner,ntarget))
-
-      call redefine_cells(ntarget,ncorner,target_center_lon,target_center_lat,target_rrfac,target_corner_lon,target_corner_lat)
-
-      weights_all = 0.0_r8
-      weights_eul_index_all = 0
-      weights_lgr_index_all = 0
-      jall=jall_anticipated
-
-      write(*,*) "Compute overlap weights for GLL grid: "
-      CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-           jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
-      
       allocate (terr_target(ntarget))
-      allocate (area_target(ntarget))
-      area_target = 0.0
-      do counti=1,jall
-        i    = weights_lgr_index_all(counti)
-        wt = weights_all(counti,1)
-        area_target        (i) = area_target(i) + wt
-      end do
-      
-      write(*,*) "Remapping terrain"
-
-      terr_target=0.0
-      do counti=1,jall        
-        i    = weights_lgr_index_all(counti)!!
-        !
-        ix  = weights_eul_index_all(counti,1)
-        iy  = weights_eul_index_all(counti,2)
-        ip  = weights_eul_index_all(counti,3)
-        !
-        ! convert to 1D indexing of cubed-sphere
-        !
-        ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+      if (linterp_phis) then
+        CALL bilinear_interp(ncube,ntarget,target_center_lon,target_center_lat,terr_sm(1:ncube,1:ncube,:),terr_target)
+      else
+        weights_all = 0.0_r8
+        weights_eul_index_all = 0
+        weights_lgr_index_all = 0
+        jall=jall_anticipated
         
-        wt = weights_all(counti,1)
+        write(*,*) "Compute overlap weights for GLL grid: "
+        CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
+             jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
         
-        terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
-      end do
-
-      DEALLOCATE(weights_all,weights_eul_index_all)
+        
+        allocate (area_target(ntarget))
+        allocate (terr_target(ntarget))
+        
+        area_target = 0.0
+        do counti=1,jall
+          i    = weights_lgr_index_all(counti)
+          wt = weights_all(counti,1)
+          area_target        (i) = area_target(i) + wt
+        end do
+        
+        write(*,*) "Remapping terrain"
+        
+        terr_target=0.0
+        do counti=1,jall        
+          i    = weights_lgr_index_all(counti)!!
+          !
+          ix  = weights_eul_index_all(counti,1)
+          iy  = weights_eul_index_all(counti,2)
+          ip  = weights_eul_index_all(counti,3)
+          !
+          ! convert to 1D indexing of cubed-sphere
+          !
+          ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+          
+          wt = weights_all(counti,1)
+          
+          terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
+        end do
+      end if
+      stop
+      DEALLOCATE(weights_all,weights_eul_index_all)        
       CALL wrtncdf_unstructured_append_phis(ntarget,terr_target, &
            target_center_lon,target_center_lat,output_fname)
     end if
-  end program convterr
+    end program convterr
     
   subroutine print_help
     write (6,*) "Usage: cube_to_target [options] ..."
@@ -925,6 +940,7 @@ program convterr
     write (6,*) "-u, --name_email_of_creator"
     write (6,*) "-n, --source_data_identifier"
     write (6,*) "-a, --grid_descriptor_file_gll"
+    write (6,*) "-s, --interpolate_phis"
     stop
   end subroutine print_help
   !
@@ -1230,7 +1246,11 @@ program convterr
     ! Write variable for output
     !
     print*,"writing terrain data",MINVAL(terr),MAXVAL(terr)
+#ifdef idealized_test
+    status = nf_put_var_double (foutid, terrid, terr)
+#else
     status = nf_put_var_double (foutid, terrid, terr*9.80616)
+#endif
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
 
@@ -2122,38 +2142,6 @@ program convterr
   end subroutine handle_err
   
   
-  SUBROUTINE redefine_cells(ntarget,ncorner,target_center_lon,target_center_lat,target_rrfac,target_corner_lon,target_corner_lat)
-    use shr_kind_mod, only: r8 => shr_kind_r8
-    IMPLICIT NONE
-    
-    
-    INTEGER,                              INTENT(IN) :: ntarget,ncorner
-    REAL(R8), DIMENSION(ntarget),         INTENT(IN) :: target_center_lon, target_center_lat, target_rrfac
-    REAL(R8), DIMENSION(ncorner,ntarget), INTENT(OUT):: target_corner_lon, target_corner_lat
-    
-    REAL(R8), DIMENSION(ncorner)     :: lat, lon
-    
-    real(r8) :: alpha_center,beta_center,dalpha,pi,pih
-    real(r8) :: alpha(ncorner),beta(ncorner)
-    integer  :: ipanel,i,j
-
-    pi     = 4.D0*DATAN(1._r8)
-    pih    = pi*0.5_r8
-    dalpha = pih/90.0_r8!xxx
-    do j=1,ntarget
-      call CubedSphereABPFromRLL(target_center_lon(j), target_center_lat(j), alpha_center, beta_center, ipanel,.true.)
-      alpha(1) = alpha_center-0.5_r8*dalpha; beta(1) = beta_center-0.5_r8*dalpha
-      alpha(2) = alpha_center+0.5_r8*dalpha; beta(2) = beta_center-0.5_r8*dalpha
-      alpha(3) = alpha_center+0.5_r8*dalpha; beta(3) = beta_center+0.5_r8*dalpha
-      alpha(4) = alpha_center-0.5_r8*dalpha; beta(4) = beta_center+0.5_r8*dalpha
-      do i=1,4
-        call CubedSphereRLLFromABP(alpha(i), beta(i), ipanel, target_corner_lon(i,j), target_corner_lat(i,j))
-      end do
-    end do
-  end SUBROUTINE redefine_cells
-
-
-  
   !*******************************************************************************
   !  At this point mapping arrays are calculated
   !
@@ -2380,7 +2368,52 @@ program convterr
     
   END SUBROUTINE overlap_weights
   
-  
+  SUBROUTINE bilinear_interp(ncube,ntarget,target_center_lon,target_center_lat,terr_cube,terr_target)
+    use shr_kind_mod, only: r8 => shr_kind_r8
+!    use reconstruct
+    IMPLICIT NONE
+    
+    
+    INTEGER,                            INTENT(IN) :: ncube, ntarget
+    REAL(R8), DIMENSION(ntarget),       INTENT(IN) :: target_center_lon, target_center_lat
+    REAL(R8), DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_cube
+    REAL(R8), DIMENSION(ntarget),       INTENT(OUT):: terr_target
+    
+    REAL(R8)                           :: lat, lon
+    REAL(R8), DIMENSION(1:ncube+1)     :: xgno, ygno
+    
+    REAL(R8) :: da, alpha, beta, piq
+    INTEGER  :: i,ip,jx,jy,nhalo
+
+!    REAL(R8), DIMENSION(0:ncube+1,0:ncube+1,6) :: terr_cube_halo
+    real(r8) :: x,y,x1,x2,y1,y2,w11,w12,w21,w22 !variables for bi-linear interpolation
+    
+    piq = DATAN(1.D0)
+    da = 2.0_r8*piq/DBLE(ncube)
+
+    DO i=1,ncube+1
+      xgno(i) = TAN(-piq+(i-1)*da)
+    END DO
+    ygno = xgno
+    DO i=1,ntarget
+      if (MOD(i,10)==0)call progress_bar("# ", i, DBLE(100*i)/DBLE(ntarget))
+      CALL CubedSphereABPFromRLL(target_center_lon(i), target_center_lat(i), alpha, beta, ip, .TRUE.)
+      jx = CEILING((alpha + piq) / da)
+      jy = CEILING((beta  + piq) / da)
+      jx = MIN(MAX(1,jx),ncube-1); jy = MIN(MAX(1,jy),ncube-1)
+
+      x = tan(alpha);y = tan(beta)
+
+      x1 = xgno(jx); x2 = xgno(jx+1); y1 = ygno(jy); y2 = ygno(jy+1)
+
+      w11 = (x2-x )*(y2-y )/((x2-x1)*(y2-y1))
+      w12 = (x2-x )*(y -y1)/((x2-x1)*(y2-y1))
+      w21 = (x -x1)*(y2-y )/((x2-x1)*(y2-y1))
+      w22 = (x -x1)*(y -y1)/((x2-x1)*(y2-y1))
+      terr_target(i) = w11*terr_cube(jx  ,jy,ip)+w12*terr_cube(jx  ,jy+1,ip)+&
+                       w21*terr_cube(jx+1,jy,ip)+w22*terr_cube(jx+1,jy+1,ip)
+    END DO
+  END SUBROUTINE bilinear_interp
   
   !------------------------------------------------------------------------------
   ! SUBROUTINE CubedSphereABPFromRLL
@@ -2749,3 +2782,29 @@ program convterr
       character, parameter :: CR = achar(13)
       write( *, "((a1,a, t4,i10, f10.2,' percent  done ', a1, '  '))", advance = "NO") CR, txt, n, x, c(mod(n, s))
     end subroutine progress_bar
+
+
+#ifdef idealized_test
+  subroutine idealized(psi,ncube)
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    real(r8), intent(out) :: psi(ncube,ncube,6)
+    integer, intent(in)   :: ncube
+
+    real(r8) :: piq,da,alpha,beta,lon,lat
+    integer  :: i,j,ip
+    piq = DATAN(1.D0)
+    da = 2.0_r8*piq/DBLE(ncube)
+    do ip=1,6
+      do j=1,ncube
+        do i=1,ncube
+          alpha = -piq+(i-0.5)*da; beta = -piq+(j-0.5)*da
+          call CubedSphereRLLFromABP(alpha, beta, ip, lon, lat)
+          psi(i,j,ip) = (cos(lat)*cos(lat)*cos(2.0*(lon)))!Y22
+          !!      psi(i,j) = 10000.0*(2.0+cos(lat(j))*cos(lat(j))*cos(2.0*lon(i)))!Y22
+!          psi(i,j,ip) = (2.0+(sin(2.0*lat)**16)*cos(16.0*lon)) !Y16_32
+          !      psi(i,j) = 10000.0*(2.0+cos(16.0*lon(i))) !Y16_32
+        end do
+      end do
+    end do
+  end subroutine idealized
+#endif

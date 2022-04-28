@@ -1,4 +1,4 @@
-
+#define original
 !-----------------------------------------------------------------------------
 ! MODULE subgrid_topo_ana
 !
@@ -147,7 +147,7 @@ CONTAINS
 
     ! Smooth cubed sphere topography
     !--------------------------------------
-
+#ifdef original
       write(*,*) " Smoothing parameters : ",NSCL_f,NSCL_c
       terr_sm = 0.
       terr_dev = 0.
@@ -189,7 +189,13 @@ CONTAINS
                terr_dev  =  terr_dev00
             end where
          end if
-
+#else
+         !
+         ! Laplacian smoothing
+         !
+         call smooth_Laplacian_on_cube(terr, rrfac, ncube, DBLE(1E15), terr_sm(1:ncube,1:ncube,:))
+         terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
+#endif
       volterr_in=0.
       volterr_sm=0.
       do ip=1,6 
@@ -202,14 +208,174 @@ CONTAINS
 
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
-          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rr_updt)
+          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rr_updt)
         else
-          call wrtncdf_topo_smooth_data(ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
         end if
         if (stop_after_smoothing ) STOP
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
-   
+
+#ifndef original
+  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, nu_lap, terr_sm)
+    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
+    integer,                                        intent(in)  :: ncube
+    real (kind=dbl_kind),                           intent(in)  :: nu_lap
+    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: terr_sm
+
+    integer :: i,j,ip
+
+    integer, parameter :: nhalo=2
+
+    real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa, ggbb, ggab, ggba, sqgg !metric terms cell centers
+    real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa_e, ggbb_e, ggab_e, ggba_e, sqgg_e!metric terms edge
+    real (kind=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo,6) :: terr_halo
+    real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2)   :: terr_halo_edgeX, terr_halo_edgeY
+    real (kind=dbl_kind)                                                       :: alph, beta
+    real (kind=dbl_kind)                                                       :: da,irho,irhosq,piq,pi
+    real (kind=dbl_kind)                                                       :: inv_da,factor
+    real (kind=dbl_kind)                                                       :: lap_x,lap_y,lap_xy,lap_yx
+
+
+    real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
+    real (kind=dbl_kind), dimension(ncube,ncube)         :: lap
+    real (kind=dbl_kind) :: aa,bb,cc,dd,det
+#ifdef idealized_test
+    real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
+    call idealized_lap(exact,ncube)!xxx
+#endif
+    piq = DATAN(1.D0)
+    pi  = 4.D0*piq
+    da  = 0.5D0*pi/DBLE(ncube)
+    inv_da = 1.0D0/da
+    !
+    ! metrics in center of cells: eq (C3) in Nair et al. 2005
+    ! https://doi.org/10.1175/MWR2890.1
+    !
+    ! remember to use inverse metric!
+    !
+    DO j=0,ncube+1
+      DO i=0,ncube+1
+        alph = -piq+(DBLE(i)-0.5)*da
+        beta = -piq+(DBLE(j)-0.5)*da
+
+        irhosq = 1.0D0 + tan(alph)*tan(alph)+tan(beta)*tan(beta)
+        irho   = sqrt(irhosq)
+        
+        factor = irhosq*irhosq*cos(alph)*cos(alph)*cos(beta)*cos(beta)
+        factor = 1.0D0/factor
+
+        aa =  factor*(1.0D0 + tan(alph)*tan(alph))
+        dd =  factor*(1.0D0 + tan(beta)*tan(beta))
+        bb = -factor*tan(alph)*tan(beta)
+        cc = bb
+
+        det = aa*dd-bb*cc
+        sqgg(i,j) = sqrt(det)
+        det = 1.0/det
+
+        ggaa(i,j) =  det*dd 
+        ggab(i,j) = -det*bb
+        ggba(i,j) = -det*cc
+        ggbb(i,j) =  det*aa
+      END DO
+    END DO
+    !
+    ! Same as above but for edge of cells
+    !
+    DO j=0,ncube+1
+      DO i=0,ncube+1
+        alph = -piq+DBLE((i-1))*da
+        beta = -piq+DBLE((j-1))*da
+
+        irhosq = 1.0D0 + tan(alph)*tan(alph)+tan(beta)*tan(beta)
+        irho   = sqrt(irhosq)
+        
+        factor = irhosq*irhosq*cos(alph)*cos(alph)*cos(beta)*cos(beta)
+        factor = 1.0D0/factor
+
+        aa =  factor*(1.0D0 + tan(alph)*tan(alph))
+        dd =  factor*(1.0D0 + tan(beta)*tan(beta))
+        bb = -factor*tan(alph)*tan(beta)
+        cc = bb
+
+        det = aa*dd-bb*cc
+        sqgg_e(i,j) = sqrt(det)
+        det = 1.0/det
+
+        ggaa_e(i,j) =  det*dd 
+        ggab_e(i,j) = -det*bb
+        ggba_e(i,j) = -det*cc
+        ggbb_e(i,j) =  det*aa
+      END DO
+    END DO
+
+    do ip=1,6
+      call CubedSphereFillHalo_Cubic(terr, terr_halo, ip, ncube+1)
+    end do
+    !
+    ! Laplacian
+    !
+    ! Equation (3) in
+    ! 
+    ! "Diffusion Experiments with a Global Discontinuous Galerkin Shallow-Water Model"
+    ! Nair, MWR, 2009
+    !
+    do ip=1,6
+      do j=1,ncube
+        do i=1,ncube
+
+          lap_x  = (terr_halo(i+1,j,ip)-terr_halo(i  ,j,ip))*sqgg_e(i+1,j)*ggaa_e(i+1,j)  !x-derivative on edge i+1/2
+          lap_x  = lap_x -&
+                   (terr_halo(i  ,j,ip)-terr_halo(i-1,j,ip))*sqgg_e(i  ,j)*ggaa_e(i  ,j)  !x-derivative on edge i-1/2
+          lap_x  = lap_x*inv_da*inv_da
+
+          lap_xy = (terr_halo(i+1,j+1,ip)-terr_halo(i+1,j-1,ip))*sqgg(i+1,j)*ggab(i+1,j) !centered finite difference
+          lap_xy = lap_xy - &
+                   (terr_halo(i-1,j+1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i-1,j)*ggab(i-1,j) !centered finite difference
+          lap_xy = lap_xy*0.25*inv_da*inv_da
+
+          lap_y  = (terr_halo(i,j+1,ip)-terr_halo(i,j  ,ip))*sqgg_e(i,j+1)*ggbb_e(i,j+1) !y-derivative on edge j+1/2
+          lap_y  = lap_y -&
+                   (terr_halo(i,j  ,ip)-terr_halo(i,j-1,ip))*sqgg_e(i,j  )*ggbb_e(i  ,j) !y-derivative on edge j-1/2
+          lap_y  = lap_y*inv_da*inv_da
+
+          lap_yx = (terr_halo(i+1,j+1,ip)-terr_halo(i-1,j+1,ip))*sqgg(i,j+1)*ggba(i,j+1) !centered finite difference
+          lap_yx = lap_yx - &
+                   (terr_halo(i+1,j-1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i,j-1)*ggba(i,j-1) !centered finite difference
+          lap_yx = lap_yx*0.25*inv_da*inv_da
+
+          terr_sm(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
+        end do
+      end do
+    end do
+
+end subroutine smooth_Laplacian_on_cube
+#endif
+#ifdef idealized_test
+  subroutine idealized_lap(lap_psi,ncube)
+    use shr_kind_mod, only: r8 => shr_kind_r8
+    real(r8), intent(out) :: lap_psi(ncube,ncube,6)
+    integer, intent(in)   :: ncube
+
+    real(r8) :: piq,da,alpha,beta,lon,lat,psi,grad_lat,grad_lon,xterm,yterm
+    integer  :: i,j,ip
+    piq = DATAN(1.D0)
+    da = 2.0_r8*piq/DBLE(ncube)
+    do ip=1,6
+      do j=1,ncube
+        do i=1,ncube
+          alpha = -piq+(i-0.5)*da; beta = -piq+(j-0.5)*da
+          call CubedSphereRLLFromABP(alpha, beta, ip, lon, lat)
+          psi      = (2.0+cos(lat)*cos(lat)*cos(2.0*lon))!Y22
+          grad_lon = -2.0*sin(2.0*lon)
+          lap_psi(i,j,ip)   = 2.0*cos(2.0*lon)*(sin(lat)**2-2.0*cos(lat)**2)
+          lap_psi(i,j,ip)   = cos(2.0*lon)*(4.0*sin(lat)*sin(lat)-2.0*cos(lat)*cos(lat))-4.0*cos(2.0*lon)
+        end do
+      end do
+    end do
+  end subroutine idealized_lap
+#endif
 
 !=============================================================================
 SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
@@ -245,7 +411,6 @@ SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
          x1,y0,y1,initd,ii0,ii1,jj0,jj1,nctest,NSM,NS2,ismi,NSB,ns2x
 
 
-    !!REAL (KIND=dbl_kind), allocatable ::  daxx(:,:,:)
     REAL (KIND=dbl_kind), allocatable ::  wt1p(:,:),terr_patch(:,:)
     REAL(KIND=dbl_kind)  :: cosll, dx, dy ,dbet,dalp,diss,diss00,lon_ij,lat_ij,latfactor,diss0r
 
@@ -483,8 +648,9 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
    END SUBROUTINE smooth_rrfac_halo
 !======================================================================================
 
-subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line_arguments,rr_fac)
+subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,command_line_arguments,rr_fac)
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shared_vars, only : rad2deg
   implicit none
   
 #     include         <netcdf.inc>
@@ -492,7 +658,7 @@ subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line
   !
   ! Dummy arguments
   !
-  integer, intent(in) :: n
+  integer, intent(in) :: n, ncube
   real(r8),dimension(n),           intent(in) :: terr_sm,terr_dev
   character(len=1024),             intent(in) :: output_fname
   real(r8),dimension(n), optional, intent(in) :: rr_fac
@@ -509,7 +675,8 @@ subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line
   real(r8), parameter :: fillvalue = 1.d36
   integer, dimension(1) :: latdim
   character(len=1024) :: str
-    
+  real(r8)            :: pi,piq,da,alph,beta,lon(ncube,ncube,6),lat(ncube,ncube,6)
+  integer             :: i,j,ip
     
   !
   !  Create NetCDF file for output
@@ -592,6 +759,28 @@ subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line
     status = nf_def_var (foutid,'rr_fac', NF_DOUBLE, 1, nid(1), rr_fac_id)
     if (status .ne. NF_NOERR) call handle_err(status)    
   end if
+
+  status = nf_def_var (foutid,'lat', NF_DOUBLE, 1, nid(1), latvid)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "lat error"
+  end if
+  
+  status = nf_def_var (foutid,'lon', NF_DOUBLE, 1, nid(1), lonvid)
+  if (status .ne. NF_NOERR) then
+    call handle_err(status)
+    write(*,*) "lon error"
+  end if
+
+  status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
+  if (status .ne. NF_NOERR) call handle_err(status)
+  status = nf_put_att_text (foutid,latvid,'units', 13, 'degrees_north')
+  if (status .ne. NF_NOERR) call handle_err(status)
+  
+  status = nf_put_att_text (foutid,lonvid,'long_name', 9, 'longitude')
+  if (status .ne. NF_NOERR) call handle_err(status)
+  status = nf_put_att_text (foutid,lonvid,'units', 12, 'degrees_east')
+  if (status .ne. NF_NOERR) call handle_err(status)
   !
   ! End define mode for output file
   !
@@ -612,6 +801,21 @@ subroutine wrtncdf_topo_smooth_data(n,terr_sm,terr_dev,output_fname,command_line
     if (status .ne. NF_NOERR) call handle_err(status)
   end if
 
+  pi  = 4*DATAN(1.D0)
+  piq = DATAN(1.D0)
+  da  = 0.5*pi/DBLE(ncube)
+  do ip=1,6
+    DO j=1,ncube
+      DO i=1,ncube
+        alph = -piq+(i-0.5)*da
+        beta = -piq+(j-0.5)*da
+        call CubedSphereRLLFromABP(alph, beta, ip, lon(i,j,ip), lat(i,j,ip))
+      end do
+    end do
+  end do
+
+  status = nf_put_var_double (foutid, lonvid, lon*rad2deg)    
+  status = nf_put_var_double (foutid, latvid, lat*rad2deg)    
   
   print *,"close file"
   status = nf_close (foutid)
