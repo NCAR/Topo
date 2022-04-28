@@ -1,3 +1,4 @@
+!#define idealized_test
 !
 !  DESCRIPTION:  Remap topo data from cubed-sphere grid to target grid using rigorous remapping
 !                (Lauritzen, Nair and Ullrich, 2010, J. Comput. Phys.)
@@ -85,9 +86,10 @@ program convterr
   
   logical :: lregional_refinement = .FALSE. !set in read_target_grid if rrfac is on file
   integer :: rrfac_max = 1
-  logical :: lread_pre_smoothtopo = .FALSE.     !use pre-smoothed (on intermediate cubed-sphere grid) topo file
-  logical :: lwrite_rrfac_to_topo_file = .FALSE.!for debugging write rrfac on target grid to topo file
-  logical :: linterp_phis = .FALSE.             !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
+  logical :: lread_pre_smoothtopo = .FALSE.      !use pre-smoothed (on intermediate cubed-sphere grid) topo file
+  logical :: lwrite_rrfac_to_topo_file = .FALSE. !for debugging write rrfac on target grid to topo file
+  logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
+  logical :: ldistance_weighted_smoother = .TRUE.!ise distance weighted smoother instead of Laplacian smoother
   !
   INTEGER :: UNIT, ioptarg
   
@@ -104,31 +106,32 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(20)
+  type(option_s):: opts(21)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
-  !
-  opts(1 ) = option_s( "coarse_radius"            ,.true.    , 'c'   ,.false.       ,.true.)
-  opts(2 ) = option_s( "fine_radius"              ,.true.    , 'f'   ,.false.       ,.false.)
-  opts(3 ) = option_s( "grid_descriptor_file"     ,.true.    , 'g'   ,.false.       ,.true.)
-  opts(4 ) = option_s( "help"                     ,.false.   , 'h'   ,.false.       ,.false.)
-  opts(5 ) = option_s( "intermediate_cs_name"     ,.true.    , 'i'   ,.false.       ,.true.)
-  opts(6 ) = option_s( "output_grid"              ,.true.    , 'o'   ,.false.       ,.true.)
-  opts(7 ) = option_s( "use_prefilter"            ,.false.   , 'p'   ,.false.       ,.false.)
-  opts(8 ) = option_s( "find_ridges"              ,.false.   , 'r'   ,.false.       ,.false.)
-  opts(9)  = option_s( "stop_after_smooth"        ,.false.   , 'x'   ,.false.       ,.false.)
-  opts(10) = option_s( "rrfac_max"                ,.true.    , 'y'   ,.false.       ,.false.)
-  opts(11) = option_s( "development_diags"        ,.false.   , 'z'   ,.false.       ,.false.)
-  opts(12) = option_s( "zero_negative_peaks"      ,.false.   , '0'   ,.false.       ,.false.)
-  opts(13) = option_s( "ridge2tiles"              ,.false.   , '1'   ,.false.       ,.false.)
-  opts(14) = option_s( "smooth_topo_file"         ,.true.    , 't'   ,.false.       ,.false.)
-  opts(15) = option_s( "write_rrfac_to_topo_file" ,.true.    , 'd'   ,.false.       ,.false.)
-  opts(16) = option_s( "name_email_of_creator"    ,.true.    , 'u'   ,.false.       ,.true.)
-  opts(17) = option_s( "source_data_identifier"   ,.true.    , 'n'   ,.false.       ,.false.)
-  opts(18) = option_s( "output_data_directory"    ,.true.    , 'q'   ,.false.       ,.false.)
-  opts(19) = option_s( "grid_descriptor_file_gll" ,.true.    , 'a'   ,.false.       ,.false.)
-  opts(20) = option_s( "interpolate_phis"         ,.false.   , 's'   ,.false.       ,.false.)
+  ! 
+  opts(1 ) = option_s( "coarse_radius"             ,.true.    , 'c'   ,.false.       ,.true.)
+  opts(2 ) = option_s( "fine_radius"               ,.true.    , 'f'   ,.false.       ,.false.)
+  opts(3 ) = option_s( "grid_descriptor_file"      ,.true.    , 'g'   ,.false.       ,.true.)
+  opts(4 ) = option_s( "help"                      ,.false.   , 'h'   ,.false.       ,.false.)
+  opts(5 ) = option_s( "intermediate_cs_name"      ,.true.    , 'i'   ,.false.       ,.true.)
+  opts(6 ) = option_s( "output_grid"               ,.true.    , 'o'   ,.false.       ,.true.)
+  opts(7 ) = option_s( "use_prefilter"             ,.false.   , 'p'   ,.false.       ,.false.)
+  opts(8 ) = option_s( "find_ridges"               ,.false.   , 'r'   ,.false.       ,.false.)
+  opts(9)  = option_s( "stop_after_smooth"         ,.false.   , 'x'   ,.false.       ,.false.)
+  opts(10) = option_s( "rrfac_max"                 ,.true.    , 'y'   ,.false.       ,.false.)
+  opts(11) = option_s( "development_diags"         ,.false.   , 'z'   ,.false.       ,.false.)
+  opts(12) = option_s( "zero_negative_peaks"       ,.false.   , '0'   ,.false.       ,.false.)
+  opts(13) = option_s( "ridge2tiles"               ,.false.   , '1'   ,.false.       ,.false.)
+  opts(14) = option_s( "smooth_topo_file"          ,.true.    , 't'   ,.false.       ,.false.)
+  opts(15) = option_s( "write_rrfac_to_topo_file"  ,.true.    , 'd'   ,.false.       ,.false.)
+  opts(16) = option_s( "name_email_of_creator"     ,.true.    , 'u'   ,.false.       ,.true.)
+  opts(17) = option_s( "source_data_identifier"    ,.true.    , 'n'   ,.false.       ,.false.)
+  opts(18) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
+  opts(19) = option_s( "grid_descriptor_file_gll"  ,.true.    , 'a'   ,.false.       ,.false.)
+  opts(20) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
+  opts(21) = option_s( "distance_weighted_smoother",.false.   , 'j'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -142,7 +145,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:s", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sj", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -243,6 +246,10 @@ program convterr
       linterp_phis = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -s '
       opts(20)%specified = .true.
+    case( 'j' )
+      ldistance_weighted_smoother = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -j '
+      opts(21)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -534,6 +541,7 @@ program convterr
          terr_sm, terr_dev , &
          smooth_topo_fname, &
          lread_smooth_topofile, &
+         ldistance_weighted_smoother,&
          luse_prefilter, &
          lstop_after_smoothing, &
          lregional_refinement, rrfac_max, &
@@ -862,7 +870,6 @@ program convterr
 
     DEALLOCATE(target_center_lon, target_center_lat, target_area)
     if (lwrite_rrfac_to_topo_file) deallocate (rrfac_target,target_rrfac)
-
     !**********************************************************************************************************************************
     !
     ! Dual grid physics grid configuration
@@ -875,6 +882,9 @@ program convterr
       if (linterp_phis) then
         CALL bilinear_interp(ncube,ntarget,target_center_lon,target_center_lat,terr_sm(1:ncube,1:ncube,:),terr_target)
       else
+        allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
+        allocate (weights_eul_index_all(jall_anticipated,3),stat=alloc_error )
+        allocate (weights_lgr_index_all(jall_anticipated),stat=alloc_error )
         weights_all = 0.0_r8
         weights_eul_index_all = 0
         weights_lgr_index_all = 0
@@ -882,11 +892,9 @@ program convterr
         
         write(*,*) "Compute overlap weights for GLL grid: "
         CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
-             jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction)
-        
+             jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
         
         allocate (area_target(ntarget))
-        allocate (terr_target(ntarget))
         
         area_target = 0.0
         do counti=1,jall
@@ -913,9 +921,8 @@ program convterr
           
           terr_target (i) = terr_target (i) + wt*(terr_sm(ix,iy,ip))/area_target(i) 
         end do
+        DEALLOCATE(weights_all,weights_eul_index_all)
       end if
-      stop
-      DEALLOCATE(weights_all,weights_eul_index_all)        
       CALL wrtncdf_unstructured_append_phis(ntarget,terr_target, &
            target_center_lon,target_center_lat,output_fname)
     end if
@@ -2784,7 +2791,6 @@ program convterr
     end subroutine progress_bar
 
 
-#ifdef idealized_test
   subroutine idealized(psi,ncube)
     use shr_kind_mod, only: r8 => shr_kind_r8
     real(r8), intent(out) :: psi(ncube,ncube,6)
@@ -2800,11 +2806,8 @@ program convterr
           alpha = -piq+(i-0.5)*da; beta = -piq+(j-0.5)*da
           call CubedSphereRLLFromABP(alpha, beta, ip, lon, lat)
           psi(i,j,ip) = (cos(lat)*cos(lat)*cos(2.0*(lon)))!Y22
-          !!      psi(i,j) = 10000.0*(2.0+cos(lat(j))*cos(lat(j))*cos(2.0*lon(i)))!Y22
 !          psi(i,j,ip) = (2.0+(sin(2.0*lat)**16)*cos(16.0*lon)) !Y16_32
-          !      psi(i,j) = 10000.0*(2.0+cos(16.0*lon(i))) !Y16_32
         end do
       end do
     end do
   end subroutine idealized
-#endif

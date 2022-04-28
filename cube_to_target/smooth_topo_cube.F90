@@ -1,4 +1,4 @@
-#define original
+!#define idealized_test
 !-----------------------------------------------------------------------------
 ! MODULE subgrid_topo_ana
 !
@@ -25,6 +25,7 @@ CONTAINS
                                     , ncube,nhalo, NSCL_f,NSCL_c &
                                     , terr_sm,terr_dev,ofname  & 
                                     , lread_smooth_topofile  &
+                                    , ldistance_weighted_smoother&
                                     , luse_prefilter &
                                     , lstop_after_smoothing & 
                                     , lregional_refinement &
@@ -49,7 +50,7 @@ CONTAINS
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN)    :: rrfac
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
-    LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing
+    LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing, ldistance_weighted_smoother
     LOGICAL, INTENT(IN)  :: lregional_refinement, ldevelopment_diags
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(OUT)             :: ofname
@@ -147,7 +148,7 @@ CONTAINS
 
     ! Smooth cubed sphere topography
     !--------------------------------------
-#ifdef original
+    if (ldistance_weighted_smoother) then
       write(*,*) " Smoothing parameters : ",NSCL_f,NSCL_c
       terr_sm = 0.
       terr_dev = 0.
@@ -189,13 +190,13 @@ CONTAINS
                terr_dev  =  terr_dev00
             end where
          end if
-#else
+       else
          !
          ! Laplacian smoothing
          !
          call smooth_Laplacian_on_cube(terr, rrfac, ncube, DBLE(1E15), terr_sm(1:ncube,1:ncube,:))
          terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
-#endif
+       endif
       volterr_in=0.
       volterr_sm=0.
       do ip=1,6 
@@ -216,7 +217,6 @@ CONTAINS
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
 
-#ifndef original
   subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, nu_lap, terr_sm)
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
     integer,                                        intent(in)  :: ncube
@@ -351,8 +351,8 @@ CONTAINS
     end do
 
 end subroutine smooth_Laplacian_on_cube
-#endif
-#ifdef idealized_test
+
+
   subroutine idealized_lap(lap_psi,ncube)
     use shr_kind_mod, only: r8 => shr_kind_r8
     real(r8), intent(out) :: lap_psi(ncube,ncube,6)
@@ -375,7 +375,7 @@ end subroutine smooth_Laplacian_on_cube
       end do
     end do
   end subroutine idealized_lap
-#endif
+
 
 !=============================================================================
 SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
