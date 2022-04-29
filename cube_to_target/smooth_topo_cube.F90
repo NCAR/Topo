@@ -53,7 +53,7 @@ CONTAINS
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing, ldistance_weighted_smoother
     LOGICAL, INTENT(IN)  :: lregional_refinement, ldevelopment_diags
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
-    CHARACTER(len=1024), INTENT(OUT)             :: ofname
+    CHARACTER(len=1024), INTENT(INOUT)           :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
