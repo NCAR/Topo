@@ -128,7 +128,7 @@ if keyword_set(stop) then STOP
 xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, xs01:xs01, ys01:ys01, panel:mypanel, nswx:nswx_diag, $ 
           mxdis:mxdis, pkhts:pkhts, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, $ 
           ridge:rdg_profiles , crest:crst_profiles, silh:crst_silhous, $ 
-          rdg_profiles_x:rdg_profiles_x, xnodes:xnodes_list,hnodes:hnodes_list,dcenter:dcenter_list, $ 
+          ridge_x:rdg_profiles_x, xnodes:xnodes_list,hnodes:hnodes_list,dcenter:dcenter_list, $ 
           xwedge:xwedge_list, hwedge:hwedge_list, nnodes:nnodes_list,hwedge_x:hwedge_x,hnodes_x:hnodes_x}
 
 return

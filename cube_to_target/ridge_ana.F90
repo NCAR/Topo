@@ -504,8 +504,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
 902 format( a1, "  Analyzed Ridges (iterative): N="i2," Ridge ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 903 format( a1, "  Analyzed Ridges (two-Phase) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 901 format(" Ridge coords ", i6,i6,i3 )
-
-    call thinout_list( ncube, npeaks, nsw )
+!++tune 
+    !call thinout_list( ncube, npeaks, nsw )
 
     if (ldevelopment_diags) then
       write( ofile, &
@@ -1117,7 +1117,7 @@ end subroutine THINOUT_LIST
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: bsvarC,  blockC
       real(KIND=dbl_kind), dimension(ncube*ncube*6) :: itrgtC,  rwpksC, itrgxC
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA    
-      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tempC
+      real(KIND=dbl_kind), dimension(ncube*ncube*6) :: tempC,repntC
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -1227,6 +1227,8 @@ end subroutine THINOUT_LIST
                    
     i_last = -9999
 
+     call repaint( ncube, mxdisC, uniqidC, repntC )
+
 ! Previous calculation of wghts_target was bad because "flat" areas had ANGLX=0.
 ! Fix by setting ANGLX to "bad" value in "flats" before remap
      where( mxdisC < 0.1 )
@@ -1271,6 +1273,7 @@ end subroutine THINOUT_LIST
        write(911) fallqC
        write(911) uniqwgC
        write(911) wedgiC
+       write(911) repntC
 
        close(911)
               
@@ -1778,40 +1781,9 @@ end subroutine THINOUT_LIST
       allocate( clext_tiles(ntarget,maxtiles ) )
       clext_tiles(:,:)=0._r8
 
-!--------------------------------------------------------
-! Following 2 #if-blocks are supposed to do exactly 
-! the same calculations.  First block is a bit more
-! readable. Second block is about 100x (or more) faster
-!--------------------------------------------------------- 
-#if 0
-      do i=1,ntarget
-         n=NumObjects(i)
-         do ir=1,n
-            ThisRidge = MyObject(i,ir)  !
-            xpack = pack( xcoord, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) ) 
-            ypack = pack( ycoord, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) )
-            hpack = pack( wedgoC, ( (uniqwgC == ThisRidge).AND.(itrgtC == i) ) )
-            npack = size(xpack)
-            if (npack > 0) then 
-               xwoid_tiles(i,ir) = sum( xpack *hpack )/ sum(hpack) !npack
-               ywoid_tiles(i,ir) = sum( ypack *hpack )/ sum(hpack) !npack
-            end if
-            xpack = pack( xcoord, ( (uniqidC == ThisRidge).AND.(itrgtC == i) ) )
-            ypack = pack( ycoord, ( (uniqidC == ThisRidge).AND.(itrgtC == i) ) )
-            npack = size(xpack)
-            if (npack > 0) then 
-               xloid_tiles(i,ir) = sum( xpack )/ npack
-               yloid_tiles(i,ir) = sum( ypack )/ npack
-               !clext_tiles(i,ir) = sqrt( 1.*(maxval(xpack)-minval(xpack))**2 &
-               !                        + 1.*(maxval(ypack)-minval(ypack))**2 )
-               clext_tiles(i,ir) = 1._r8 * npack 
-            end if
-          end do
-          write(*,902,advance='no') achar(13), i,ntarget
-     end do
-#else
       allocate( uniqwgMap(nalloc),uniqidMap(nalloc),xcoordMap(nalloc),ycoordMap(nalloc), &
                 wedgoMap(nalloc)  )
+
       do j=1,ntarget
          n=NumObjects(j)
          uniqwgMap(:) = -1 
@@ -1848,7 +1820,7 @@ end subroutine THINOUT_LIST
           end do
           write(*,902,advance='no') achar(13), j,ntarget
        end do
-#endif
+
       allocate( mxdis_tiles(ntarget,maxtiles ), aniso_tiles(ntarget,maxtiles ), & 
                 anglx_tiles(ntarget,maxtiles ), hwdth_tiles(ntarget,maxtiles ), &  
                 clngt_tiles(ntarget,maxtiles ), lonc_tiles(ntarget,maxtiles ) , &
@@ -2552,7 +2524,14 @@ write(*,*) " in paintridge "
              rotangl = - anglx(ipk) 
              subblk0(:,:)=0.
              ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
-             nhw  = MIN( INT(hwdth(ipk)/2) , nsw/2 )
+
+!++tune
+!   For now make opt='_h2' the default. Compromise
+              !nhw  = MIN( INT(hwdth(ipk)/1) , nsw/2 )  ! _h0 
+              !nhw  = MIN( INT(hwdth(ipk)/2) , nsw/2 )  ! _h1 
+             nhw  = MIN( INT(hwdth(ipk)/4) , nsw/2 )  ! _h2
+              !nhw  = MIN( INT(hwdth(ipk)/8) , nsw/2 )  ! _h3 
+              !nhw  = MIN( INT(hwdth(ipk)/16) , nsw/2 ) ! _h4 
 #if 1
              do jw=-nhw,nhw
                subblk0( jw , -ncl:ncl ) = 1.

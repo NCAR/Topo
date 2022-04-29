@@ -82,6 +82,9 @@ endif
 if ( $ogrid == 'fv_0.9x1.25' ) then
    set scrip='fv_0.9x1.25.nc'
 endif
+if ( $ogrid == 'scam' ) then
+   set scrip='fv_0.9x1.25.nc'
+endif
 if ( $ogrid == 'ne120pg3' ) then
    set scrip='ne120pg3.nc'
 endif

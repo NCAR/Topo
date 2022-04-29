@@ -35,6 +35,7 @@ clngt=dblarr(nc,nc,6)
 riseq=dblarr(nc,nc,6)
 fallq=dblarr(nc,nc,6)
 uniqw=dblarr(nc,nc,6)
+repnt=dblarr(nc,nc,6)
 
 xs=fltarr(npeaks)
 ys=fltarr(npeaks)
@@ -70,6 +71,7 @@ if not eof(1) then readu,1,riseq
 if not eof(1) then readu,1,fallq
 if not eof(1) then readu,1,uniqw
 if not eof(1) then readu,1,wedgi
+if not eof(1) then readu,1,repnt
 
 
 
@@ -83,7 +85,7 @@ cube={mxdis:mxdis  $
      ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
      ,nodes:nodes,wedge:wedge,riseq:riseq,fallq:fallq  $
      ,nodos:nodos,wedgo:wedgo,uniqw:uniqw,wedgi:wedgi  $
-     ,rf:fn0}
+     ,repnt:repnt,rf:fn0}
 
 
 if keyword_set(fvgrid) then begin

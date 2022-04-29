@@ -1,4 +1,4 @@
-pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes,fnodes=fnodes,wedge=wedge,fwedge=fwedge
+pro blockcorr,cu=cu,nb=nb,corr=corr,block=block,profi=profi,nodes=nodes,fnodes=fnodes,wedgo=wedgo,fwedge=fwedge
 
 s=size(cu.dev)
 nc=s(1)
@@ -21,6 +21,11 @@ endif
 
 if keyword_set(nodes) then begin
    f1=cu.nodes
+   f2=cu.dev
+endif
+
+if keyword_set(wedgo) then begin
+   f1=cu.wedgo
    f2=cu.dev
 endif
 

@@ -1,13 +1,14 @@
-pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt $
+pro panelplots,cu=cu,ipanel=p,lont=lont,latt=latt,diff=du $
               ,w0=w0,window=win,zoom=zoom,swcorner=swc,size=size,xran=xran,yran=yran,clevs=clevs $
               ,mxdis=mxdis,block=block,dev=dev,smooth=smooth,raw=raw,profi=profi,xcuqi=cuqi,dblock=dblock $
               ,dprofi=dprofi,corr=corr,aniso=aniso,pdev=pdev,sdev=sdev,super=super,nvar=nvar $
               ,wedge=wedge,nodes=nodes,wedgo=wedgo,nodos=nodos,dnodes=dnodes,fnodes=fnodes,fwedge=fwedge $
               ,fallq=fallq,riseq=riseq,asymm=asymm,fasymm=fasymm,uniqw=uniqw,uniqi=uniqi,wedgi=wedgi $
+              ,repnt=repnt,dwedgo=dwedgo $
               ;  processing
               ,nsm=sm $
               ;  overplotting  
-              ,xl=x $
+              ,xl=x,over_raw=over_raw $
               ;  control
               ,stop=stop
 
@@ -76,6 +77,7 @@ if keyword_set(dprofi) then begin
 endif
 if keyword_set(mxdis) then begin
    f=cu.mxdis
+   if keyword_set(du) then f=cu.mxdis-du.mxdis
    lev=(findgen(16)-7.99999)*200.
    title$=" 'Mxdis' " & unit$='m'
 endif
@@ -127,6 +129,10 @@ if keyword_set(dblock) then begin
    f=cu.block-cu.pdev
    lev=(findgen(16)-7.99999)*200.
 endif
+if keyword_set(dwedgo) then begin
+   f=cu.wedgo-cu.dev
+   lev=(findgen(16)-7.99999)*100.
+endif
 if keyword_set(fnodes) then begin
    f=cu.nodes
    g=cu.dev
@@ -160,12 +166,13 @@ if keyword_set(wedge) then begin
 endif
 if keyword_set(wedgo) then begin
    f=cu.wedgo
+   if keyword_set(du) then f=cu.wedgo-du.wedgo
    lev=(findgen(16)-7.99999)*200.
    title$=" 'WedgO' (restricted) " & unit$='m'
 endif
 if keyword_set(dnodes) then begin
    f=cu.nodes-cu.dev
-   lev=(findgen(16)-7.99999)*200.
+   lev=(findgen(16)-7.99999)*100.
    title$=" 'Nodes'-Dev " & unit$='m'
 endif
 
@@ -186,11 +193,15 @@ if keyword_set(sdev) then begin
 endif
 if keyword_set(corr) then begin
    f=cu.corr
-   lev=0.4+(0.6/16)*findgen(16)
+   lev=findgen(7)*.2-.2
    cell_fill=1
 endif
 if keyword_set(cuqi) then begin
    f=cu.cuqi
+   lev=findgen(16)-1
+endif
+if keyword_set(repnt) then begin
+   f=cu.repnt
    lev=findgen(16)-1
 endif
 
@@ -211,14 +222,19 @@ rex
 window,re=2,xs=1200,ys=900,w0
 wset,w0
 amwgct
+if keyword_set(corr) then redbluect
 contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/fill,/xst,/yst,pos=[.075,.1,.8,.9], xtit='Cell #',ytit='Cell #',xr=xr,yr=yr,cell=cell_fill
 
-if keyword_set(mxdis) or keyword_set(fallq) or keyword_set(riseq)  or keyword_set(asymm)  or keyword_set(fasymm)  then begin
+if keyword_set(mxdis) or keyword_set(fallq) or keyword_set(riseq)  or keyword_set(asymm)  or keyword_set(fasymm) or $
+   keyword_set(repnt) then begin
    contour,f(*,*,p-1),lev=lev,c_colo=indgen(16),/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=2
-   contour,f(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
+   ;contour,f(*,*,p-1),lev=[.1,1] ,/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_thick=1
 endif
-if keyword_set(sdev) or keyword_set(nvar) then begin
+if keyword_set(sdev) or keyword_set(nvar) or keyword_set(corr) then begin
    contour,cu.raw(*,*,p-1),lev=[1,100,500,1000,2000],/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr
+endif
+if keyword_set(over_raw) then begin
+   contour,cu.raw(*,*,p-1),lev=[1,100,500,1000,2000],/noer,/xst,/yst,pos=[.075,.1,.8,.9],xr=xr,yr=yr,c_colo=255
 endif
 if keyword_set(x) then begin 
    oplot,x.xspk(ox)-1, x.yspk(ox)-1 ,ps=1,syms=.5

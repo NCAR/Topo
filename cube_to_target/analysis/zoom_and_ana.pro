@@ -1,4 +1,5 @@
-pro zoom_and_ana,cu=cu,xl=x,panel=p,xr=xr,yr=yr,terr=t
+pro zoom_and_ana,cu=cu,xl=x,panel=p,xr=xr,yr=yr,terr=t,win=win $
+                ,idx=idx
 
 ;Problem areas (based on 3000x3000x6)
 ;
@@ -47,8 +48,9 @@ endfor
 xv=findgen(nc)+1
 yv=findgen(nc)+1
 
+if not keyword_set(win) then win=1
 lev=[-1,0,1,10, 20, 50, 100, 200, 500, 1000, 2000, 3000 ]
-window,re=2,1,xs=1100,ys=900
+window,re=2,win,xs=1100,ys=900
 amwgct
 contour,cu.mxdis(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
 ;contour,cu.super(*,*,p-1),xv,yv,xr=xr,yr=yr,/xst,/yst,thick=2,lev=lev,c_colo=indgen(16)
@@ -59,18 +61,22 @@ circlesym
 stdcolo
 oplot,x.xspk(idx),x.yspk(idx),ps=8,syms=3
 for l=0,n_elements( idx )-1 do begin
+   budge=(-1)^l
    id$ = strtrim(  string(    long(x.uniqid( idx(l) ) )),2) 
    idx$ = strtrim(  string(    long(idx(l)) ),2)
-   xyouts,/data, x.xspk(idx(l)),x.yspk(idx(l)) , '  '+idx$,size=2, colo=1
+   xyouts,/data, x.xspk(idx(l))-budge,x.yspk(idx(l))+budge , '  '+idx$,size=2, colo=1
 endfor
 circlesym,nv=4
 oplot,x.xs(idx),x.ys(idx),ps=8,syms=3
 for l=0,n_elements( idx )-1 do begin
+   budge=(-1)^l
    id$ = strtrim(  string(    long(x.uniqid( idx(l) ) )),2) 
    idx$ = strtrim(  string(    long(idx(l)) ),2) 
-   xyouts,/data, x.xs(idx(l)),x.ys(idx(l)) , '  '+idx$,size=2, colo=1
+   xyouts,/data, x.xs(idx(l))-budge,x.ys(idx(l))+budge , '  '+idx$,size=2, colo=1
 endfor
-
+for l=0,n_elements( idx )-1 do begin
+    oplot,[x.xs(idx(l)), x.xspk(idx(l)) ]  , [ x.ys(idx(l)),x.yspk(idx(l))  ]
+endfor
 STOP
 
 return

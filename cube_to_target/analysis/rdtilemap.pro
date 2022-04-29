@@ -59,7 +59,7 @@ readu,1,clngt2
 stop
 close,1
 
-r={file:idxf, idxmap:idxmap , idcoun:idcoun $
+r={file:tile, idxmap:idxmap , idcoun:idcoun $
   ,MyObject:MyObject , LnObject:LnObject , WtObject:WtObject   $ 
   ,NumObjects:NumObjects $
   ,clext:clext,clngt:clngt,hwdth:hwdth,mxdis:mxdis $

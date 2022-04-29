@@ -1,4 +1,4 @@
-pro condense,cu=cu
+pro condense,cu=cu,l=l
 
 s=size( cu.mxdis )
 nc=s(1)
@@ -6,11 +6,17 @@ nc=s(1)
 doo=where( cu.mxdis gt 1. )
 
 duqi = cu.uniqi(doo)
-coqi = fltarr(  long(max(duqi)) + 1 )
 
-for i=0,long(max(duqi)) do begin
+nuqi = n_elements( l.mxdis )
+
+;coqi = fltarr(  long(max(duqi)) + 1 )
+coqi = fltarr(  nuqi  )
+
+
+;for i=0,long(max(duqi)) do begin
+for i=1,nuqi-1 do begin
     oo = where( duqi eq i*1.d )
-    if max(oo) gt -1 then coqi(i) = n_elements( oo )
+    if max(oo) gt -1 then coqi(i-1) = n_elements( oo )
 endfor
 
 print,"Finished gathering unique IDs "
@@ -22,17 +28,23 @@ for j=0,nc-1 do begin
 for i=0,nc-1 do begin
 
     uqid         = cu.uniqi( i,j,p)
-    cuqi(i,j,p)  = coqi( uqid )
+    cuqi(i,j,p)  = coqi( uqid-1 )
 
 endfor
 endfor
 print,"Panel = ",p
 endfor
 
-cu = create_struct( cu, 'cuqi', cuqi )
-cu = create_struct( cu, 'coqi', coqi )
-
-
+if tagset(cu,'cuqi') then begin
+   cu.cuqi=cuqi
+endif else begin
+   cu = create_struct( cu, 'cuqi', cuqi )
+endelse
+if tagset(cu,'coqi') then begin
+   cu.coqi=coqi
+endif else begin
+   cu = create_struct( cu, 'coqi', coqi )
+endelse
 
 
 return

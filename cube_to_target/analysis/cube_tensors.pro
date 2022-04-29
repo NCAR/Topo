@@ -48,5 +48,14 @@ g_ba =  g_ab
 g_bb =  c0 * (1+tan(bet)^2)
 
 
+;Inverse of g_ij (g^ij)
+
+c0   =  1./gg^2
+gIaa =  c0 * g_bb
+gIab = -c0 * g_ab
+gIba = -c0 * g_ba
+gIbb =  c0 * g_aa
+
+
 return
 end

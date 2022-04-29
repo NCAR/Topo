@@ -12,6 +12,7 @@ public ridgescales
 public rnodes
 public rebuild_nodes
 public length_in_square
+public repaint
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL (KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -206,7 +207,7 @@ contains
     integer :: picos(nsw+1),vails(nsw+1),kinks(nsw+1),mesas(nsw+1)
     integer :: xpico(nsw+1),xvail(nsw+1),xnode(nsw+1),xkink(nsw+1)
     integer :: ncntrpk,xcntrpk(nsw+1)
-    real    :: ldh,rdh,hq1,tol,ahq
+    real    :: ldh,rdh,hq1,tol,ahq,ihq,dhn
     integer :: i,j,k,nkink,ns2
 
     !real    :: hwedge(3)
@@ -311,33 +312,31 @@ contains
     xwdg0=-999
     xwdg1=-999
     xwdg2=-999
+    tol  = 0.25*(maxval(hnodes)-minval(hnodes))
     do i=1,nnode
        if (xnodes(i) == xcntrpk(1)) inode_c=i
     end do
     if ((inode_c > 1).AND.(inode_c < nnode) ) then
        xwdg1 = xnodes( inode_c )
        do i=inode_c,2,-1
-       ahq = sum(  hnodes(1:i-1) ) / ( i -1 )
-       !!hq1 = minval( hnodes(1:i-1))
-       !!tol = 0.5*(hnodes(inode_c)-hnodes(i) )
-       if (hnodes(i) < ahq ) then
-       !!if (hnodes(i) < hq1 ) then
-       !!if (hnodes(i) < hnodes(i-1) ) then
-          xwdg0 = xnodes(i)
-          exit
-       end if
+          ahq = sum(  hnodes(1:i-1) ) / ( i -1 )
+          dhn = hnodes(i)-hnodes(i-1)
+          !if (hnodes(i) < ahq ) then
+          if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
+             xwdg0 = xnodes(i)
+             exit
+          end if
        end do
        if (xwdg0<0) xwdg0=1
+
        do i=inode_c,nnode-1
-       ahq = sum(  hnodes(i+1:nnode) ) / ( nnode - i  )
-       !!hq1 = minval( hnodes(i+1:nnode))
-       !!tol = 0.5*(hnodes(i)-hnodes(inode_c) )
-       if (hnodes(i) < ahq ) then
-       !!if (hnodes(i) < hq1 ) then
-       !!if (hnodes(i) < hnodes(i+1) ) then
-          xwdg2 = xnodes(i)
-          exit
-       end if
+          ahq = sum(  hnodes(i+1:nnode) ) / ( nnode - i  )
+          dhn = hnodes(i)-hnodes(i+1)
+          !if (hnodes(i) < ahq ) then
+          if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
+             xwdg2 = xnodes(i)
+             exit
+          end if
        end do
        if (xwdg2<0) xwdg2=nsw+1
     
@@ -429,6 +428,48 @@ real(r8) :: angrad
 
 end function length_in_square
 !==================================================
+
+subroutine repaint( ncube, mxdis, uniqi, repnt )
+integer,  intent(in)   :: ncube
+real(r8), intent(in)   :: mxdis(ncube*ncube*6),uniqi(ncube*ncube*6)
+real(r8),  intent(out) :: repnt(ncube*ncube*6)
+!---- local-----
+integer,allocatable :: duqi(:),coqi(:),duqc(:)
+integer :: npack,maxid,i
+integer :: irepnt(ncube*ncube*6)
+
+
+duqi  = INT( pack( uniqi, (mxdis>1._r8) ) )
+npack = size( duqi )
+maxid = maxval( duqi )
+allocate( coqi(maxid) )
+
+write(*,*) " repaint - 1 "
+
+do i = 1,maxid
+   coqi(i)=count( duqi==i ) 
+end do
+
+write(*,*) " repaint - 2 "
+
+allocate( duqc(npack) )
+do i = 1,maxid
+   where( duqi==i )
+      duqc = coqi(i)
+   end where
+end do
+
+write(*,*) " repaint - 3 "
+
+irepnt(:)=0
+
+irepnt = unpack( duqc , (mxdis>1._r8) , irepnt )
+
+repnt  = DBLE( irepnt )
+
+write(*,*) " repaint - 4 "
+
+end subroutine repaint
 
 end module ridge_utils
 
