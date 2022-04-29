@@ -401,7 +401,7 @@ program convterr
   !
   !*********************************************************
   if (.not.lstop_after_smoothing) then
-    OPEN (unit = 711, file= TRIM(str_dir)//'/'//'plot.sh' ,STATUS='REPLACE',form="FORMATTED")
+    OPEN (unit = 711, file= 'plot.sh' ,STATUS='REPLACE',form="FORMATTED")
     write(711,*) 'ncl plot.ncl ''topoFile="',TRIM(output_fname),'"''',&
          ' ''scripFile="',TRIM(grid_descriptor_fname),'"'''
     CLOSE(711)
