@@ -390,31 +390,48 @@ program convterr
   ! set standard output file name
   !
   !*********************************************************
-  if( ncube_sph_smooth_fine==0) then
-    if(lfind_ridges) then
-      nsw = nwindow_halfwidth
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , "('_nc',i0.4, '_Co',i0.3)" ) ncube, ncube_sph_smooth_coarse
-           
+  if (ldistance_weighted_smoother) then
+    if( ncube_sph_smooth_fine==0) then
+      if(lfind_ridges) then
+        nsw = nwindow_halfwidth
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , "('_nc',i0.4, '_Co',i0.3)" ) ncube, ncube_sph_smooth_coarse
+        
+      else
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
+             "('_nc',i0.4,'_NoAniso_Co',i0.3)" ) ncube, ncube_sph_smooth_coarse
+        
+      endif
     else
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3)" ) ncube, ncube_sph_smooth_coarse
-           
-    endif
+      if(lfind_ridges) then
+        nsw = nwindow_halfwidth
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile ,"('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3 )" ) &
+             ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+        
+        
+      else
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile , &
+             "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
+             ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+      endif
+    end if
   else
+    !
+    ! Laplacian smoother standard file name
+    !
     if(lfind_ridges) then
       nsw = nwindow_halfwidth
       call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile ,"('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3 )" ) &
-           ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
-           
-           
+      write( ofile ,"('_nc',i0.4,'_Laplace',i0.3)" ) &
+           ncube, smooth_phis_numcycle
     else
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Co',i0.3,'_Fi',i0.3)" ) & 
-           ncube, ncube_sph_smooth_coarse,ncube_sph_smooth_fine
+           "('_nc',i0.4,'_NoAniso_Laplace',i0.3)" ) & 
+           ncube, smooth_phis_numcycle
     endif
   end if
   
