@@ -165,11 +165,12 @@ subroutine allocate_target_vars(ntarget)
 end subroutine allocate_target_vars
 
 
-subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
+subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: intermediate_cubed_sphere_fname
   integer, intent(out) :: ncube
+  logical, intent(out) :: llandfrac
   integer :: ncid,status, dimid, alloc_error, landid,n
   !
   !****************************************************
@@ -246,11 +247,15 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   end if
   !
   status = NF_INQ_VARID(ncid, 'LANDFRAC', landid)
-  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  
-  status = NF_GET_VAR_DOUBLE(ncid, landid,landfrac)
-  IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  WRITE(*,*) "min/max of landfrac",MINVAL(landfrac),MAXVAL(landfrac)
+  IF (status .NE. NF_NOERR) then
+    write(*,*) "LANDFRAC not on file"
+    llandfrac = .false.
+  else  
+    status = NF_GET_VAR_DOUBLE(ncid, landid,landfrac)
+    IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+    WRITE(*,*) "min/max of landfrac",MINVAL(landfrac),MAXVAL(landfrac)
+    llandfrac = .true.
+  end if
 !---ARH
   !
   ! read terr - this is the elevation data (meters) on cubed sphere grid

@@ -48,7 +48,7 @@ program convterr
   real(r8) :: vol_target, vol_target_un, area_target_total,vol_source,area_source,mea_source
   
   logical :: lphis_gll=.false.
-  
+  logical :: llandfrac=.false. !if landfrac is on the intermediate cubed-sphere file it will be mapped to target grid
   !
   ! for internal filtering
   !
@@ -89,7 +89,11 @@ program convterr
   logical :: lread_pre_smoothtopo = .FALSE.      !use pre-smoothed (on intermediate cubed-sphere grid) topo file
   logical :: lwrite_rrfac_to_topo_file = .FALSE. !for debugging write rrfac on target grid to topo file
   logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
-  logical :: ldistance_weighted_smoother = .TRUE.!ise distance weighted smoother instead of Laplacian smoother
+  logical :: ldistance_weighted_smoother         !use distance weighted smoother instead of Laplacian smoother
+
+  real (r8):: nu_dt = -1
+  integer  :: smooth_phis_numcycle=-1
+
   !
   INTEGER :: UNIT, ioptarg
   
@@ -106,7 +110,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(21)
+  type(option_s):: opts(22)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -131,7 +135,8 @@ program convterr
   opts(18) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
   opts(19) = option_s( "grid_descriptor_file_gll"  ,.true.    , 'a'   ,.false.       ,.false.)
   opts(20) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
-  opts(21) = option_s( "distance_weighted_smoother",.false.   , 'j'   ,.false.       ,.false.)
+  opts(21) = option_s( "laplace_nu_dt"             ,.true.    , 'b'   ,.false.       ,.false.)
+  opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -145,7 +150,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sj", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sjb:l:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -246,10 +251,18 @@ program convterr
       linterp_phis = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -s '
       opts(20)%specified = .true.
-    case( 'j' )
-      ldistance_weighted_smoother = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -j '
+    case( 'b' )
+      read (optarg, *) nu_dt
+      write(str,*) nu_dt
+      write(*,*) str
+      command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
       opts(21)%specified = .true.
+    case( 'l' )
+      read (optarg, '(i3)') smooth_phis_numcycle
+      write(str,*) smooth_phis_numcycle
+      write(*,*) str
+      command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
+      opts(22)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -316,7 +329,16 @@ program convterr
   else
     luse_prefilter=.FALSE.
   end if
+
+  if (nu_dt<0.and.smooth_phis_numcycle<0) then
+    ldistance_weighted_smoother = .TRUE.
+    write(*,*) "Using distance weighted smoother instead of Laplacian"
+  else
+    ldistance_weighted_smoother = .FALSE.
+    write(*,*) "Using Laplacian smoother"
+  end if
   
+  write(*,*) " "
   write(*,*) "Namelist settings"
   write(*,*) "================="
   write(*,*)
@@ -334,8 +356,11 @@ program convterr
   write(*,*) "lridgetiles                     = ",lridgetiles
   write(*,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
   write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
-  write(*,*) "str_source                      = ",str_source
-  
+  write(*,*) "str_source                      = ",trim(str_source)
+  write(*,*) "interpolate_phis                = ",linterp_phis
+  write(*,*) "nu_dt                           = ",nu_dt
+  write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
+
   !*********************************************************
   
   call  set_constants
@@ -352,7 +377,7 @@ program convterr
   ! Read in topo data on cubed sphere grid
   !------------------------------------------------------------------------------------------------
 
-  call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
+  call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
 #ifdef idealized_test
   call idealized(terr,ncube)
 #endif
@@ -543,6 +568,7 @@ program convterr
          ldevelopment_diags, &
          command_line_arguments,str_dir,str_source,&
          output_grid,&
+         nu_dt, smooth_phis_numcycle,&
          smooth_topo_fname=smooth_topo_fname&
          )
     
@@ -561,7 +587,9 @@ program convterr
   write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
   write(*,*) "            Difference       = ",(volterr - volterr_sm)/(6*sum(da))
   
-  terr_sm = (volterr/volterr_sm)*terr_sm! should we do this? xxx
+  if (ldistance_weighted_smoother) then
+    terr_sm = (volterr/volterr_sm)*terr_sm! should we do this?
+  end if
   volterr_sm=0.
   do np=1,6 
     volterr_sm =  volterr_sm + sum( terr_sm(:,:,np) * da )
@@ -611,11 +639,13 @@ program convterr
     write(*,*) "MIN/MAX target_area",MINVAL(target_area),MAXVAl(target_area)
     
     !+++ARH
-    write(*,*) "Remapping landfrac"
-    write(*,*) "MIN/MAX before remap:", MINVAL(landfrac), MAXVAL(landfrac)
-    landfrac_target = remap_field(landfrac,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&       
-         weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
-    write(*,*) "MIN/MAX after remap:", MINVAL(landfrac_target), MAXVAL(landfrac_target)
+    if (llandfrac) then
+      write(*,*) "Remapping landfrac"
+      write(*,*) "MIN/MAX before remap:", MINVAL(landfrac), MAXVAL(landfrac)
+      landfrac_target = remap_field(landfrac,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&       
+           weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
+      write(*,*) "MIN/MAX after remap:", MINVAL(landfrac_target), MAXVAL(landfrac_target)
+    end if
     !---ARH`
     
     write(*,*) "Remapping terrain"
@@ -822,10 +852,16 @@ program convterr
     !
     ! zero out small values
     !
+    if (llandfrac) then
+      do i=1,ntarget
+        !+++ARH
+        IF (landfrac_target(i)<.001_r8)  landfrac_target(i) = 0.0D0
+        !---ARH
+      end do
+      WRITE(*,*) "min/max of landfac_target                : ",MINVAL(landfrac_target    ),MAXVAL(landfrac_target    )
+    end if
+
     DO i=1,ntarget
-      !+++ARH
-      IF (landfrac_target(i)<.001_r8)  landfrac_target(i) = 0.0D0
-      !---ARH
       IF (sgh_target(i)     <    0.5)  sgh_target(i)       = 0.0D0
       IF (sgh30_target(i)<       0.5D0) sgh30_target(i)    = 0.0D0
     END DO
@@ -834,7 +870,6 @@ program convterr
     
     WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)
     WRITE(*,*) "min/max of terr_target                   : ",MINVAL(terr_target    ),MAXVAL(terr_target    )
-    WRITE(*,*) "min/max of landfac_target                : ",MINVAL(landfrac_target    ),MAXVAL(landfrac_target    )
     if (lwrite_rrfac_to_topo_file) then
       WRITE(*,*) "min/max of rrfac                       : ",MINVAL(rrfac_target),MAXVAL(rrfac_target)
     end if
@@ -852,13 +887,13 @@ program convterr
       end if
       CALL wrtncdf_rll(nlon,nlat,lpole,ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,output_fname,&
-           lfind_ridges,str_creator, command_line_arguments,area_target)
+           lfind_ridges,str_creator, command_line_arguments,area_target,llandfrac)
       
     ELSE
       CALL wrtncdf_unstructured(ntarget,terr_target,landfrac_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,target_area,&
            output_fname,lfind_ridges, command_line_arguments,&
-           lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target)
+           lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target,llandfrac)
     END IF
     DEALLOCATE(terr_target,landfrac_target,sgh30_target,sgh_target,landm_coslat_target)
     !---ARH
@@ -943,6 +978,7 @@ program convterr
     write (6,*) "-n, --source_data_identifier"
     write (6,*) "-a, --grid_descriptor_file_gll"
     write (6,*) "-s, --interpolate_phis"
+    write (6,*) "-j, --distance_weighted_smoother"
     stop
   end subroutine print_help
   !
@@ -952,7 +988,7 @@ program convterr
   !subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges)
   subroutine wrtncdf_unstructured(n,terr,landfrac,sgh,sgh30,landm_coslat,lon,lat,area,&
        output_fname,lfind_ridges,command_line_arguments,&
-       lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target)
+       lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target,llandfrac)
     !---ARH
     use shared_vars, only : rad2deg
     use shr_kind_mod, only: r8 => shr_kind_r8
@@ -981,6 +1017,7 @@ program convterr
     logical,               intent(in) :: lwrite_rrfac_to_topo_file
     real(r8),dimension(n), intent(in) :: rrfac_target
     character(len=1024),   intent(in) :: str_creator
+    logical,               intent(in) :: llandfrac
     !
     ! Local variables
     !
@@ -1040,10 +1077,12 @@ program convterr
       end if
     end if
 
-    !+++ARH  
-    status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 1, nid(1), landfracid)
-    if (status .ne. NF_NOERR) call handle_err(status)
-    !---ARH  
+    if (llandfrac) then
+      !+++ARH  
+      status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 1, nid(1), landfracid)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      !---ARH  
+    end if
     status = nf_def_var (foutid,'SGH', NF_DOUBLE, 1, nid(1), sghid)
     if (status .ne. NF_NOERR) then
       call handle_err(status)
@@ -1212,12 +1251,14 @@ program convterr
     status = nf_put_att_double (foutid, landm_coslatid, '_FillValue'   , nf_double, 1, fillvalue)
     status = nf_put_att_text   (foutid, landm_coslatid, 'long_name' , 23, 'smoothed land fraction')
     status = nf_put_att_text   (foutid, landm_coslatid, 'filter'    , 4, 'none')
-    !+++ARH  
-    status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
-    status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
-    status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
-    !!        status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
-    !---ARH  
+    if (llandfrac) then
+      !+++ARH  
+      status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
+      status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
+      status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
+      !!        status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
+      !---ARH  
+    end if
     
     status = nf_put_att_double (foutid, areaid, 'missing_value', nf_double, 1, fillvalue)
     status = nf_put_att_double (foutid, areaid, '_FillValue'   , nf_double, 1, fillvalue)
@@ -1261,12 +1302,14 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing rrfac data"
     end if
-    !+++ARH  
-    print*,"writing landfrac data",MINVAL(landfrac),MAXVAL(landfrac)
-    status = nf_put_var_double (foutid, landfracid, landfrac)
-    if (status .ne. NF_NOERR) call handle_err(status)
-    print*,"done writing landfrac data"
-    !---ARH  
+    if (llandfrac) then
+      !+++ARH  
+      print*,"writing landfrac data",MINVAL(landfrac),MAXVAL(landfrac)
+      status = nf_put_var_double (foutid, landfracid, landfrac)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing landfrac data"
+      !---ARH  
+    end if
     print*,"writing sgh data",MINVAL(sgh),MAXVAL(sgh)
     status = nf_put_var_double (foutid, sghid, sgh)
     if (status .ne. NF_NOERR) call handle_err(status)
@@ -1539,7 +1582,7 @@ program convterr
   !subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
   !     lprepare_fv_smoothing_routine,output_fname,Lfind_ridges)
   subroutine wrtncdf_rll(nlon,nlat,lpole,n,terr_in,landfrac_in,sgh_in,sgh30_in,landm_coslat_in,lon,lat,&
-       output_fname,Lfind_ridges,str_creator,command_line_arguments,area_target)
+       output_fname,Lfind_ridges,str_creator,command_line_arguments,area_target,llandfrac)
     !---ARH
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
@@ -1563,6 +1606,7 @@ program convterr
     !real(r8),dimension(n)  , intent(in) :: terr_in, landfrac_in,sgh_in,sgh30_in,lon, lat, landm_coslat_in
     real(r8),dimension(n)  , intent(in) :: terr_in, landfrac_in,sgh_in,sgh30_in,lon,lat,landm_coslat_in,area_target
     character(len=1024), intent(in) :: str_creator, command_line_arguments
+    logical, intent(in) :: llandfrac
     !---ARH
     !
     ! Local variables
@@ -1624,9 +1668,11 @@ program convterr
     terr = terr_in
     sgh=sgh_in
     sgh30 =sgh30_in
-    !+++ARH
-    landfrac = landfrac_in
-    !---ARH
+    if (llandfrac) then
+      !+++ARH
+      landfrac = landfrac_in
+      !---ARH
+    end if
     landm_coslat = landm_coslat_in
     
     if (lpole) then
@@ -1681,24 +1727,26 @@ program convterr
         ave = ave + sgh30_in(i)
       end do
       sgh30(n-(nlon+1):n) = ave/DBLE(nlon)
-      !+++ARH    
-      !!
-      !! North pole - landfrac
-      !!
-      ave = 0.0
-      do i=1,nlon
-        ave = ave + landfrac_in(i)
-      end do
-      landfrac(1:nlon) = ave/DBLE(nlon)
-      !
-      ! South pole
-      !
-      ave = 0.0
-      do i=n-(nlon+1),n
-        ave = ave + landfrac_in(i)
-      end do
-      landfrac(n-(nlon+1):n) = ave/DBLE(nlon)
-      !---ARH    
+      if (llandfrac) then
+        !+++ARH    
+        !!
+        !! North pole - landfrac
+        !!
+        ave = 0.0
+        do i=1,nlon
+          ave = ave + landfrac_in(i)
+        end do
+        landfrac(1:nlon) = ave/DBLE(nlon)
+        !
+        ! South pole
+        !
+        ave = 0.0
+        do i=n-(nlon+1),n
+          ave = ave + landfrac_in(i)
+        end do
+        landfrac(n-(nlon+1):n) = ave/DBLE(nlon)
+        !---ARH    
+      end if
       !
       ! North pole - landm_coslat
       !
@@ -1758,7 +1806,9 @@ program convterr
     landfdim(1)=lonid
     landfdim(2)=latid
     !
-    status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 2, landfdim, landfracid)
+    if (llandfrac) then
+      status = nf_def_var (foutid,'LANDFRAC', NF_DOUBLE, 2, landfdim, landfracid)
+    end if
 
     if (status .ne. NF_NOERR) call handle_err(status)
     !---ARH  
@@ -1877,12 +1927,14 @@ program convterr
     status = nf_put_att_double (foutid, landm_coslatid, '_FillValue'   , nf_double, 1, fillvalue)
     status = nf_put_att_text   (foutid, landm_coslatid, 'long_name' , 23, 'smoothed land fraction')
     status = nf_put_att_text   (foutid, landm_coslatid, 'filter'    , 4, 'none')
-    !+++ARH  
-    status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
-    status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
-    status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
-    status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
-    !---ARH
+    if (llandfrac) then
+      !+++ARH  
+      status = nf_put_att_double (foutid, landfracid, 'missing_value', nf_double, 1, fillvalue)
+      status = nf_put_att_double (foutid, landfracid, '_FillValue'   , nf_double, 1, fillvalue)
+      status = nf_put_att_text   (foutid, landfracid, 'long_name', 21, 'gridbox land fraction')
+      status = nf_put_att_text   (foutid, landfracid, 'filter', 40, 'area averaged from 30-sec USGS raw data')
+      !---ARH
+    end if
     
     status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
     if (status .ne. NF_NOERR) call handle_err(status)
@@ -1921,12 +1973,15 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
     
-    !+++ARH
-    print*,"writing landfrac data",MINVAL(landfrac),MAXVAL(landfrac)
-    status = nf_put_var_double (foutid, landfracid, landfrac)
-    if (status .ne. NF_NOERR) call handle_err(status)
-    print*,"done writing landfrac data"
-    !---ARH  
+    if (llandfrac) then
+      !+++ARH
+      print*,"writing landfrac data",MINVAL(landfrac),MAXVAL(landfrac)
+      status = nf_put_var_double (foutid, landfracid, landfrac)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing landfrac data"
+      !---ARH  
+    end if
+
     print*,"writing sgh data",MINVAL(sgh),MAXVAL(sgh)
     status = nf_put_var_double (foutid, sghid, sgh)
     if (status .ne. NF_NOERR) call handle_err(status)

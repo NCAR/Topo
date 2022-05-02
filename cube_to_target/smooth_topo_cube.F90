@@ -33,6 +33,7 @@ CONTAINS
                                     , ldevelopment_diags &
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
+                                    , nu_dt, smooth_phis_numcycle&
                                     , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -55,6 +56,8 @@ CONTAINS
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(INOUT)           :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
+    real (kind=dbl_kind), intent(in)             :: nu_dt
+    integer, intent(in)                          :: smooth_phis_numcycle
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
     integer, INTENT(IN)  :: rrfac_max
@@ -71,15 +74,20 @@ CONTAINS
          DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
 
 
+    REAL (KIND=dbl_kind), DIMENSION(ncube,ncube,6) :: lap
+
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
     REAL (KIND=dbl_kind)     :: volterr_in,volterr_sm
      
 
-    INTEGER (KIND=int_kind)   :: ncube_in_file
+    INTEGER (KIND=int_kind)   :: ncube_in_file, iter
 
     logical ::     read_in_precomputed, use_prefilter, stop_after_smoothing
     logical ::     smooth_topo_cubesph, do_refine
     logical ::     read_in_and_refine, new_smooth_topo
+
+    real (kind=dbl_kind), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
+    real (kind=dbl_kind)            :: nu_dt_unit_sphere
 
 
     !read_in_precomputed = .FALSE.
@@ -192,10 +200,27 @@ CONTAINS
          end if
        else
          !
+         ! sanity check
+         !
+         if (nu_dt<0) then
+           write(*,*) "nu_dt must be positive; nu_dt=",nu_dt
+           stop
+         end if
+         if (smooth_phis_numcycle<1) then
+           write(*,*) "smooth_phis_numcycle must be >0; smooth_phis_numcycle=",smooth_phis_numcycle
+           stop
+         end if
+         !
          ! Laplacian smoothing
          !
-         call smooth_Laplacian_on_cube(terr, rrfac, ncube, DBLE(1E15), terr_sm(1:ncube,1:ncube,:))
-         terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
+         nu_dt_unit_sphere = nu_dt/(rearth*rearth)
+
+         do iter = 1,smooth_phis_numcycle
+           terr_sm = terr
+           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, DBLE(1E15), lap)         
+           terr_sm = terr_sm+lap*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+         end do
+         terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_sm( 1:ncube , 1:ncube, :) 
        endif
       volterr_in=0.
       volterr_sm=0.
@@ -240,6 +265,7 @@ CONTAINS
     real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
     real (kind=dbl_kind), dimension(ncube,ncube)         :: lap
     real (kind=dbl_kind) :: aa,bb,cc,dd,det
+
 #ifdef idealized_test
     real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
     call idealized_lap(exact,ncube)!xxx
