@@ -250,6 +250,7 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   IF (status .NE. NF_NOERR) then
     write(*,*) "LANDFRAC not on file"
     llandfrac = .false.
+    landfrac  = 1.0
   else  
     status = NF_GET_VAR_DOUBLE(ncid, landid,landfrac)
     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)

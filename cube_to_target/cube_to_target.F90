@@ -115,7 +115,7 @@ program convterr
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
   ! 
-  opts(1 ) = option_s( "coarse_radius"             ,.true.    , 'c'   ,.false.       ,.true.)
+  opts(1 ) = option_s( "coarse_radius"             ,.true.    , 'c'   ,.false.       ,.false.)
   opts(2 ) = option_s( "fine_radius"               ,.true.    , 'f'   ,.false.       ,.false.)
   opts(3 ) = option_s( "grid_descriptor_file"      ,.true.    , 'g'   ,.false.       ,.true.)
   opts(4 ) = option_s( "help"                      ,.false.   , 'h'   ,.false.       ,.false.)
@@ -258,7 +258,7 @@ program convterr
       command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
       opts(21)%specified = .true.
     case( 'l' )
-      read (optarg, '(i3)') smooth_phis_numcycle
+      read (optarg, '(i5)') smooth_phis_numcycle
       write(str,*) smooth_phis_numcycle
       write(*,*) str
       command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
@@ -332,8 +332,23 @@ program convterr
 
   if (nu_dt<0.and.smooth_phis_numcycle<0) then
     ldistance_weighted_smoother = .TRUE.
-    write(*,*) "Using distance weighted smoother instead of Laplacian"
+    write(*,*) "Using distance weighted smoother"
+    if (ncube_sph_smooth_coarse<0) then
+      write(*,*) "ncube_sph_smooth_coarse must be specified; ncube_sph_smooth_coarse=",ncube_sph_smooth_coarse
+      stop
+    end if
   else
+    if (nu_dt==0) then
+      write(*,*) "Automatically setting nu_dt"
+      nu_dt = 20e7
+    end if
+    write(*,*) " "
+    write(*,*) "Recommended setting is nu_dt = 28e7 * (90.0/ncube)**2 where"
+    write(*,*) "ncube = 90 for 1 degree, ncube = 45 for 0.5 degree, etc."
+    write(*,*)
+    
+    write(*,*) "Laplacian smoother: setting nu_dt=",nu_dt
+
     ldistance_weighted_smoother = .FALSE.
     write(*,*) "Using Laplacian smoother"
   end if
@@ -381,7 +396,7 @@ program convterr
 #ifdef idealized_test
   call idealized(terr,ncube)
 #endif
-  
+
   allocate ( dA(ncube,ncube),stat=alloc_error )
   CALL EquiangularAllAreas(ncube, dA)
   
@@ -425,12 +440,12 @@ program convterr
     if(lfind_ridges) then
       nsw = nwindow_halfwidth
       call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile ,"('_nc',i0.4,'_Laplace',i0.3)" ) &
+      write( ofile ,"('_nc',i0.4,'_Laplace',i0.4)" ) &
            ncube, smooth_phis_numcycle
     else
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Laplace',i0.3)" ) & 
+           "('_nc',i0.4,'_NoAniso_Laplace',i0.4)" ) & 
            ncube, smooth_phis_numcycle
     endif
   end if
@@ -585,7 +600,7 @@ program convterr
          ldevelopment_diags, &
          command_line_arguments,str_dir,str_source,&
          output_grid,&
-         nu_dt, smooth_phis_numcycle,&
+         nu_dt, smooth_phis_numcycle,landfrac,&
          smooth_topo_fname=smooth_topo_fname&
          )
     

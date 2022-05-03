@@ -33,7 +33,7 @@ CONTAINS
                                     , ldevelopment_diags &
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
-                                    , nu_dt, smooth_phis_numcycle&
+                                    , nu_dt, smooth_phis_numcycle,landfrac&
                                     , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -58,7 +58,10 @@ CONTAINS
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
     real (kind=dbl_kind), intent(in)             :: nu_dt
     integer, intent(in)                          :: smooth_phis_numcycle
+    REAL (KIND=dbl_kind), &
+            DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
+
 
     integer, INTENT(IN)  :: rrfac_max
 
@@ -87,9 +90,8 @@ CONTAINS
     logical ::     read_in_and_refine, new_smooth_topo
 
     real (kind=dbl_kind), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
-    real (kind=dbl_kind)            :: nu_dt_unit_sphere
-
-
+    real (kind=dbl_kind)            :: nu_dt_unit_sphere,dt
+    real (kind=dbl_kind)            :: min_terr, max_terr
     !read_in_precomputed = .FALSE.
     read_in_precomputed = lread_smooth_topofile  !.TRUE.
     use_prefilter = luse_prefilter 
@@ -129,35 +131,36 @@ CONTAINS
      new_smooth_topo = .NOT.(read_in_and_refine)
 
      if ( ldevelopment_diags.AND.(NSCL_f>0) ) then
-     write( ofname , &
-          "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
-          ncube, NSCL_c/2, NSCL_f/2
-     ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
+       write( ofname , &
+            "('_nc',i0.4,'_Co',i0.3,'_Fi',i0.3)" ) & 
+            ncube, NSCL_c/2, NSCL_f/2
+       ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
      else
-     write( ofname , &
-          "('_nc',i0.4,'_Co',i0.3)" ) & 
-          ncube, NSCL_c/2
-     ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
+       write( ofname , &
+            "('_nc',i0.4,'_Co',i0.3)" ) & 
+            ncube, NSCL_c/2
+       ofname = 'topo_smooth_'//trim(str_source)//trim(ofname)
      end if
-
+     
      if (lregional_refinement) then
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'_'//trim(ogrid)//'.nc'
      else
        ofname= TRIM(str_dir)//'/'//trim(ofname)//'.nc'
      end if
-
+     
      write(*,*) " Will do smoothing of topo on cubed sphere "
      write(*,*) " Output will go to: ",trim(ofname)
-
-     !terr_in = terr
-     DO ip = 1, 6
-       daxx(:,:,ip) = da
-     end do                                
-
+     
     ! Smooth cubed sphere topography
     !--------------------------------------
     if (ldistance_weighted_smoother) then
       write(*,*) " Smoothing parameters : ",NSCL_f,NSCL_c
+
+      !terr_in = terr
+      DO ip = 1, 6
+        daxx(:,:,ip) = da
+      end do
+
       terr_sm = 0.
       terr_dev = 0.
 
@@ -214,11 +217,18 @@ CONTAINS
          ! Laplacian smoothing
          !
          nu_dt_unit_sphere = nu_dt/(rearth*rearth)
-
+         max_terr = MAXVAL(terr)
+         min_terr = MINVAL(terr)
+         terr_sm = terr
+         dt = 16.0/real(smooth_phis_numcycle)
          do iter = 1,smooth_phis_numcycle
-           terr_sm = terr
-           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, DBLE(1E15), lap)         
-           terr_sm = terr_sm+lap*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+           write(*,*) "Starting iteration ",iter," in Laplacian smoother"
+           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac)
+           terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+           if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
+             write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
+             stop
+           end if
          end do
          terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_sm( 1:ncube , 1:ncube, :) 
        endif
@@ -242,11 +252,11 @@ CONTAINS
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
 
-  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, nu_lap, terr_sm)
+  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, terr_sm, landfrac)
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
     integer,                                        intent(in)  :: ncube
-    real (kind=dbl_kind),                           intent(in)  :: nu_lap
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: terr_sm
+    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: landfrac
 
     integer :: i,j,ip
 
@@ -265,7 +275,6 @@ CONTAINS
     real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
     real (kind=dbl_kind), dimension(ncube,ncube)         :: lap
     real (kind=dbl_kind) :: aa,bb,cc,dd,det
-
 #ifdef idealized_test
     real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
     call idealized_lap(exact,ncube)!xxx
@@ -284,22 +293,22 @@ CONTAINS
       DO i=0,ncube+1
         alph = -piq+(DBLE(i)-0.5)*da
         beta = -piq+(DBLE(j)-0.5)*da
-
+        
         irhosq = 1.0D0 + tan(alph)*tan(alph)+tan(beta)*tan(beta)
         irho   = sqrt(irhosq)
         
         factor = irhosq*irhosq*cos(alph)*cos(alph)*cos(beta)*cos(beta)
         factor = 1.0D0/factor
-
+        
         aa =  factor*(1.0D0 + tan(alph)*tan(alph))
         dd =  factor*(1.0D0 + tan(beta)*tan(beta))
         bb = -factor*tan(alph)*tan(beta)
         cc = bb
-
+        
         det = aa*dd-bb*cc
         sqgg(i,j) = sqrt(det)
         det = 1.0/det
-
+        
         ggaa(i,j) =  det*dd 
         ggab(i,j) = -det*bb
         ggba(i,j) = -det*cc
@@ -313,13 +322,13 @@ CONTAINS
       DO i=0,ncube+1
         alph = -piq+DBLE((i-1))*da
         beta = -piq+DBLE((j-1))*da
-
+        
         irhosq = 1.0D0 + tan(alph)*tan(alph)+tan(beta)*tan(beta)
         irho   = sqrt(irhosq)
         
         factor = irhosq*irhosq*cos(alph)*cos(alph)*cos(beta)*cos(beta)
         factor = 1.0D0/factor
-
+        
         aa =  factor*(1.0D0 + tan(alph)*tan(alph))
         dd =  factor*(1.0D0 + tan(beta)*tan(beta))
         bb = -factor*tan(alph)*tan(beta)
@@ -350,28 +359,30 @@ CONTAINS
     do ip=1,6
       do j=1,ncube
         do i=1,ncube
-
-          lap_x  = (terr_halo(i+1,j,ip)-terr_halo(i  ,j,ip))*sqgg_e(i+1,j)*ggaa_e(i+1,j)  !x-derivative on edge i+1/2
-          lap_x  = lap_x -&
-                   (terr_halo(i  ,j,ip)-terr_halo(i-1,j,ip))*sqgg_e(i  ,j)*ggaa_e(i  ,j)  !x-derivative on edge i-1/2
-          lap_x  = lap_x*inv_da*inv_da
-
-          lap_xy = (terr_halo(i+1,j+1,ip)-terr_halo(i+1,j-1,ip))*sqgg(i+1,j)*ggab(i+1,j) !centered finite difference
-          lap_xy = lap_xy - &
-                   (terr_halo(i-1,j+1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i-1,j)*ggab(i-1,j) !centered finite difference
-          lap_xy = lap_xy*0.25*inv_da*inv_da
-
-          lap_y  = (terr_halo(i,j+1,ip)-terr_halo(i,j  ,ip))*sqgg_e(i,j+1)*ggbb_e(i,j+1) !y-derivative on edge j+1/2
-          lap_y  = lap_y -&
-                   (terr_halo(i,j  ,ip)-terr_halo(i,j-1,ip))*sqgg_e(i,j  )*ggbb_e(i  ,j) !y-derivative on edge j-1/2
-          lap_y  = lap_y*inv_da*inv_da
-
-          lap_yx = (terr_halo(i+1,j+1,ip)-terr_halo(i-1,j+1,ip))*sqgg(i,j+1)*ggba(i,j+1) !centered finite difference
-          lap_yx = lap_yx - &
-                   (terr_halo(i+1,j-1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i,j-1)*ggba(i,j-1) !centered finite difference
-          lap_yx = lap_yx*0.25*inv_da*inv_da
-
-          terr_sm(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
+          if (landfrac(i,j,ip) > 0) then
+            
+            lap_x  = (terr_halo(i+1,j,ip)-terr_halo(i  ,j,ip))*sqgg_e(i+1,j)*ggaa_e(i+1,j)  !x-derivative on edge i+1/2
+            lap_x  = lap_x -&
+                 (terr_halo(i  ,j,ip)-terr_halo(i-1,j,ip))*sqgg_e(i  ,j)*ggaa_e(i  ,j)  !x-derivative on edge i-1/2
+            lap_x  = lap_x*inv_da*inv_da
+            
+            lap_xy = (terr_halo(i+1,j+1,ip)-terr_halo(i+1,j-1,ip))*sqgg(i+1,j)*ggab(i+1,j) !centered finite difference
+            lap_xy = lap_xy - &
+                 (terr_halo(i-1,j+1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i-1,j)*ggab(i-1,j) !centered finite difference
+            lap_xy = lap_xy*0.25*inv_da*inv_da
+            
+            lap_y  = (terr_halo(i,j+1,ip)-terr_halo(i,j  ,ip))*sqgg_e(i,j+1)*ggbb_e(i,j+1) !y-derivative on edge j+1/2
+            lap_y  = lap_y -&
+                 (terr_halo(i,j  ,ip)-terr_halo(i,j-1,ip))*sqgg_e(i,j  )*ggbb_e(i  ,j) !y-derivative on edge j-1/2
+            lap_y  = lap_y*inv_da*inv_da
+            
+            lap_yx = (terr_halo(i+1,j+1,ip)-terr_halo(i-1,j+1,ip))*sqgg(i,j+1)*ggba(i,j+1) !centered finite difference
+            lap_yx = lap_yx - &
+                 (terr_halo(i+1,j-1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i,j-1)*ggba(i,j-1) !centered finite difference
+            lap_yx = lap_yx*0.25*inv_da*inv_da
+            
+            terr_sm(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
+          end if
         end do
       end do
     end do
