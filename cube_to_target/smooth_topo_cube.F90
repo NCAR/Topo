@@ -34,6 +34,7 @@ CONTAINS
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
                                     , nu_dt, smooth_phis_numcycle,landfrac&
+                                    , lsmoothing_over_ocean&
                                     , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -60,6 +61,7 @@ CONTAINS
     integer, intent(in)                          :: smooth_phis_numcycle
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
+    logical, intent(in)                          :: lsmoothing_over_ocean
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
 
@@ -154,6 +156,11 @@ CONTAINS
     ! Smooth cubed sphere topography
     !--------------------------------------
     if (ldistance_weighted_smoother) then
+      if (.not.lsmoothing_over_ocean) then
+        write(*,*) "Not smoothing over ocean not supported for distance weighted smoother"
+        write(*,*) "ABORT"
+        stop
+      end if
       write(*,*) " Smoothing parameters : ",NSCL_f,NSCL_c
 
       !terr_in = terr
@@ -223,7 +230,7 @@ CONTAINS
          dt = 16.0/real(smooth_phis_numcycle)
          do iter = 1,smooth_phis_numcycle
            write(*,*) "Starting iteration ",iter," in Laplacian smoother"
-           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac)
+           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
            terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
@@ -252,16 +259,18 @@ CONTAINS
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
 
-  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, terr_sm, landfrac)
+  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, terr_sm, landfrac, lsmoothing_over_ocean)
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
     integer,                                        intent(in)  :: ncube
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: terr_sm
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: landfrac
+    logical,                                        intent(in)  :: lsmoothing_over_ocean
 
     integer :: i,j,ip
 
     integer, parameter :: nhalo=2
 
+    real (kind=dbl_kind), dimension(ncube,ncube,6)         :: landfrac_local
     real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa, ggbb, ggab, ggba, sqgg !metric terms cell centers
     real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa_e, ggbb_e, ggab_e, ggba_e, sqgg_e!metric terms edge
     real (kind=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo,6) :: terr_halo
@@ -277,8 +286,18 @@ CONTAINS
     real (kind=dbl_kind) :: aa,bb,cc,dd,det
 #ifdef idealized_test
     real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
-    call idealized_lap(exact,ncube)!xxx
+    call idealized_lap(exact,ncube)
 #endif
+
+    if (.not.lsmoothing_over_ocean) then
+      landfrac_local = landfrac
+    else
+      landfrac_local = 1.0
+    end if
+#ifdef idealized_test
+    landfrac_local = 1.0
+#endif
+
     piq = DATAN(1.D0)
     pi  = 4.D0*piq
     da  = 0.5D0*pi/DBLE(ncube)
@@ -359,7 +378,7 @@ CONTAINS
     do ip=1,6
       do j=1,ncube
         do i=1,ncube
-          if (landfrac(i,j,ip) > 0) then
+          if (landfrac_local(i,j,ip) > 0) then
             
             lap_x  = (terr_halo(i+1,j,ip)-terr_halo(i  ,j,ip))*sqgg_e(i+1,j)*ggaa_e(i+1,j)  !x-derivative on edge i+1/2
             lap_x  = lap_x -&

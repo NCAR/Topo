@@ -89,6 +89,7 @@ program convterr
   logical :: lread_pre_smoothtopo = .FALSE.      !use pre-smoothed (on intermediate cubed-sphere grid) topo file
   logical :: lwrite_rrfac_to_topo_file = .FALSE. !for debugging write rrfac on target grid to topo file
   logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
+  logical :: lsmoothing_over_ocean = .FALSE.      !default is that no smoothing is applied where landfrac=0; turn off
   logical :: ldistance_weighted_smoother         !use distance weighted smoother instead of Laplacian smoother
 
   real (r8):: nu_dt = -1
@@ -110,7 +111,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(22)
+  type(option_s):: opts(23)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -137,6 +138,7 @@ program convterr
   opts(20) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
   opts(21) = option_s( "laplace_nu_dt"             ,.true.    , 'b'   ,.false.       ,.false.)
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
+  opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -150,7 +152,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sjb:l:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sjb:l:m", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -263,6 +265,10 @@ program convterr
       write(*,*) str
       command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
       opts(22)%specified = .true.
+    case( 'm' )
+      lsmoothing_over_ocean = .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -m '
+      opts(23)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -290,45 +296,6 @@ program convterr
       end if
     end do
   end if
-  !
-  ! calculate some defaults
-  !
-  if (lfind_ridges) then
-    if (nwindow_halfwidth<=0) then
-      nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
-      !
-      ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
-      !
-      if (nwindow_halfwidth<5) then
-        write(*,*) "nwindow_halfwidth can not be < 4"
-        write(*,*) "setting nwindow_halfwidth=4"
-        nwindow_halfwidth = 4
-      end if
-    end if
-    if (ncube_sph_smooth_coarse<5) then
-      write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
-      STOP
-    end if
-  end if
-  
-  if (LEN(TRIM(str_source))==0) then
-    !
-    ! default setting for source topography
-    !
-    str_source = 'gmted2010_bedmachine'
-  end if
-  if (LEN(TRIM(str_dir))==0) then
-    !
-    ! default output directory
-    !
-    str_dir = 'output'
-  end if
-  
-  if (ncube_sph_smooth_fine > 0) then 
-    luse_prefilter=.TRUE.
-  else
-    luse_prefilter=.FALSE.
-  end if
 
   if (nu_dt<0.and.smooth_phis_numcycle<0) then
     ldistance_weighted_smoother = .TRUE.
@@ -351,6 +318,50 @@ program convterr
 
     ldistance_weighted_smoother = .FALSE.
     write(*,*) "Using Laplacian smoother"
+  end if
+
+  !
+  ! calculate some defaults
+  !
+  if (lfind_ridges) then
+    if (ldistance_weighted_smoother) then
+      if (nwindow_halfwidth<=0) then
+        nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+        !
+        ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
+        !
+        if (nwindow_halfwidth<5) then
+          write(*,*) "nwindow_halfwidth can not be < 4"
+          write(*,*) "setting nwindow_halfwidth=4"
+          nwindow_halfwidth = 4
+        end if
+      end if
+      if (ncube_sph_smooth_coarse<5) then
+        write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
+        STOP
+      end if
+    else
+      write(*,*) "find_ridges not support with Laplacian smoother - yet - help Bacmeister :-)"
+    end if
+  end if
+  
+  if (LEN(TRIM(str_source))==0) then
+    !
+    ! default setting for source topography
+    !
+    str_source = 'gmted2010_bedmachine'
+  end if
+  if (LEN(TRIM(str_dir))==0) then
+    !
+    ! default output directory
+    !
+    str_dir = 'output'
+  end if
+  
+  if (ncube_sph_smooth_fine > 0) then 
+    luse_prefilter=.TRUE.
+  else
+    luse_prefilter=.FALSE.
   end if
   
   write(*,*) " "
@@ -375,6 +386,7 @@ program convterr
   write(*,*) "interpolate_phis                = ",linterp_phis
   write(*,*) "nu_dt                           = ",nu_dt
   write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
+  write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
 
   !*********************************************************
   
@@ -393,6 +405,16 @@ program convterr
   !------------------------------------------------------------------------------------------------
 
   call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
+  !
+  ! sanity check
+  !
+  if (.not.lsmoothing_over_ocean.and..not.llandfrac) then
+    write(*,*) "landfrac is needed for not smoothing over ocean"
+    write(*,*) "LANDFRAC not found in file: ",intermediate_cubed_sphere_fname
+    write(*,*) "ABORT"
+    stop
+  end if
+
 #ifdef idealized_test
   call idealized(terr,ncube)
 #endif
@@ -568,10 +590,7 @@ program convterr
   
   write(*,*) " SMOOTHING on CUBED SPHERE 10/7/15 "
   
-  ! This routine writes out an f77 unf file containing terr,terr_sm, and terr_dev
-  ! File also contains rr_factor for possible use by ridge finder
-  
-  if (NSCL_c > 0) then
+  if (NSCL_c > 0 .or. .not.ldistance_weighted_smoother) then
     !+++ARH
     !!NSCL_c = 4*2*ncube_sph_smooth_coarse
     nhalo  = NSCL_c
@@ -588,6 +607,8 @@ program convterr
     write(*,*) "RRFAC Massaged .... "
     write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
     
+    write(*,*) "Entering smooth_intermediate_topo_wrap ..."
+
     call  smooth_intermediate_topo_wrap (terr, rrfac, da,  & 
          ncube,nhalo, NSCL_f,NSCL_c, &
          terr_sm, terr_dev ,         &
@@ -601,6 +622,7 @@ program convterr
          command_line_arguments,str_dir,str_source,&
          output_grid,&
          nu_dt, smooth_phis_numcycle,landfrac,&
+         lsmoothing_over_ocean,&
          smooth_topo_fname=smooth_topo_fname&
          )
     
