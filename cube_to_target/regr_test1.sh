@@ -1,5 +1,5 @@
 #!/bin/tcsh
-./cube_to_target --grid_descriptor_file='../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid='ne30pg3' --coarse_radius=012 -p -r -u 'Peter Hjort Lauritzen, pel@ucar.edu' -q 'output/' --grid_descriptor_file_gll='../regression-test-data/ne30np4.nc'
+./cube_to_target --grid_descriptor_file='../regression-test-data/ne30pg3.nc' --intermediate_cs_name='../regression-test-data/gmted2010_bedmachine-ncube0540.nc' --output_grid='ne30pg3' --coarse_radius=012 -p -r -u 'Peter Hjort Lauritzen, pel@ucar.edu' -q 'output/' --grid_descriptor_file_gll='../regression-test-data/ne30np4.nc' -m
 #
 # CESM2 version
 #
