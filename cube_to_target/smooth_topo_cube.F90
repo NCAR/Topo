@@ -77,8 +77,10 @@ CONTAINS
             DIMENSION(ncube,ncube,6) :: daxx
    REAL (KIND=dbl_kind),                                            &
          DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
-
-
+#ifdef del4
+    REAL (KIND=dbl_kind), &
+            DIMENSION(ncube,ncube,6)  :: terr_tmp!xxx
+#endif
     REAL (KIND=dbl_kind), DIMENSION(ncube,ncube,6) :: lap
 
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
@@ -224,6 +226,9 @@ CONTAINS
          ! Laplacian smoothing
          !
          nu_dt_unit_sphere = nu_dt/(rearth*rearth)
+#ifdef del4
+         nu_dt_unit_sphere = 1E17/(rearth*rearth*rearth*rearth)
+#endif
          max_terr = MAXVAL(terr)
          min_terr = MINVAL(terr)
          terr_sm = terr
@@ -232,6 +237,13 @@ CONTAINS
            write(*,*) "Starting iteration ",iter," in Laplacian smoother"
            call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
            terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+#ifdef del4
+           write(*,*) "Starting iteration ",iter," in Laplacian smoother"
+           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
+           terr_tmp = lap
+           call smooth_Laplacian_on_cube(terr_tmp, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
+           terr_sm = terr_sm-lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+#endif
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
              stop
@@ -259,10 +271,10 @@ CONTAINS
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
 
-  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, terr_sm, landfrac, lsmoothing_over_ocean)
+  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, lap, landfrac, lsmoothing_over_ocean)
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
     integer,                                        intent(in)  :: ncube
-    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: terr_sm
+    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: lap
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: landfrac
     logical,                                        intent(in)  :: lsmoothing_over_ocean
 
@@ -282,7 +294,6 @@ CONTAINS
 
 
     real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
-    real (kind=dbl_kind), dimension(ncube,ncube)         :: lap
     real (kind=dbl_kind) :: aa,bb,cc,dd,det
 #ifdef idealized_test
     real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
@@ -400,7 +411,7 @@ CONTAINS
                  (terr_halo(i+1,j-1,ip)-terr_halo(i-1,j-1,ip))*sqgg(i,j-1)*ggba(i,j-1) !centered finite difference
             lap_yx = lap_yx*0.25*inv_da*inv_da
             
-            terr_sm(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
+            lap(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
           end if
         end do
       end do
