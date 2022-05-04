@@ -327,6 +327,7 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   character(len=23)  :: str_center_lon(2), str_center_lat(2)
   integer            :: esmf_file = 1 ! =1 SCRIP naming convention; =2 ESMF naming convention
   integer            :: icorner,icell,num
+  integer            :: grid_dims(2)
 
   ltarget_latlon = .FALSE.
   !
@@ -451,24 +452,17 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     !
     ! file uses SCRIP format
     !
-    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     WRITE(*,*) "grid rank: nrank=",nrank
     IF (nrank==2) THEN
       WRITE(*,*) "target grid is a lat-lon grid"
       ltarget_latlon = .TRUE.
-      status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
-      status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
-      status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-      !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
+      status = NF_INQ_VARID(ncid,'grid_dims', ntarget_id)
+      IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+      status = NF_GET_VAR_INT(ncid, ntarget_id,grid_dims)
+      nlon = grid_dims(1)
+      nlat = grid_dims(2)
+
       WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-      IF (lpole) THEN
-        WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
-      ELSE
-        WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
-      END IF
     ELSE IF (nrank==1) THEN
       ltarget_latlon = .FALSE.
     ELSE
@@ -485,6 +479,7 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     status = NF_INQ_VARID(ncid, TRIM(str_corner_lat(esmf_file)), latid)
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
+
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat    
     !
@@ -492,9 +487,21 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     !    
     status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
+    IF (maxval(target_center_lon)>10.0) target_center_lon = deg2rad*target_center_lon    
     
     status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
     status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
+    IF (maxval(target_center_lat)>10.0) target_center_lat = deg2rad*target_center_lat    
+    if (ltarget_latlon) then
+      if (maxval(target_center_lat)>pih-1E-5) then
+        lpole=.true.
+      end if
+    end if
+    IF (lpole) THEN      
+      WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
+    ELSE
+      WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
+    END IF
   end if
 
   status = NF_INQ_VARID(ncid, TRIM(str_rrfac(esmf_file)), rrfacid)

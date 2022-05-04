@@ -1605,6 +1605,7 @@ program convterr
     else
       status = nf_put_var_double (foutid, latvid, lat)
     endif
+
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing lat data"
     
@@ -1642,8 +1643,7 @@ program convterr
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
          fallq_target
-    
-    use shared_vars, only : terr_uf_target, sgh_uf_target
+    use shared_vars, only : terr_uf_target, sgh_uf_target, rad2deg
     use shr_kind_mod, only: r8 => shr_kind_r8
     implicit none
     
@@ -2052,12 +2052,21 @@ program convterr
     print*,"done writing sgh30 data"
     !
     print*,"writing lat data"
-    status = nf_put_var_double (foutid, latvid, latar)
+
+    if (maxval(lat)<45.0) then
+      status = nf_put_var_double (foutid, latvid, latar*rad2deg)
+    else
+      status = nf_put_var_double (foutid, latvid, latar)
+    endif
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing lat data"
     
     print*,"writing lon data"
-    status = nf_put_var_double (foutid, lonvid, lonar)
+    if (maxval(lon)<100.0) then
+      status = nf_put_var_double (foutid, lonvid, lonar*rad2deg)    
+    else
+      status = nf_put_var_double (foutid, lonvid, lonar)
+    end if
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing lon data"
     
