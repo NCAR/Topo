@@ -256,13 +256,13 @@ program convterr
     case( 'b' )
       read (optarg, *) nu_dt
       write(str,*) nu_dt
-      write(*,*) str
+      write(*,*) trim(str)
       command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
       opts(21)%specified = .true.
     case( 'l' )
       read (optarg, '(i5)') smooth_phis_numcycle
       write(str,*) smooth_phis_numcycle
-      write(*,*) str
+      write(*,*) trim(str)
       command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
       opts(22)%specified = .true.
     case( 'm' )
@@ -280,7 +280,7 @@ program convterr
     write(*,*) " Use pre-computed smooth topo " 
     write(*,*) " File = ", trim(smooth_topo_fname)
   else 
-    write(*,*) " No smooth topo"
+    write(*,*) " No smoothed topo file specified"
   end if
   !
   ! check that all required arguments are specified/initialized
@@ -289,7 +289,6 @@ program convterr
   !
   if (.not.lstop_after_smoothing) then
     do i=1,SIZE(opts)
-      write(*,*) i
       if (.not.opts(i)%specified.and.opts(i)%required) then
         write(*,*) "Required argument not specified: ",opts(i)%name
         stop
@@ -305,12 +304,8 @@ program convterr
       stop
     end if
   else
-    if (nu_dt==0) then
-      write(*,*) "Automatically setting nu_dt"
-      nu_dt = 20e7
-    end if
     write(*,*) " "
-    write(*,*) "Recommended setting is nu_dt = 28e7 * (90.0/ncube)**2 where"
+    write(*,*) "Recommended setting is nu_dt = 20e7 * (90.0/ncube)**2 where"
     write(*,*) "ncube = 90 for 1 degree, ncube = 45 for 0.5 degree, etc."
     write(*,*)
     

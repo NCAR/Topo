@@ -218,8 +218,8 @@ CONTAINS
            write(*,*) "nu_dt must be positive; nu_dt=",nu_dt
            stop
          end if
-         if (smooth_phis_numcycle<1) then
-           write(*,*) "smooth_phis_numcycle must be >0; smooth_phis_numcycle=",smooth_phis_numcycle
+         if (smooth_phis_numcycle<0) then
+           write(*,*) "smooth_phis_numcycle must be >=0; smooth_phis_numcycle=",smooth_phis_numcycle
            stop
          end if
          !
