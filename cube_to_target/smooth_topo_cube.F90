@@ -160,6 +160,7 @@ CONTAINS
     if (ldistance_weighted_smoother) then
       if (.not.lsmoothing_over_ocean) then
         write(*,*) "Not smoothing over ocean not supported for distance weighted smoother"
+        write(*,*) "(add -m option)"
         write(*,*) "ABORT"
         stop
       end if
