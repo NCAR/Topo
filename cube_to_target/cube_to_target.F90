@@ -91,6 +91,7 @@ program convterr
   logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
   logical :: lsmoothing_over_ocean = .FALSE.      !default is that no smoothing is applied where landfrac=0; turn off
   logical :: ldistance_weighted_smoother = .FALSE.!use distance weighted smoother instead of Laplacian smoother
+  logical :: lsmooth_rrfac = .TRUE.               !smooth the refinement factor (recommended for SE grids)
 
   real (r8):: nu_dt = -1
   integer  :: smooth_phis_numcycle=-1
@@ -352,14 +353,14 @@ program convterr
   ! set derived variables - scaling for smoothing
   !  
   ncube_sph_smooth_coarse = NINT(60.0*(smoothing_scale/100.0)/(3000.0/real(ncube)))
-  nu_dt                   = 20.0E7*(smoothing_scale)**2
+  nu_dt                   = 20.0E7*(smoothing_scale/100.0)**2
   write(*,*) "ncube_sph_smooth_coarse=",ncube_sph_smooth_coarse
   write(*,*) "nu_dt                  =",nu_dt
 
   if (.not.ldistance_weighted_smoother) then
     if (smooth_phis_numcycle<0) then
       write(*,*) "Recommended setting for stability"
-      smooth_phis_numcycle= 60*(real(ncube)/540.0)**2
+      smooth_phis_numcycle= (nu_dt/20.0E7)*60*(real(ncube)/540.0)**2
       write(*,*) "smooth_phis_numcycle = ",smooth_phis_numcycle
     end if
   end if
@@ -609,7 +610,7 @@ program convterr
          command_line_arguments,str_dir,str_source,&
          output_grid,&
          nu_dt, smooth_phis_numcycle,landfrac,&
-         lsmoothing_over_ocean,&
+         lsmoothing_over_ocean,lsmooth_rrfac,&
          smooth_topo_fname=smooth_topo_fname&
          )
     

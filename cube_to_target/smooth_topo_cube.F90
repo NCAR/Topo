@@ -34,7 +34,7 @@ CONTAINS
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
                                     , nu_dt, smooth_phis_numcycle,landfrac&
-                                    , lsmoothing_over_ocean&
+                                    , lsmoothing_over_ocean,lsmooth_rrfac&
                                     , smooth_topo_fname)
 
     REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
@@ -61,27 +61,17 @@ CONTAINS
     integer, intent(in)                          :: smooth_phis_numcycle
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
-    logical, intent(in)                          :: lsmoothing_over_ocean
+    logical, intent(in)                          :: lsmoothing_over_ocean, lsmooth_rrfac
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
 
     integer, INTENT(IN)  :: rrfac_max
 
-    REAL (KIND=dbl_kind),                                            &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
-    REAL (KIND=dbl_kind),                                            &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
-     REAL (KIND=dbl_kind),                                            &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo, rr_halo_sm
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6) :: daxx
-   REAL (KIND=dbl_kind),                                            &
-         DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
-#ifdef del4
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6)  :: terr_tmp!xxx
-#endif
-    REAL (KIND=dbl_kind), DIMENSION(ncube,ncube,6) :: lap
+    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
+    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
+    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo, rr_halo_sm
+    REAL (KIND=dbl_kind), DIMENSION(ncube,ncube,6)                               :: daxx, rrfac_sm, lap
+    REAL (KIND=dbl_kind),  DIMENSION(ncube, ncube, 6)                            :: terr_sm00,terr_dev00,rr_updt
 
     INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
     REAL (KIND=dbl_kind)     :: volterr_in,volterr_sm
@@ -95,7 +85,8 @@ CONTAINS
 
     real (kind=dbl_kind), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
     real (kind=dbl_kind)            :: nu_dt_unit_sphere,dt
-    real (kind=dbl_kind)            :: min_terr, max_terr
+    real (kind=dbl_kind)            :: min_terr, max_terr   !to check if Laplacian smoother is stable
+    real (kind=dbl_kind)            :: min_rrfac, max_rrfac !to check if Laplacian smoother is stable
     !read_in_precomputed = .FALSE.
     read_in_precomputed = lread_smooth_topofile  !.TRUE.
     use_prefilter = luse_prefilter 
@@ -176,7 +167,7 @@ CONTAINS
 
          DO ip = 1, 6
             CALL CubedSphereFillHalo_Linear_extended(terr,  terr_halo(:,:,ip), ip, ncube+1,nhalo)  
-            CALL CubedSphereFillHalo_Linear_extended(daxx,  da_halo(:,:,ip),   ip, ncube+1,nhalo)  
+            CALL CubedSphereFillHalo_Linear_extended(daxx,  da_halo(:,:,ip),   ip, ncube+1,nhalo)
             CALL CubedSphereFillHalo_Linear_extended(rrfac, rr_halo(:,:,ip),   ip, ncube+1,nhalo)  
          end DO
                     write(*,*) " MINVAL(abs(rr_halo) ) , MAXVAL(abs(rr_halo) ) "
@@ -228,24 +219,35 @@ CONTAINS
          ! Laplacian smoothing
          !
          nu_dt_unit_sphere = nu_dt/(rearth*rearth)
-#ifdef del4
-         nu_dt_unit_sphere = 1E17/(rearth*rearth*rearth*rearth)
-#endif
+
+         if (lregional_refinement.and.lsmooth_rrfac) then
+           max_rrfac = MAXVAL(rrfac)
+           min_rrfac = MINVAL(rrfac)
+           rrfac_sm = rrfac
+           dt = 16.0/real(smooth_phis_numcycle)
+           do iter = 1,smooth_phis_numcycle
+             write(*,*) "Starting iteration ",iter," in Laplacian smoother rrfac_sm"
+             call laplacian(rrfac_sm, ncube, lap, landfrac,.false.)
+             rrfac_sm = rrfac_sm+lap*dt*nu_dt_unit_sphere!rrfac_sm(1:ncube,1:ncube,:)+nu*lap
+!             if (MAXVAL(rrfac_sm)>1.2*max_rrfac.or.MINVAL(rrfac_sm)<min_rrfac-1.0) then
+!               write(*,*) "Laplace iteration seems to be unstable: MINVAL(rrfac_sm),MAXVAL(rrfac_sm)",&
+!                    MINVAL(rrfac_sm),MAXVAL(rrfac_sm)
+!               stop
+!             end if
+           end do
+           rrfac = rrfac_sm
+         end if
+
+
+
          max_terr = MAXVAL(terr)
          min_terr = MINVAL(terr)
          terr_sm = terr
          dt = 16.0/real(smooth_phis_numcycle)
          do iter = 1,smooth_phis_numcycle
-           write(*,*) "Starting iteration ",iter," in Laplacian smoother"
-           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
+           write(*,*) "Starting iteration ",iter," in Laplacian smoother terr_sm"
+           call laplacian(terr_sm, ncube, lap, landfrac,lsmoothing_over_ocean)
            terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
-#ifdef del4
-           write(*,*) "Starting iteration ",iter," in Laplacian smoother"
-           call smooth_Laplacian_on_cube(terr_sm, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
-           terr_tmp = lap
-           call smooth_Laplacian_on_cube(terr_tmp, rrfac, ncube, lap, landfrac,lsmoothing_over_ocean)
-           terr_sm = terr_sm-lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
-#endif
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
              stop
@@ -273,8 +275,8 @@ CONTAINS
       end if
   end SUBROUTINE smooth_intermediate_topo_wrap
 
-  subroutine smooth_Laplacian_on_cube(terr, rrfac, ncube, lap, landfrac, lsmoothing_over_ocean)
-    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr, rrfac
+  subroutine laplacian(terr, ncube, lap, landfrac, lsmoothing_over_ocean)
+    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr
     integer,                                        intent(in)  :: ncube
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: lap
     real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: landfrac
@@ -419,7 +421,7 @@ CONTAINS
       end do
     end do
 
-end subroutine smooth_Laplacian_on_cube
+end subroutine laplacian
 
 
   subroutine idealized_lap(lap_psi,ncube)

@@ -79,14 +79,13 @@ begin
 
   res@mpCenterLonF     = 180                ; set map center at 180
                                             ; must be in colormap  
-;  plot = gsn_csm_contour_map_ce(wks,PHIS, res) ; create plot
-;  if (LANDFRAC_ON_FILE) then
-;    plot = gsn_csm_contour_map_ce(wks,LANDFRAC, res) ; create plot
-;  end if
-  print(RRFAC_ON_FILE)
+  plot = gsn_csm_contour_map_ce(wks,PHIS, res) ; create plot
+  if (LANDFRAC_ON_FILE) then
+    plot = gsn_csm_contour_map_ce(wks,LANDFRAC, res) ; create plot
+  end if
   if (RRFAC_ON_FILE) then
     plot = gsn_csm_contour_map_ce(wks,RRFAC, res) ; create plot
   end if
-;  plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
-;  plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
+  plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
+  plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
 end
