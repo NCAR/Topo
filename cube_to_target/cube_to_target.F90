@@ -90,11 +90,11 @@ program convterr
   logical :: lwrite_rrfac_to_topo_file = .FALSE. !for debugging write rrfac on target grid to topo file
   logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
   logical :: lsmoothing_over_ocean = .FALSE.      !default is that no smoothing is applied where landfrac=0; turn off
-  logical :: ldistance_weighted_smoother         !use distance weighted smoother instead of Laplacian smoother
+  logical :: ldistance_weighted_smoother = .FALSE.!use distance weighted smoother instead of Laplacian smoother
 
   real (r8):: nu_dt = -1
   integer  :: smooth_phis_numcycle=-1
-
+  real (r8):: smoothing_scale=0
   !
   INTEGER :: UNIT, ioptarg
   
@@ -116,8 +116,8 @@ program convterr
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
   ! 
-  opts(1 ) = option_s( "coarse_radius"             ,.true.    , 'c'   ,.false.       ,.false.)
-  opts(2 ) = option_s( "fine_radius"               ,.true.    , 'f'   ,.false.       ,.false.)
+  opts(1 ) = option_s( "smoothing_scale"           ,.true.    , 'c'   ,.false.       ,.true.)
+  opts(2 ) = option_s( "fine_radius"               ,.true.    , 'f'   ,.false.       ,.false.)!xxx remove
   opts(3 ) = option_s( "grid_descriptor_file"      ,.true.    , 'g'   ,.false.       ,.true.)
   opts(4 ) = option_s( "help"                      ,.false.   , 'h'   ,.false.       ,.false.)
   opts(5 ) = option_s( "intermediate_cs_name"      ,.true.    , 'i'   ,.false.       ,.true.)
@@ -136,7 +136,7 @@ program convterr
   opts(18) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
   opts(19) = option_s( "grid_descriptor_file_gll"  ,.true.    , 'a'   ,.false.       ,.false.)
   opts(20) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
-  opts(21) = option_s( "laplace_nu_dt"             ,.true.    , 'b'   ,.false.       ,.false.)
+  opts(21) = option_s( "distance_weighted_smoother",.false.   , 'b'   ,.false.       ,.false.)
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   
@@ -152,13 +152,12 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sjb:l:m", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sbl:m", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
-      read (optarg, '(i3)') ioptarg
-      ncube_sph_smooth_coarse = ioptarg
-      write(str,*) ioptarg
+      read (optarg, *) smoothing_scale
+      write(str,*) smoothing_scale
       command_line_arguments = TRIM(command_line_arguments)//' -c '//TRIM(ADJUSTL(str))
       opts(1)%specified = .true.
     case( 'f' )
@@ -254,10 +253,8 @@ program convterr
       command_line_arguments = TRIM(command_line_arguments)//' -s '
       opts(20)%specified = .true.
     case( 'b' )
-      read (optarg, *) nu_dt
-      write(str,*) nu_dt
-      write(*,*) trim(str)
-      command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
+      ldistance_weighted_smoother = .true.
+      command_line_arguments = TRIM(command_line_arguments)//' -b '//TRIM(ADJUSTL(str))
       opts(21)%specified = .true.
     case( 'l' )
       read (optarg, '(i5)') smooth_phis_numcycle
@@ -295,50 +292,6 @@ program convterr
       end if
     end do
   end if
-
-  if (nu_dt<0.and.smooth_phis_numcycle<0) then
-    ldistance_weighted_smoother = .TRUE.
-    write(*,*) "Using distance weighted smoother"
-    if (ncube_sph_smooth_coarse<0) then
-      write(*,*) "ncube_sph_smooth_coarse must be specified; ncube_sph_smooth_coarse=",ncube_sph_smooth_coarse
-      stop
-    end if
-  else
-    write(*,*) " "
-    write(*,*) "Recommended setting is nu_dt = 20e7 * (90.0/ncube)**2 where"
-    write(*,*) "ncube = 90 for 1 degree, ncube = 45 for 0.5 degree, etc."
-    write(*,*)
-    
-    write(*,*) "Laplacian smoother: setting nu_dt=",nu_dt
-
-    ldistance_weighted_smoother = .FALSE.
-    write(*,*) "Using Laplacian smoother"
-  end if
-
-  !
-  ! calculate some defaults
-  !
-  if (lfind_ridges) then
-    if (ldistance_weighted_smoother) then
-      if (nwindow_halfwidth<=0) then
-        nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
-        !
-        ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
-        !
-        if (nwindow_halfwidth<5) then
-          write(*,*) "nwindow_halfwidth can not be < 4"
-          write(*,*) "setting nwindow_halfwidth=4"
-          nwindow_halfwidth = 4
-        end if
-      end if
-      if (ncube_sph_smooth_coarse<5) then
-        write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
-        STOP
-      end if
-    else
-      write(*,*) "find_ridges not support with Laplacian smoother - yet - help Bacmeister :-)"
-    end if
-  end if
   
   if (LEN(TRIM(str_source))==0) then
     !
@@ -353,17 +306,11 @@ program convterr
     str_dir = 'output'
   end if
   
-  if (ncube_sph_smooth_fine > 0) then 
-    luse_prefilter=.TRUE.
-  else
-    luse_prefilter=.FALSE.
-  end if
-  
   write(*,*) " "
   write(*,*) "Namelist settings"
   write(*,*) "================="
   write(*,*)
-  write(*,*) "ncube_sph_smooth_coarse         = ",ncube_sph_smooth_coarse
+  write(*,*) "smoothing_scale                 = ",smoothing_scale
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -379,7 +326,7 @@ program convterr
   write(*,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
   write(*,*) "str_source                      = ",trim(str_source)
   write(*,*) "interpolate_phis                = ",linterp_phis
-  write(*,*) "nu_dt                           = ",nu_dt
+  write(*,*) "ldistance_weighted_smoother     = ",ldistance_weighted_smoother
   write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
 
@@ -400,6 +347,51 @@ program convterr
   !------------------------------------------------------------------------------------------------
 
   call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
+
+  !
+  ! set derived variables - scaling for smoothing
+  !  
+  ncube_sph_smooth_coarse = NINT(60.0*(smoothing_scale/100.0)/(3000.0/real(ncube)))
+  nu_dt                   = 20.0E7*(smoothing_scale)**2
+  write(*,*) "ncube_sph_smooth_coarse=",ncube_sph_smooth_coarse
+  write(*,*) "nu_dt                  =",nu_dt
+
+  if (.not.ldistance_weighted_smoother) then
+    if (smooth_phis_numcycle<0) then
+      write(*,*) "Recommended setting for stability"
+      smooth_phis_numcycle= 60*(real(ncube)/540.0)**2
+      write(*,*) "smooth_phis_numcycle = ",smooth_phis_numcycle
+    end if
+  end if
+  !
+  ! calculate some defaults
+  !
+  if (lfind_ridges) then
+    if (nwindow_halfwidth<=0) then
+      nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+      !
+      ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
+      !
+      if (nwindow_halfwidth<5) then
+        write(*,*) "nwindow_halfwidth can not be < 4"
+        write(*,*) "setting nwindow_halfwidth=4"
+        nwindow_halfwidth = 4
+      end if
+    end if
+    if (ncube_sph_smooth_coarse<5) then
+      write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
+      STOP
+    end if
+  else
+    write(*,*) "find_ridges not support with Laplacian smoother - yet - help Bacmeister :-)"
+  end if
+
+  if (ncube_sph_smooth_fine > 0) then 
+    luse_prefilter=.TRUE.
+  else
+    luse_prefilter=.FALSE.
+  end if
+  
   !
   ! sanity check
   !
@@ -1008,9 +1000,10 @@ program convterr
     end program convterr
     
   subroutine print_help
+    write (6,*) "THIS NEEDS TO BE UPDATED"
     write (6,*) "Usage: cube_to_target [options] ..."
     write (6,*) "Options:"
-    write (6,*) "-c, --coarse_radius=<int>                      "
+    write (6,*) "-c, --smoothing_scale=<int> (in km)            "
     write (6,*) "-f, --fine_radius=<int>                        "
     write (6,*) "-g, --grid_descriptor_file=<string>            "
     write (6,*) "-i, --intermediate_cs_name=<string>            "
@@ -1119,7 +1112,7 @@ program convterr
     end if
 
     if (lwrite_rrfac_to_topo_file) then
-      status = nf_def_var (foutid,'RRFAC', NF_DOUBLE, 1, nid(1), rrfacid)
+      status = nf_def_var (foutid,'rrfac', NF_DOUBLE, 1, nid(1), rrfacid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "RRFAC error"

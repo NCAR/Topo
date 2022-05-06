@@ -50,7 +50,7 @@ CONTAINS
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_sm
     REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN)    :: rrfac
+            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: rrfac
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing, ldistance_weighted_smoother
     LOGICAL, INTENT(IN)  :: lregional_refinement, ldevelopment_diags
@@ -188,6 +188,7 @@ CONTAINS
             call smooth_rrfac_halo(rr_halo, rrfac_max, ncube,nhalo, NSCL_c, rr_halo_sm  ) 
             rr_halo = rr_halo_sm
             rr_updt = rr_halo( 1:ncube , 1:ncube, :) 
+            rrfac   = rr_updt
          end if
 
          if (use_prefilter) then

@@ -9,17 +9,31 @@ begin
   ; SCRIP file
   ;
   sf =  addfile(scripFile,"r")
-  cellfill = False
-;************************************************
-; Read in Regression Coef
-;************************************************
-  PHIS      = a->PHIS
-  LANDFRAC  = a->LANDFRAC
-  SGH       = a->SGH
-  SGH30     = a->SGH30
+  cellfill = True
 
-;  PHIS = PHIS-PHIS_ref
-;  PHIS = a->GBXAR
+  if (isfilevar(a, "PHIS")) then
+    PHIS      = a->PHIS
+  end if
+  if (isfilevar(a, "SGH")) then
+    SGH       = a->SGH
+  end if
+  if (isfilevar(a, "SGH30")) then
+    SGH30     = a->SGH30
+  end if
+
+  if (isfilevar(a, "LANDFRAC")) then
+    LANDFRAC_ON_FILE=True
+    LANDFRAC = a->LANDFRAC
+  else
+    LANDFRAC_ON_FILE=False
+  end if
+  if (isfilevar(a, "rrfac")) then
+    RRFAC_ON_FILE=True
+    RRFAC = a->rrfac
+  else
+    RRFAC_ON_FILE=False
+  end if
+
 ;************************************************
 ; create plot
 ;************************************************
@@ -61,25 +75,18 @@ begin
   res@sfXArray            = lon1d        ; Required to tell NCL where to
   res@sfYArray            = lat1d        ; overlay data on globe.
 
-;===================================
-; you can have the contour lines on in raster mode, but their thickness
-; actually make the plot look like is was contoured normally.
-
 ;  res@cnFillMode       = "RasterFill"       ; Raster Mode
-;================================
-; these three resources make the continents look nice. The first two
-; make them color, and the later adds continental outlines when
-; raster mode is used.
-
-
 
   res@mpCenterLonF     = 180                ; set map center at 180
                                             ; must be in colormap  
-  plot = gsn_csm_contour_map_ce(wks,PHIS, res) ; create plot
-
-  plot = gsn_csm_contour_map_ce(wks,LANDFRAC, res) ; create plot
-
-  plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
-
-  plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
+;  plot = gsn_csm_contour_map_ce(wks,PHIS, res) ; create plot
+;  if (LANDFRAC_ON_FILE) then
+;    plot = gsn_csm_contour_map_ce(wks,LANDFRAC, res) ; create plot
+;  end if
+  print(RRFAC_ON_FILE)
+  if (RRFAC_ON_FILE) then
+    plot = gsn_csm_contour_map_ce(wks,RRFAC, res) ; create plot
+  end if
+;  plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
+;  plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
 end
