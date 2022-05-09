@@ -228,18 +228,19 @@ CONTAINS
            do iter = 1,smooth_phis_numcycle
              write(*,*) "Starting iteration ",iter," in Laplacian smoother rrfac_sm"
              call laplacian(rrfac_sm, ncube, lap, landfrac,.false.)
-             rrfac_sm = rrfac_sm+lap*dt*nu_dt_unit_sphere!rrfac_sm(1:ncube,1:ncube,:)+nu*lap
-!             if (MAXVAL(rrfac_sm)>1.2*max_rrfac.or.MINVAL(rrfac_sm)<min_rrfac-1.0) then
-!               write(*,*) "Laplace iteration seems to be unstable: MINVAL(rrfac_sm),MAXVAL(rrfac_sm)",&
-!                    MINVAL(rrfac_sm),MAXVAL(rrfac_sm)
-!               stop
-!             end if
+             rrfac_sm = rrfac_sm+lap*dt*nu_dt_unit_sphere
+             if (MAXVAL(rrfac_sm)>1.2*max_rrfac.or.MINVAL(rrfac_sm)<min_rrfac-1.0) then
+               write(*,*) "Laplace iteration seems to be unstable: MINVAL(rrfac_sm),MAXVAL(rrfac_sm)",&
+                    MINVAL(rrfac_sm),MAXVAL(rrfac_sm)
+               stop
+             end if
            end do
            rrfac = rrfac_sm
          end if
-
-
-
+         !
+         ! smooth surface height
+         !
+         rrfac_sm = (1.0/rrfac)**2 !scaling of smoothing coefficient
          max_terr = MAXVAL(terr)
          min_terr = MINVAL(terr)
          terr_sm = terr
@@ -247,7 +248,7 @@ CONTAINS
          do iter = 1,smooth_phis_numcycle
            write(*,*) "Starting iteration ",iter," in Laplacian smoother terr_sm"
            call laplacian(terr_sm, ncube, lap, landfrac,lsmoothing_over_ocean)
-           terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere!terr_sm(1:ncube,1:ncube,:)+nu*lap
+           terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere*rrfac_sm
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
              stop
