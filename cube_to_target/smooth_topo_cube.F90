@@ -33,7 +33,7 @@ CONTAINS
                                     , ldevelopment_diags &
                                     , command_line_arguments&
                                     , str_dir, str_source, ogrid& 
-                                    , nu_dt, smooth_phis_numcycle,landfrac&
+                                    , nu_lap, smooth_phis_numcycle,landfrac&
                                     , lsmoothing_over_ocean,lsmooth_rrfac&
                                     , smooth_topo_fname)
 
@@ -57,7 +57,7 @@ CONTAINS
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(INOUT)           :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
-    real (kind=dbl_kind), intent(in)             :: nu_dt
+    real (kind=dbl_kind), intent(in)             :: nu_lap
     integer, intent(in)                          :: smooth_phis_numcycle
     REAL (KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
@@ -84,7 +84,7 @@ CONTAINS
     logical ::     read_in_and_refine, new_smooth_topo
 
     real (kind=dbl_kind), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
-    real (kind=dbl_kind)            :: nu_dt_unit_sphere,dt
+    real (kind=dbl_kind)            :: nu_lap_unit_sphere,dt
     real (kind=dbl_kind)            :: min_terr, max_terr   !to check if Laplacian smoother is stable
     real (kind=dbl_kind)            :: min_rrfac, max_rrfac !to check if Laplacian smoother is stable
     !read_in_precomputed = .FALSE.
@@ -207,8 +207,8 @@ CONTAINS
          !
          ! sanity check
          !
-         if (nu_dt<0) then
-           write(*,*) "nu_dt must be positive; nu_dt=",nu_dt
+         if (nu_lap<0) then
+           write(*,*) "nu_lap must be positive; nu_lap=",nu_lap
            stop
          end if
          if (smooth_phis_numcycle<0) then
@@ -218,7 +218,7 @@ CONTAINS
          !
          ! Laplacian smoothing
          !
-         nu_dt_unit_sphere = nu_dt/(rearth*rearth)
+         nu_lap_unit_sphere = nu_lap/(rearth*rearth)
 
          if (lregional_refinement.and.lsmooth_rrfac) then
            max_rrfac = MAXVAL(rrfac)
@@ -228,7 +228,7 @@ CONTAINS
            do iter = 1,smooth_phis_numcycle
              write(*,*) "Starting iteration ",iter," in Laplacian smoother rrfac_sm"
              call laplacian(rrfac_sm, ncube, lap, landfrac,.false.)
-             rrfac_sm = rrfac_sm+lap*dt*nu_dt_unit_sphere
+             rrfac_sm = rrfac_sm+lap*dt*nu_lap_unit_sphere
              if (MAXVAL(rrfac_sm)>1.2*max_rrfac.or.MINVAL(rrfac_sm)<min_rrfac-1.0) then
                write(*,*) "Laplace iteration seems to be unstable: MINVAL(rrfac_sm),MAXVAL(rrfac_sm)",&
                     MINVAL(rrfac_sm),MAXVAL(rrfac_sm)
@@ -248,7 +248,7 @@ CONTAINS
          do iter = 1,smooth_phis_numcycle
            write(*,*) "Starting iteration ",iter," in Laplacian smoother terr_sm"
            call laplacian(terr_sm, ncube, lap, landfrac,lsmoothing_over_ocean)
-           terr_sm = terr_sm+lap*dt*nu_dt_unit_sphere*rrfac_sm
+           terr_sm = terr_sm+lap*dt*nu_lap_unit_sphere*rrfac_sm
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
              stop
