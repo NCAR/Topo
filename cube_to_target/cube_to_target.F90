@@ -2320,6 +2320,7 @@ program convterr
        jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     use shr_kind_mod, only: r8 => shr_kind_r8
     use remap
+    use shared_vars, only: progress_bar
     IMPLICIT NONE
     
     
@@ -2522,7 +2523,7 @@ program convterr
   
   SUBROUTINE bilinear_interp(ncube,ntarget,target_center_lon,target_center_lat,terr_cube,terr_target)
     use shr_kind_mod, only: r8 => shr_kind_r8
-!    use reconstruct
+    use shared_vars, only: progress_bar
     IMPLICIT NONE
     
     
@@ -2921,20 +2922,7 @@ program convterr
     END SUBROUTINE remove_duplicates_latlon
     
     
-    
-    
-    subroutine progress_bar(txt, n, x)
-      use shr_kind_mod, only: r8 => shr_kind_r8
-      implicit none
-      character(*) :: txt
-      integer :: n
-      real(r8) :: x
-      integer, parameter :: s = 5
-      character :: c(0:s-1) = (/ achar(127), "/", "|", "/","-" /)
-      character, parameter :: CR = achar(13)
-      write( *, "((a1,a, t4,i10, f10.2,' percent  done ', a1, '  '))", advance = "NO") CR, txt, n, x, c(mod(n, s))
-    end subroutine progress_bar
-
+  
 
   subroutine idealized(psi,ncube)
     use shr_kind_mod, only: r8 => shr_kind_r8

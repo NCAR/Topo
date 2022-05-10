@@ -10,12 +10,11 @@
 !-----------------------------------------------------------------------------
 MODULE smooth_topo_cube_sph
   USE reconstruct
-
+  use shr_kind_mod, only: r8 => shr_kind_r8
 IMPLICIT NONE
 PRIVATE
 
 PUBLIC smooth_intermediate_topo_wrap
-
 
 CONTAINS
 
@@ -37,56 +36,52 @@ CONTAINS
                                     , lsmoothing_over_ocean,lsmooth_rrfac&
                                     , smooth_topo_fname)
 
-    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
-
-    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo,NSCL_f,NSCL_c
-
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube),   INTENT(IN)    :: da
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_dev
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_sm
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(INOUT) :: rrfac
+    use shared_vars, only: progress_bar
+    implicit none
+    real(r8), PARAMETER :: pi        = 3.14159265358979323846264338327
+    
+    integer, INTENT(IN) :: ncube, nhalo,NSCL_f,NSCL_c
+    
+    real(r8), DIMENSION(ncube,ncube,6), INTENT(INOUT) :: terr
+    real(r8), DIMENSION(ncube,ncube),   INTENT(IN)    :: da
+    real(r8), DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_dev
+    real(r8), DIMENSION(ncube,ncube,6), INTENT(OUT)   :: terr_sm
+    real(r8), DIMENSION(ncube,ncube,6), INTENT(INOUT) :: rrfac
     LOGICAL, INTENT(IN)  :: lread_smooth_topofile    ! , lsmooth_topo_cubesph
     LOGICAL, INTENT(IN)  :: luse_prefilter, lstop_after_smoothing, ldistance_weighted_smoother
     LOGICAL, INTENT(IN)  :: lregional_refinement, ldevelopment_diags
     CHARACTER(len=1024), INTENT(IN   )           :: str_dir, str_source, ogrid
     CHARACTER(len=1024), INTENT(INOUT)           :: ofname
     character(len=1024), INTENT(IN   )           :: command_line_arguments !for writing netCDF file
-    real (kind=dbl_kind), intent(in)             :: nu_lap
+    real(r8), intent(in)             :: nu_lap
     integer, intent(in)                          :: smooth_phis_numcycle
-    REAL (KIND=dbl_kind), &
-            DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
+    real(r8), DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
     logical, intent(in)                          :: lsmoothing_over_ocean, lsmooth_rrfac
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
 
 
     integer, INTENT(IN)  :: rrfac_max
 
-    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
-    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
-    REAL (KIND=dbl_kind), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo, rr_halo_sm
-    REAL (KIND=dbl_kind), DIMENSION(ncube,ncube,6)                               :: daxx, rrfac_sm, lap
-    REAL (KIND=dbl_kind),  DIMENSION(ncube, ncube, 6)                            :: terr_sm00,terr_dev00,rr_updt
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_sm, terr_halo_dev
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: da_halo, rr_halo, rr_halo_sm
+    real(r8), DIMENSION(ncube,ncube,6)                               :: daxx, rrfac_sm, lap
+    real(r8), DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
 
-    INTEGER (KIND=int_kind)  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
-    REAL (KIND=dbl_kind)     :: volterr_in,volterr_sm
+    integer  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
+    real(r8) :: volterr_in,volterr_sm
      
 
-    INTEGER (KIND=int_kind)   :: ncube_in_file, iter
+    integer  :: ncube_in_file, iter
 
     logical ::     read_in_precomputed, use_prefilter, stop_after_smoothing
     logical ::     smooth_topo_cubesph, do_refine
     logical ::     read_in_and_refine, new_smooth_topo
 
-    real (kind=dbl_kind), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
-    real (kind=dbl_kind)            :: nu_lap_unit_sphere,dt
-    real (kind=dbl_kind)            :: min_terr, max_terr   !to check if Laplacian smoother is stable
-    real (kind=dbl_kind)            :: min_rrfac, max_rrfac !to check if Laplacian smoother is stable
+    real(r8), parameter :: rearth = 6.37122e6 !radius of Earth from CIME/CESM
+    real(r8)            :: nu_lap_unit_sphere,dt
+    real(r8)            :: min_terr, max_terr   !to check if Laplacian smoother is stable
+    real(r8)            :: min_rrfac, max_rrfac !to check if Laplacian smoother is stable
     !read_in_precomputed = .FALSE.
     read_in_precomputed = lread_smooth_topofile  !.TRUE.
     use_prefilter = luse_prefilter 
@@ -226,7 +221,7 @@ CONTAINS
            rrfac_sm = rrfac
            dt = 16.0/real(smooth_phis_numcycle)
            do iter = 1,smooth_phis_numcycle
-             write(*,*) "Starting iteration ",iter," in Laplacian smoother rrfac_sm"
+             call progress_bar("# ", iter, DBLE(100*iter)/DBLE(smooth_phis_numcycle))
              call laplacian(rrfac_sm, ncube, lap, landfrac,.false.)
              rrfac_sm = rrfac_sm+lap*dt*nu_lap_unit_sphere
              if (MAXVAL(rrfac_sm)>1.2*max_rrfac.or.MINVAL(rrfac_sm)<min_rrfac-1.0) then
@@ -239,14 +234,14 @@ CONTAINS
          end if
          !
          ! smooth surface height
-         !
+         !         
          rrfac_sm = (1.0/rrfac)**2 !scaling of smoothing coefficient
          max_terr = MAXVAL(terr)
          min_terr = MINVAL(terr)
          terr_sm = terr
          dt = 16.0/real(smooth_phis_numcycle)
          do iter = 1,smooth_phis_numcycle
-           write(*,*) "Starting iteration ",iter," in Laplacian smoother terr_sm"
+           call progress_bar("# ", iter, DBLE(100*iter)/DBLE(smooth_phis_numcycle))
            call laplacian(terr_sm, ncube, lap, landfrac,lsmoothing_over_ocean)
            terr_sm = terr_sm+lap*dt*nu_lap_unit_sphere*rrfac_sm
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
@@ -277,31 +272,31 @@ CONTAINS
   end SUBROUTINE smooth_intermediate_topo_wrap
 
   subroutine laplacian(terr, ncube, lap, landfrac, lsmoothing_over_ocean)
-    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: terr
+    real(r8), dimension(ncube,ncube,6), intent(in)  :: terr
     integer,                                        intent(in)  :: ncube
-    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(out) :: lap
-    real (kind=dbl_kind), dimension(ncube,ncube,6), intent(in)  :: landfrac
+    real(r8), dimension(ncube,ncube,6), intent(out) :: lap
+    real(r8), dimension(ncube,ncube,6), intent(in)  :: landfrac
     logical,                                        intent(in)  :: lsmoothing_over_ocean
 
     integer :: i,j,ip
 
     integer, parameter :: nhalo=2
 
-    real (kind=dbl_kind), dimension(ncube,ncube,6)         :: landfrac_local
-    real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa, ggbb, ggab, ggba, sqgg !metric terms cell centers
-    real (kind=dbl_kind), dimension(0:ncube+1,0:ncube+1)   :: ggaa_e, ggbb_e, ggab_e, ggba_e, sqgg_e!metric terms edge
-    real (kind=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo,6) :: terr_halo
-    real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2)   :: terr_halo_edgeX, terr_halo_edgeY
-    real (kind=dbl_kind)                                                       :: alph, beta
-    real (kind=dbl_kind)                                                       :: da,irho,irhosq,piq,pi
-    real (kind=dbl_kind)                                                       :: inv_da,factor
-    real (kind=dbl_kind)                                                       :: lap_x,lap_y,lap_xy,lap_yx
+    real(r8), dimension(ncube,ncube,6)         :: landfrac_local
+    real(r8), dimension(0:ncube+1,0:ncube+1)   :: ggaa, ggbb, ggab, ggba, sqgg !metric terms cell centers
+    real(r8), dimension(0:ncube+1,0:ncube+1)   :: ggaa_e, ggbb_e, ggab_e, ggba_e, sqgg_e!metric terms edge
+    real(r8), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo,6) :: terr_halo
+    real(r8), dimension(0:ncube+2,0:ncube+2)   :: terr_halo_edgeX, terr_halo_edgeY
+    real(r8)                                                       :: alph, beta
+    real(r8)                                                       :: da,irho,irhosq,piq,pi
+    real(r8)                                                       :: inv_da,factor
+    real(r8)                                                       :: lap_x,lap_y,lap_xy,lap_yx
 
 
-    real (kind=dbl_kind), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
-    real (kind=dbl_kind) :: aa,bb,cc,dd,det
+    real(r8), dimension(0:ncube+2,0:ncube+2) :: xterm, yterm, xterm_edgeX, xterm_edgeY
+    real(r8) :: aa,bb,cc,dd,det
 #ifdef idealized_test
-    real (kind=dbl_kind), dimension(ncube,ncube,6)  :: exact
+    real(r8), dimension(ncube,ncube,6)  :: exact
     call idealized_lap(exact,ncube)
 #endif
 
@@ -450,23 +445,19 @@ end subroutine laplacian
 
 
 !=============================================================================
-SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
-                                       , ncube,nhalo, NSCL_f,NSCL_c &
-                                       , terr_halo_sm & 
-                                       , read_in_and_refine, new_smooth_topo  ) 
+  SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
+       , ncube,nhalo, NSCL_f,NSCL_c &
+       , terr_halo_sm & 
+       , read_in_and_refine, new_smooth_topo  ) 
+    
+    real(r8), PARAMETER :: pi        = 3.14159265358979323846264338327
 
-    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
+    integer, INTENT(IN) :: ncube, nhalo,NSCL_f,NSCL_c
 
-    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo,NSCL_f,NSCL_c
-
-    REAL (KIND=dbl_kind), &
-            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: terr_halo
-    REAL (KIND=dbl_kind), &
-            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: da_halo
-    REAL (KIND=dbl_kind), &
-            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: rr_halo
-    REAL (KIND=dbl_kind), &
-            DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(OUT) :: terr_halo_sm
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: terr_halo
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: da_halo
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: rr_halo
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(OUT) :: terr_halo_sm
 
     LOGICAL, INTENT(IN)  :: read_in_and_refine , new_smooth_topo
 
@@ -474,21 +465,19 @@ SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
     !Internal work arrays
     !-----------------------------------------------------------------
     !------------------------------
-    REAL  (KIND=dbl_kind) ,                                                          &
-         DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo)    :: smwt,ggaa,ggbb,ggab
-    REAL  (KIND=dbl_kind) ,                                          &
-         DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo):: smwt,ggaa,ggbb,ggab
+    real(r8), DIMENSION(1-nhalo:ncube+nhalo )                    :: xv,yv,alph,beta
 
-    INTEGER (KIND=int_kind):: np,i,j, ncube_halo,norx,nory,ipanel,x0,&
+    integer:: np,i,j, ncube_halo,norx,nory,ipanel,x0,&
          x1,y0,y1,initd,ii0,ii1,jj0,jj1,nctest,NSM,NS2,ismi,NSB,ns2x
 
 
-    REAL (KIND=dbl_kind), allocatable ::  wt1p(:,:),terr_patch(:,:)
-    REAL(KIND=dbl_kind)  :: cosll, dx, dy ,dbet,dalp,diss,diss00,lon_ij,lat_ij,latfactor,diss0r
+    real(r8), allocatable ::  wt1p(:,:),terr_patch(:,:)
+    real(r8)  :: cosll, dx, dy ,dbet,dalp,diss,diss00,lon_ij,lat_ij,latfactor,diss0r
 
     INTEGER :: NOCTV , isx0, isx1, jsy0, jsy1,i2,j2,iix,jjx,i00,ncube_in_file
 
-    REAL(KIND=dbl_kind) :: RSM_scl, smoo,irho,volt0,volt1,volume_after,volume_before,wt1ps,diss0e
+    real(r8) :: RSM_scl, smoo,irho,volt0,volt1,volume_after,volume_before,wt1ps,diss0e
 
     CHARACTER(len=1024) :: ofile
 
@@ -507,52 +496,51 @@ SUBROUTINE smooth_intermediate_topo_halo(terr_halo, da_halo, rr_halo &
        beta(i)=(pi/4.)*(1.*i - 0.5 + nhalo - (ncube+2.*nhalo)/2.) / ((ncube+2.*nhalo)/2.)
     END DO
     DO j=1-nhalo,ncube+nhalo
-    DO i=1-nhalo,ncube+nhalo
-       irho = ( 1. + (tan(alph(i))**2) + (tan(beta(j))**2 ) )**2   
-       irho = 1. / ( ( cos(alph(i))**2 ) * (cos(beta(j))**2) * irho )  
-       !irho = 1./ ( ( cos(alph(i))**2)*(cos(beta(j))**2)* ( ( 1. + (tan(alph(i))**2) + (tan(beta(j))**2 ) )**2  ))   ???
-       ggaa(i,j) = irho * ( 1. + ( tan( alph(i) ) )**2 )
-       ggbb(i,j) = irho * ( 1. + ( tan( beta(j) ) )**2 )
-       ggab(i,j) = -irho *( tan( beta(j) ) ) * ( tan( alph(i) ) )
-    END DO
+      DO i=1-nhalo,ncube+nhalo
+        irho = ( 1. + (tan(alph(i))**2) + (tan(beta(j))**2 ) )**2   
+        irho = 1. / ( ( cos(alph(i))**2 ) * (cos(beta(j))**2) * irho )  
+        !irho = 1./ ( ( cos(alph(i))**2)*(cos(beta(j))**2)* ( ( 1. + (tan(alph(i))**2) + (tan(beta(j))**2 ) )**2  ))   ???
+        ggaa(i,j) = irho * ( 1. + ( tan( alph(i) ) )**2 )
+        ggbb(i,j) = irho * ( 1. + ( tan( beta(j) ) )**2 )
+        ggab(i,j) = -irho *( tan( beta(j) ) ) * ( tan( alph(i) ) )
+      END DO
     END DO
 
     terr_halo_sm = terr_halo
 
-      if (NSCL_f  > 1 ) then
-       write(*,*)" Fine scale pre-smoother no longer used "
-       write(*,*) "Use prefilter instead"
-       STOP       
-     end if
-
-
-      NSM=NSCL_c
-      NS2=NSM/2
-      i00 = ncube/2
-      ! Set smoothing radius based on namelist param
-      dalp   = alph(i00+ns2 )-alph(i00)
-      diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
-      diss0e = 1./sqrt(  ggaa(i00,  1)*dalp*dalp )
-
-write(*,*) " diss0e , diss00 diss0e/diss00 ",diss0e , diss00, diss0e/diss00 
-
-      NS2=INT( 1.3 * NSM/2  ) ! Add 30% padding to acommodate compression
-                              ! of equi-angular grid at panel edges 
-      allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
-      allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
-
-
-write(*,*) " ncube, nhalo, ns2 ",ncube, nhalo, ns2
-
-write(*,*) "LIMITS in smoother "
-write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
-
-  if (NSCL_c > 1 ) then
+    if (NSCL_f  > 1 ) then
+      write(*,*)" Fine scale pre-smoother no longer used "
+      write(*,*) "Use prefilter instead"
+      STOP       
+    end if
+    
+    NSM=NSCL_c
+    NS2=NSM/2
+    i00 = ncube/2
+    ! Set smoothing radius based on namelist param
+    dalp   = alph(i00+ns2 )-alph(i00)
+    diss00 = 1./sqrt(  ggaa(i00,i00)*dalp*dalp )
+    diss0e = 1./sqrt(  ggaa(i00,  1)*dalp*dalp )
+    
+    write(*,*) " diss0e , diss00 diss0e/diss00 ",diss0e , diss00, diss0e/diss00 
+    
+    NS2=INT( 1.3 * NSM/2  ) ! Add 30% padding to acommodate compression
+    ! of equi-angular grid at panel edges 
+    allocate( wt1p(-ns2:ns2, -ns2:ns2 ) )
+    allocate( terr_patch(-ns2:ns2, -ns2:ns2 ) )
+    
+    
+    write(*,*) " ncube, nhalo, ns2 ",ncube, nhalo, ns2
+    
+    write(*,*) "LIMITS in smoother "
+    write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
+    
+    if (NSCL_c > 1 ) then
       write(*,*) "Direct smoothing option "
       write(*,*) " new_smooth_topo , read_in_and_refine ", new_smooth_topo , read_in_and_refine
-       write(*,*) " max RR in panels "
-       write(*,*) maxval(rr_halo(:,:,1) ),maxval(rr_halo(:,:,2) ),maxval(rr_halo(:,:,3) ),  & 
-                  maxval(rr_halo(:,:,4) ),maxval(rr_halo(:,:,5) ),maxval(rr_halo(:,:,6) )
+      write(*,*) " max RR in panels "
+      write(*,*) maxval(rr_halo(:,:,1) ),maxval(rr_halo(:,:,2) ),maxval(rr_halo(:,:,3) ),  & 
+           maxval(rr_halo(:,:,4) ),maxval(rr_halo(:,:,5) ),maxval(rr_halo(:,:,6) )
       !-----------------------------------------------------
       ! Smooth topography with Conical kernel.
       !   i,j    :: Central point in smoothing window
@@ -566,67 +554,65 @@ write(*,*) 1-nhalo+ns2,ncube+nhalo-ns2
       !-----------------------------------------------------
       DO np=1,6
         DO j=1-nhalo+ns2,ncube+nhalo-ns2
-        DO i=1-nhalo+ns2,ncube+nhalo-ns2
+          DO i=1-nhalo+ns2,ncube+nhalo-ns2
 
-           do_smooth_ij = ( ( (rr_halo(i,j,np)>1.0).AND.read_in_and_refine ).OR. new_smooth_topo )
+            do_smooth_ij = ( ( (rr_halo(i,j,np)>1.0).AND.read_in_and_refine ).OR. new_smooth_topo )
+            
+            if (do_smooth_ij) THEN
+              !-----------------------------------
+              !  Set up conical kernel
+              !----------------------------------- 
+              wt1p(:,:)=0.
+              wt1ps=0.
+              ns2x = ns2 /rr_halo( i,j,np )
+              do j2=-ns2x,ns2x
+                do i2=-ns2x,ns2x
+                  jjx = j+j2
+                  iix = i+i2
+                  dalp = alph(iix)-alph(i)
+                  dbet = beta(jjx)-beta(j)
+                  diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
+                  
+                  diss0r = diss00 * rr_halo( i,j,np )
+                  wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
+                  
+                  if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
+                  wt1ps = wt1ps + wt1p(i2,j2)
+                end do
+              end do
+              
+              !------------------------------
+              ! Now smooth over conical kernel
+              !-------------------------------
+              terr_halo_sm(i,j,np) = 0.
+              do j2=-ns2x,ns2x
+                do i2=-ns2x,ns2x
+                  jjx = j+j2
+                  iix = i+i2
+                  terr_halo_sm(i,j,np) = terr_halo_sm(i,j,np) + terr_halo(iix,jjx,np)*wt1p(i2,j2)/wt1ps
+                end do
+              end do
+              ! end of smoothing with conical kernel
+              !---------------------------------------
+              ! Block above is functionally like the one-line smoothing command here:
+              !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
+              
+            end if
 
-           if (do_smooth_ij) THEN
-           !-----------------------------------
-           !  Set up conical kernel
-           !----------------------------------- 
-           wt1p(:,:)=0.
-           wt1ps=0.
-           ns2x = ns2 /rr_halo( i,j,np )
-           do j2=-ns2x,ns2x
-           do i2=-ns2x,ns2x
-              jjx = j+j2
-              iix = i+i2
-              dalp = alph(iix)-alph(i)
-              dbet = beta(jjx)-beta(j)
-              diss = ggaa(i,j)*dalp*dalp + ggbb(i,j)*dbet*dbet + 2.*ggab(i,j)*dalp*dbet
-
-                 diss0r = diss00 * rr_halo( i,j,np )
-                 wt1p(i2,j2) = ( 1. - diss0r * sqrt( diss ) )*da_halo(iix,jjx,np)
-
-              if (wt1p(i2,j2)<0.) wt1p(i2,j2)=0.
-              wt1ps = wt1ps + wt1p(i2,j2)
-           end do
-           end do
-
-           !------------------------------
-           ! Now smooth over conical kernel
-           !-------------------------------
-           terr_halo_sm(i,j,np) = 0.
-           do j2=-ns2x,ns2x
-           do i2=-ns2x,ns2x
-              jjx = j+j2
-              iix = i+i2
-              terr_halo_sm(i,j,np) = terr_halo_sm(i,j,np) + terr_halo(iix,jjx,np)*wt1p(i2,j2)/wt1ps
-           end do
-           end do
-           ! end of smoothing with conical kernel
-           !---------------------------------------
-           ! Block above is functionally like the one-line smoothing command here:
-           !  terr_halo_sm(i,j,np) = SUM( terr_halo_fx( i-ns2:i+ns2  ,  j-ns2:j+ns2   ,np ) )/ ((2.*ns2+1)**2)        
-
-        end if
-
-        END DO  !  i-loop   
-        if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
+          END DO  !  i-loop   
+          if (mod(j,1) ==0 ) write(*,900,advance='no') achar(13), J, Ncube+2*Nhalo, Np
         END DO  ! j-loop
       END DO  ! panel loop
-
+      
       write(*,*) " end / clear "
-   end if
-
-
-900   format( a1, " Smoothed Row ",i4," out of ",i4," Panel=",i2 )
-
-      deallocate( wt1p )
-      deallocate( terr_patch )
-
-
-END SUBROUTINE smooth_intermediate_topo_halo
+    end if
+    
+    
+900 format( a1, " Smoothed Row ",i4," out of ",i4," Panel=",i2 )
+    
+    deallocate( wt1p )
+    deallocate( terr_patch )
+  END SUBROUTINE smooth_intermediate_topo_halo
 
 !===========================================================
 
@@ -636,13 +622,13 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
                            , rrfac_max, ncube,nhalo, NSCL_c &
                            , rr_halo_sm  ) 
 
-    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
+    real(r8), PARAMETER :: pi        = 3.14159265358979323846264338327
 
-    INTEGER (KIND=int_kind), INTENT(IN) :: ncube, nhalo,NSCL_c,rrfac_max
+    integer, INTENT(IN) :: ncube, nhalo,NSCL_c,rrfac_max
 
-    REAL (KIND=dbl_kind), &
+    real(r8), &
             DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(IN)  :: rr_halo
-    REAL (KIND=dbl_kind), &
+    real(r8), &
             DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6), INTENT(OUT) :: rr_halo_sm
 
 
@@ -650,12 +636,12 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
     !Internal work arrays
     !-----------------------------------------------------------------
     !------------------------------
-    REAL (KIND=dbl_kind), &
+    real(r8), &
             DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6)  :: rr_halo_xx
 
     
     INTEGER :: NSM,iter,i,j,np , ns
-    REAL (KIND=dbl_kind) :: wt
+    real(r8) :: wt
 
 
       NSM=NSCL_c

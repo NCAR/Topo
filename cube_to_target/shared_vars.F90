@@ -33,6 +33,17 @@ MODULE shared_vars
       rotate_cube = 0.0D0 !default is 0
     end subroutine set_constants
 
+    subroutine progress_bar(txt, n, x)
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      implicit none
+      character(*) :: txt
+      integer :: n
+      real(r8) :: x
+      integer, parameter :: s = 5
+      character :: c(0:s-1) = (/ achar(127), "/", "|", "/","-" /)
+      character, parameter :: CR = achar(13)
+      write( *, "((a1,a, t4,i10, f10.2,' percent  done ', a1, '  '))", advance = "NO") CR, txt, n, x, c(mod(n, s))
+    end subroutine progress_bar
   
     
     subroutine smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file,&
