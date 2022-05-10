@@ -160,18 +160,18 @@ program convterr
     case( 'c' )
       read (optarg, *) smoothing_scale
       write(str,*) smoothing_scale
-      command_line_arguments = TRIM(command_line_arguments)//' -c '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --smoothing_scale '//TRIM(ADJUSTL(str))
       opts(1)%specified = .true.
     case( 'f' )
       read (optarg, '(i3)') ioptarg
       ncube_sph_smooth_fine = ioptarg
       write(str,*) ioptarg
-      command_line_arguments = TRIM(command_line_arguments)//' -f '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --fine_radius '//TRIM(ADJUSTL(str))
       opts(2)%specified = .true.
     case( 'g' )
       grid_descriptor_fname = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -g '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --grid_descriptor_file '//TRIM(ADJUSTL(str))
       opts(3)%specified = .true.
     case( 'h' )
       call print_help
@@ -179,98 +179,98 @@ program convterr
     case( 'i' )
       intermediate_cubed_sphere_fname = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -i '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --intermediate_cs_name '//TRIM(ADJUSTL(str))
       opts(5)%specified = .true.
     case( 'o' )
       output_grid = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -o '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --output_grid '//TRIM(ADJUSTL(str))
       opts(6)%specified = .true.
     case( 'p' )
       luse_prefilter=.TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -p '
+      command_line_arguments = TRIM(command_line_arguments)//' --use_prefilter '
       opts(7)%specified = .true.
     case( 'r' )
       lfind_ridges = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -r '
+      command_line_arguments = TRIM(command_line_arguments)//' --find_ridges '
       opts(8)%specified = .true.
     case( 'x' )
       lstop_after_smoothing = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -x '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --stop_after_smooth '//TRIM(ADJUSTL(str))
       opts(9)%specified = .true.
     case( 'y' )
       read (optarg, '(i3)') ioptarg
       rrfac_max = ioptarg
       lregional_refinement =.true.
       write(str,*) ioptarg
-      command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --rrfac_max '//TRIM(ADJUSTL(str))
       opts(10)%specified = .true.
     case( 'v' )
       lrrfac_manipulation= .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -v '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --rrfac_manipulation '//TRIM(ADJUSTL(str))
       opts(11)%specified = .true.
     case( 'z' )
       ldevelopment_diags = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -z '
+      command_line_arguments = TRIM(command_line_arguments)//' --development_diags '
       opts(12)%specified = .true.
     case( '0' )
       lzero_negative_peaks = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -0 '
+      command_line_arguments = TRIM(command_line_arguments)//' --zero_negative_peaks '
       write(*,*) "check support"
       opts(13)%specified = .true.
       stop
     case( '1' )
       lridgetiles = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -1 '
+      command_line_arguments = TRIM(command_line_arguments)//' --ridge2tiles '
       opts(14)%specified = .true.
     case( 't' )
       smooth_topo_fname = optarg
       write(str,*) TRIM(optarg)
       write(*,*) str
-      command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --smooth_topo_file '//TRIM(ADJUSTL(str))
       opts(15)%specified = .true.
     case( 'd' )
       lwrite_rrfac_to_topo_file = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -d '
+      command_line_arguments = TRIM(command_line_arguments)//' --write_rrfac_to_topo_file '
       opts(16)%specified = .true.
     case( 'u' )
       str_creator = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --name_email_of_creator '//TRIM(ADJUSTL(str))
       opts(17)%specified = .true.
     case( 'n' )
       str_source = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -n '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --source_data_identifier '//TRIM(ADJUSTL(str))
       opts(18)%specified = .true.
     case( 'q' )
       str_dir = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -q '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --output_data_directory '//TRIM(ADJUSTL(str))
       opts(19)%specified = .true.
     case( 'a' )
       lphis_gll=.TRUE.
       grid_descriptor_fname_gll = optarg
       write(str,*) TRIM(optarg)
-      command_line_arguments = TRIM(command_line_arguments)//' -a '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --grid_descriptor_file_gll '//TRIM(ADJUSTL(str))
       opts(20)%specified = .true.
     case( 's' )
       linterp_phis = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -s '
+      command_line_arguments = TRIM(command_line_arguments)//' --interpolate_phis '
       opts(21)%specified = .true.
     case( 'b' )
       ldistance_weighted_smoother = .true.
-      command_line_arguments = TRIM(command_line_arguments)//' -b '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --distance_weighted_smoother '//TRIM(ADJUSTL(str))
       opts(22)%specified = .true.
     case( 'l' )
       read (optarg, '(i5)') smooth_phis_numcycle
       write(str,*) smooth_phis_numcycle
       write(*,*) trim(str)
-      command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --smooth_phis_numcycle '//TRIM(ADJUSTL(str))
       opts(23)%specified = .true.
     case( 'm' )
       lsmoothing_over_ocean = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' -m '
+      command_line_arguments = TRIM(command_line_arguments)//' --smoothing_over_ocean '
       opts(24)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
