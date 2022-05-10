@@ -416,8 +416,6 @@ program convterr
       write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
       STOP
     end if
-  else
-    write(*,*) "find_ridges not support with Laplacian smoother - yet - help Bacmeister :-)"
   end if
 
   if (ncube_sph_smooth_fine > 0) then 
@@ -514,7 +512,7 @@ program convterr
   ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
   ! in the 'exchange grid'
   allocate( rrfac(ncube,ncube,6)  )
-  rrfac = 0.0
+  rrfac = 1.0
   
   if (.not.lstop_after_smoothing) then    
     if (nrank == 1) then
@@ -591,7 +589,6 @@ program convterr
         rrfac(ix,iy,ip) = rrfac(ix,iy,ip) + wt*(target_rrfac(i))/dA(ix,iy)
       end do
     else
-      rrfac(:,:,:) = 1.
       write(*,*) " NO refinement: RRFAC = 1. everywhere "
     endif
     write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
