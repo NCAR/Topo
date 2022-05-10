@@ -590,7 +590,7 @@ program convterr
       end do
     else
       write(*,*) " NO refinement: RRFAC = 1. everywhere "
-      rrfac = 0.0_r8
+      rrfac = 1.0_r8
     endif
     write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
     !---ARH
