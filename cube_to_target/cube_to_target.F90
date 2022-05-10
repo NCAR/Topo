@@ -52,7 +52,7 @@ program convterr
   !
   ! for internal filtering
   !
-  real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:),rrfac_tmp(:,:,:)
+  real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:)
   integer  :: nreconstruction
   real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
   real(r8) :: volterr, volterr_sm  
@@ -305,6 +305,27 @@ program convterr
     ! default output directory
     !
     str_dir = 'output'
+  end if
+
+  if (lregional_refinement) then
+    write(*,*) "rrfac_max = ", rrfac_max
+    if (rrfac_max/=0.and.rrfac_max<1) then
+      write(*,*) " "
+      write(*,*) "rrfac_max must be either 0 (no manipulation of rrfac)"
+      write(*,*) "or rrfac_max>1"
+      stop
+    else
+      write(*,*) "If rrfac_max==0 then there is no manipulation of rrfac"
+      write(*,*) " "
+      write(*,*) "For rrfac_max>0 the following manipulation of rrfac_max is taking place:"
+      write(*,*) " "
+      write(*,*) "   rrfac = REAL(NINT(rrfac))"
+      write(*,*) "   where (rrfac.gt.rrfac_max) rrfac = rrfac_max"
+      write(*,*) "   where (rrfac.lt.1.0) rrfac = 1.0"
+      write(*,*) "   Laplacian smoother is applied to rrfac"
+      write(*,*) "   (same level of smoothing as PHIS)"
+      write(*,*) " "
+    end if
   end if
   
   write(*,*) " "
@@ -582,22 +603,21 @@ program convterr
     !+++ARH
     !!NSCL_c = 4*2*ncube_sph_smooth_coarse
     nhalo  = NSCL_c
+   
     
-    write(*,*) "rrfac_max",rrfac_max
-    
-    allocate( rrfac_tmp(ncube,ncube,6)  )
-    rrfac_tmp(:,:,:) = rrfac(:,:,:)
     !---rrfac limiting
-    rrfac = REAL(NINT(rrfac))
-    where (rrfac.gt.rrfac_max) rrfac = rrfac_max
-    where (rrfac.lt.1.0) rrfac = 1.0
+    if (rrfac_max>1) then
+      rrfac = REAL(NINT(rrfac))
+      where (rrfac.gt.rrfac_max) rrfac = rrfac_max
+      where (rrfac.lt.1.0) rrfac = 1.0
+      write(*,*) "RRFAC Massaged .... "
+      write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
+    end if
     
-    write(*,*) "RRFAC Massaged .... "
-    write(*,*) "MINMAX RRFAC FINAL",minval(rrfac),maxval(rrfac)
     
     write(*,*) "Entering smooth_intermediate_topo_wrap ..."
 
-    call  smooth_intermediate_topo_wrap (terr, rrfac, da,  & 
+    call  smooth_intermediate_topo_wrap (terr, rrfac,da,  & 
          ncube,nhalo, NSCL_f,NSCL_c, &
          terr_sm, terr_dev ,         &
          smooth_topo_fname,          &

@@ -691,14 +691,7 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
         END DO  !  i-loop   
         END DO  ! j-loop
       END DO  ! panel loop
-#if 0
-      where( rr_halo_sm >= rrfac_max ) 
-        rr_halo_xx = 1.0*rrfac_max
-      end where
-      where( rr_halo_sm <= 1.0 ) 
-        rr_halo_xx = 1.0
-      end where
-#endif
+
       rr_halo_sm = rr_halo_xx
       write(*,900,advance='no') achar(13), iter,4*nsm/ns
       END DO
