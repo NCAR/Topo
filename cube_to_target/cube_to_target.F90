@@ -64,6 +64,7 @@ program convterr
   logical :: lread_smooth_topofile = .FALSE.
   logical :: luse_prefilter        = .FALSE.
   logical :: lstop_after_smoothing = .FALSE.
+  logical :: lrrfac_manipulation   = .FALSE.
   !
   ! Cubed sphere terr is band-pass filtered using circular kernels
   !                             *Radii* of smoothing circles
@@ -91,7 +92,6 @@ program convterr
   logical :: linterp_phis = .FALSE.              !interpolate PHIS to grid center (instead of area average remapping; used for GLL grids)
   logical :: lsmoothing_over_ocean = .FALSE.      !default is that no smoothing is applied where landfrac=0; turn off
   logical :: ldistance_weighted_smoother = .FALSE.!use distance weighted smoother instead of Laplacian smoother
-  logical :: lsmooth_rrfac = .TRUE.               !smooth the refinement factor (recommended for SE grids)
 
   real (r8):: nu_lap = -1
   integer  :: smooth_phis_numcycle=-1
@@ -112,7 +112,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(23)
+  type(option_s):: opts(24)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -127,19 +127,20 @@ program convterr
   opts(8 ) = option_s( "find_ridges"               ,.false.   , 'r'   ,.false.       ,.false.)
   opts(9)  = option_s( "stop_after_smooth"         ,.false.   , 'x'   ,.false.       ,.false.)
   opts(10) = option_s( "rrfac_max"                 ,.true.    , 'y'   ,.false.       ,.false.)
-  opts(11) = option_s( "development_diags"         ,.false.   , 'z'   ,.false.       ,.false.)
-  opts(12) = option_s( "zero_negative_peaks"       ,.false.   , '0'   ,.false.       ,.false.)
-  opts(13) = option_s( "ridge2tiles"               ,.false.   , '1'   ,.false.       ,.false.)
-  opts(14) = option_s( "smooth_topo_file"          ,.true.    , 't'   ,.false.       ,.false.)
-  opts(15) = option_s( "write_rrfac_to_topo_file"  ,.true.    , 'd'   ,.false.       ,.false.)
-  opts(16) = option_s( "name_email_of_creator"     ,.true.    , 'u'   ,.false.       ,.true.)
-  opts(17) = option_s( "source_data_identifier"    ,.true.    , 'n'   ,.false.       ,.false.)
-  opts(18) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
-  opts(19) = option_s( "grid_descriptor_file_gll"  ,.true.    , 'a'   ,.false.       ,.false.)
-  opts(20) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
-  opts(21) = option_s( "distance_weighted_smoother",.false.   , 'b'   ,.false.       ,.false.)
-  opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
-  opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
+  opts(11) = option_s( "rrfac_manipulation"        ,.false.   , 'v'   ,.false.       ,.false.)
+  opts(12) = option_s( "development_diags"         ,.false.   , 'z'   ,.false.       ,.false.)
+  opts(13) = option_s( "zero_negative_peaks"       ,.false.   , '0'   ,.false.       ,.false.)
+  opts(14) = option_s( "ridge2tiles"               ,.false.   , '1'   ,.false.       ,.false.)
+  opts(15) = option_s( "smooth_topo_file"          ,.true.    , 't'   ,.false.       ,.false.)
+  opts(16) = option_s( "write_rrfac_to_topo_file"  ,.true.    , 'd'   ,.false.       ,.false.)
+  opts(17) = option_s( "name_email_of_creator"     ,.true.    , 'u'   ,.false.       ,.true.)
+  opts(18) = option_s( "source_data_identifier"    ,.true.    , 'n'   ,.false.       ,.false.)
+  opts(19) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
+  opts(20) = option_s( "grid_descriptor_file_gll"  ,.true.    , 'a'   ,.false.       ,.false.)
+  opts(21) = option_s( "interpolate_phis"          ,.false.   , 's'   ,.false.       ,.false.)
+  opts(22) = option_s( "distance_weighted_smoother",.false.   , 'b'   ,.false.       ,.false.)
+  opts(23) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
+  opts(24) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -153,7 +154,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:z01:t:du:n:q:a:sbl:m", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz01:t:du:n:q:a:sbl:m", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -204,69 +205,73 @@ program convterr
       write(str,*) ioptarg
       command_line_arguments = TRIM(command_line_arguments)//' -y '//TRIM(ADJUSTL(str))
       opts(10)%specified = .true.
+    case( 'v' )
+      lrrfac_manipulation= .TRUE.
+      command_line_arguments = TRIM(command_line_arguments)//' -v '//TRIM(ADJUSTL(str))
+      opts(11)%specified = .true.
     case( 'z' )
       ldevelopment_diags = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -z '
-      opts(11)%specified = .true.
+      opts(12)%specified = .true.
     case( '0' )
       lzero_negative_peaks = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -0 '
       write(*,*) "check support"
-      opts(12)%specified = .true.
+      opts(13)%specified = .true.
       stop
     case( '1' )
       lridgetiles = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -1 '
-      opts(13)%specified = .true.
+      opts(14)%specified = .true.
     case( 't' )
       smooth_topo_fname = optarg
       write(str,*) TRIM(optarg)
       write(*,*) str
       command_line_arguments = TRIM(command_line_arguments)//' -t '//TRIM(ADJUSTL(str))
-      opts(14)%specified = .true.
+      opts(15)%specified = .true.
     case( 'd' )
       lwrite_rrfac_to_topo_file = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -d '
-      opts(15)%specified = .true.
+      opts(16)%specified = .true.
     case( 'u' )
       str_creator = optarg
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' -u '//TRIM(ADJUSTL(str))
-      opts(16)%specified = .true.
+      opts(17)%specified = .true.
     case( 'n' )
       str_source = optarg
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' -n '//TRIM(ADJUSTL(str))
-      opts(17)%specified = .true.
+      opts(18)%specified = .true.
     case( 'q' )
       str_dir = optarg
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' -q '//TRIM(ADJUSTL(str))
-      opts(18)%specified = .true.
+      opts(19)%specified = .true.
     case( 'a' )
       lphis_gll=.TRUE.
       grid_descriptor_fname_gll = optarg
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' -a '//TRIM(ADJUSTL(str))
-      opts(19)%specified = .true.
+      opts(20)%specified = .true.
     case( 's' )
       linterp_phis = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -s '
-      opts(20)%specified = .true.
+      opts(21)%specified = .true.
     case( 'b' )
       ldistance_weighted_smoother = .true.
       command_line_arguments = TRIM(command_line_arguments)//' -b '//TRIM(ADJUSTL(str))
-      opts(21)%specified = .true.
+      opts(22)%specified = .true.
     case( 'l' )
       read (optarg, '(i5)') smooth_phis_numcycle
       write(str,*) smooth_phis_numcycle
       write(*,*) trim(str)
       command_line_arguments = TRIM(command_line_arguments)//' -l '//TRIM(ADJUSTL(str))
-      opts(22)%specified = .true.
+      opts(23)%specified = .true.
     case( 'm' )
       lsmoothing_over_ocean = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' -m '
-      opts(23)%specified = .true.
+      opts(24)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -306,18 +311,16 @@ program convterr
     !
     str_dir = 'output'
   end if
-
+  
   if (lregional_refinement) then
     write(*,*) "rrfac_max = ", rrfac_max
-    if (rrfac_max/=0.and.rrfac_max<1) then
-      write(*,*) " "
-      write(*,*) "rrfac_max must be either 0 (no manipulation of rrfac)"
-      write(*,*) "or rrfac_max>1"
+    if (rrfac_max<1) then
+      write(*,*) "refinement factor must be >1"
       stop
-    else
-      write(*,*) "If rrfac_max==0 then there is no manipulation of rrfac"
+    end if
+    if (lrrfac_manipulation) then
       write(*,*) " "
-      write(*,*) "For rrfac_max>0 the following manipulation of rrfac_max is taking place:"
+      write(*,*) " lrrfac_manipulation=.TRUE. -> the following manipulation of rrfac_max is taking place:"
       write(*,*) " "
       write(*,*) "   rrfac = REAL(NINT(rrfac))"
       write(*,*) "   where (rrfac.gt.rrfac_max) rrfac = rrfac_max"
@@ -325,6 +328,15 @@ program convterr
       write(*,*) "   Laplacian smoother is applied to rrfac"
       write(*,*) "   (same level of smoothing as PHIS)"
       write(*,*) " "
+    end if
+  else
+    if (lrrfac_manipulation) then
+      write(*,*) "setting lrrfac_manipulation=.TRUE. (namelist option -v or --rrfac_manipulation)"
+      write(*,*) "has no effect when not running regional refinement. Regional refinement is "
+      write(*,*) "activated with -y=R --rrfac_max=R where R is the maximum refinement factor"
+      write(*,*) " "
+      write(*,*) "To keep the user safe - ABORT"
+      stop
     end if
   end if
   
@@ -606,7 +618,7 @@ program convterr
    
     
     !---rrfac limiting
-    if (rrfac_max>1) then
+    if (rrfac_max>1.and.lrrfac_manipulation) then
       rrfac = REAL(NINT(rrfac))
       where (rrfac.gt.rrfac_max) rrfac = rrfac_max
       where (rrfac.lt.1.0) rrfac = 1.0
@@ -630,7 +642,7 @@ program convterr
          command_line_arguments,str_dir,str_source,&
          output_grid,&
          nu_lap, smooth_phis_numcycle,landfrac,&
-         lsmoothing_over_ocean,lsmooth_rrfac,&
+         lsmoothing_over_ocean,lrrfac_manipulation,&
          smooth_topo_fname=smooth_topo_fname&
          )
     
