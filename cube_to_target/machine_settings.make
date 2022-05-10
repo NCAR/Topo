@@ -1,8 +1,3 @@
-#
-# set python path
-#
-#export python_path=/usr/local/anaconda-2.4.0/bin/
-
 DEBUG=FALSE
 
 FC = $(shell nc-config --fc)

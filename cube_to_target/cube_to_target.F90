@@ -512,7 +512,7 @@ program convterr
   ! On entry to overlap_weights 'jall' is a generous guess at the number of cells in
   ! in the 'exchange grid'
   allocate( rrfac(ncube,ncube,6)  )
-  rrfac = 1.0
+  rrfac = 0.0
   
   if (.not.lstop_after_smoothing) then    
     if (nrank == 1) then
@@ -590,6 +590,7 @@ program convterr
       end do
     else
       write(*,*) " NO refinement: RRFAC = 1. everywhere "
+      rrfac = 0.0_r8
     endif
     write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
     !---ARH
