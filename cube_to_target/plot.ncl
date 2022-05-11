@@ -86,6 +86,10 @@ begin
   if (RRFAC_ON_FILE) then
     plot = gsn_csm_contour_map_ce(wks,RRFAC, res) ; create plot
   end if
+;  res@cnLevelSelectionMode = "ManualLevels"	; manually set the contour levels with the following 3 resources
+;  res@cnMinLevelValF  = -30.			; set the minimum contour level
+;  res@cnMaxLevelValF  = 70.			; set the maximum contour level
+;  res@cnLevelSpacingF = 10.			; 
   plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
   plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
 end

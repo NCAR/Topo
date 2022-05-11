@@ -216,6 +216,7 @@ CONTAINS
          nu_lap_unit_sphere = nu_lap/(rearth*rearth)
 
          if (lregional_refinement.and.lsmooth_rrfac) then
+           write(*,*) "Smoooth rrfac"
            max_rrfac = MAXVAL(rrfac)
            min_rrfac = MINVAL(rrfac)
            rrfac_sm = rrfac
@@ -234,7 +235,8 @@ CONTAINS
          end if
          !
          ! smooth surface height
-         !         
+         !
+         write(*,*) "Smoooth height"
          rrfac_sm = (1.0/rrfac)**2 !scaling of smoothing coefficient
          max_terr = MAXVAL(terr)
          min_terr = MINVAL(terr)

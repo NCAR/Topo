@@ -5,4 +5,4 @@ make
 set file=`ls -t1 output/*.nc |  head -n 1`
 echo $file
 #/glade/p/cesm/cseg/tools/cprnc/cprnc -m $file ../regression-test-data/fv0.9x1.25_gmted2010_bedmachine_nc0540_NoAniso_Laplace0060_20220504.nc
-/fs/cgd/csm/tools/cprnc/cprnc -m $file ../regression-test-data/fv0.9x1.25_gmted2010_bedmachine_nc0540_NoAniso_Laplace0060_20220504.nc
+/fs/cgd/csm/tools/cprnc/cprnc -m $file ../regression-test-data/fv0.9x1.25_gmted2010_bedmachine_nc0540_Laplace0060_20220511.nc

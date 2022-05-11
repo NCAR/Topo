@@ -4,5 +4,5 @@ make
 set file=`ls -t1 output/*.nc |  head -n 1`
 echo $file
 #/glade/p/cesm/cseg/tools/cprnc/cprnc -m $file ../regression-test-data/ne0_15x2_SA_gmted2010_bedmachine_nc0540_Laplace0240_20220510.nc
-/fs/cgd/csm/tools/cprnc/cprnc  -m $file ../regression-test-data/ne0_15x2_SA_gmted2010_bedmachine_nc0540_Laplace0240_20220510.nc
+/fs/cgd/csm/tools/cprnc/cprnc  -m $file ../regression-test-data/ne0_15x2_SA_gmted2010_bedmachine_nc0540_Laplace0240_20220511.nc
 source plot.sh
