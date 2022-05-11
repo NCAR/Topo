@@ -249,7 +249,7 @@ CONTAINS
              stop
            end if
          end do
-         terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_sm( 1:ncube , 1:ncube, :) 
+         terr_dev = terr - terr_sm
        endif
       volterr_in=0.
       volterr_sm=0.
