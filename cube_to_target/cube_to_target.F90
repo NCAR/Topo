@@ -482,12 +482,12 @@ program convterr
       nsw = nwindow_halfwidth
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile ,"('_nc',i0.4,'_Laplace',i0.4)" ) &
-           ncube, smooth_phis_numcycle
+           ncube, NINT(smoothing_scale)
     else
       call DATE_AND_TIME( DATE=date,TIME=time)
       write( ofile , &
            "('_nc',i0.4,'_NoAniso_Laplace',i0.4)" ) & 
-           ncube, smooth_phis_numcycle
+           ncube, NINT(smoothing_scale)
     endif
   end if
   
@@ -1041,7 +1041,7 @@ program convterr
     write (6,*) "-g, --grid_descriptor_file=<string>  [required] -> ESMF or SCRIP compliant grid descriptor file"
     write (6,*) "-i, --intermediate_cs_name=<string>  [required] -> intermediate cubed-sphere topo file (usually ncube3000)"
     write (6,*) "-o, --output_grid=<string>           [required] -> identifier for output grid (e.g. ne30np4, f09x1.25, ..)"    
-    write (6,*) "-c, --smoothing_scale=<int> (in km)             -> standard 'climate' smoothing is -c=100 for 1 degree"
+    write (6,*) "-c, --smoothing_scale=<real> (in km)            -> standard 'climate' smoothing is -c=100 for 1 degree"
     write (6,*) "-r, --find_ridges                               -> compute sub-grid-scale ridges"
     write (6,*) "-q, --output_data_directory=<string>            -> data output directory (default is output)"
     write (6,*) " "
