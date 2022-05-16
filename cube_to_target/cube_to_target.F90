@@ -558,44 +558,43 @@ program convterr
            jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     end if
     deallocate(target_corner_lon,target_corner_lat)
-    
-    ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
-    !------------------------------------------------------------------------------------------------
-    
-    ! Set-up regional refinement control.
-    !------------------------------------------
-    ! Array rrfac is a refinement factor >= 1.0 
-    ! Passed to smooth topo and ridge finder to
-    ! control lengthscales used in algorithms. 
-    ! RRfac is always used. If output_grid has no 
-    ! regional refinement then rrfac(:,:,:)=1.
-    
-    if (lregional_refinement) then
-      !--- remap rrfac to cube
-      !-----------------------------------------------------------------
-      do counti=1,jall
-        i    = weights_lgr_index_all(counti)!!
-        !
-        ix  = weights_eul_index_all(counti,1)
-        iy  = weights_eul_index_all(counti,2)
-        ip  = weights_eul_index_all(counti,3)
-        !
-        ! convert to 1D indexing of cubed-sphere
-        !
-        ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
-        !
-        wt = weights_all(counti,1)
-        !
-        rrfac(ix,iy,ip) = rrfac(ix,iy,ip) + wt*(target_rrfac(i))/dA(ix,iy)
-      end do
-    else
-      write(*,*) " NO refinement: RRFAC = 1. everywhere "
-      rrfac = 1.0_r8
-    endif
-    write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
-    !---ARH
-  endif !if (.not.lstop_after_smoothing)
-  !!rrfac( 400:2400,2000:3000,4) = 4.
+  end if
+  ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
+  !------------------------------------------------------------------------------------------------
+  
+  ! Set-up regional refinement control.
+  !------------------------------------------
+  ! Array rrfac is a refinement factor >= 1.0 
+  ! Passed to smooth topo and ridge finder to
+  ! control lengthscales used in algorithms. 
+  ! RRfac is always used. If output_grid has no 
+  ! regional refinement then rrfac(:,:,:)=1.
+  
+  if (lregional_refinement) then
+    !--- remap rrfac to cube
+    !-----------------------------------------------------------------
+    do counti=1,jall
+      i    = weights_lgr_index_all(counti)!!
+      !
+      ix  = weights_eul_index_all(counti,1)
+      iy  = weights_eul_index_all(counti,2)
+      ip  = weights_eul_index_all(counti,3)
+      !
+      ! convert to 1D indexing of cubed-sphere
+      !
+      ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix!
+      !
+      wt = weights_all(counti,1)
+      !
+      rrfac(ix,iy,ip) = rrfac(ix,iy,ip) + wt*(target_rrfac(i))/dA(ix,iy)
+    end do
+  else
+    write(*,*) " NO refinement: RRFAC = 1. everywhere "
+    rrfac = 1.0_r8
+  endif
+  write(*,*) "MINMAX RRFAC RAW MAPPED FIELD",minval(rrfac),maxval(rrfac)
+  !---ARH
+!!rrfac( 400:2400,2000:3000,4) = 4.
   
   !++jtb
   NSCL_c = 2*ncube_sph_smooth_coarse
