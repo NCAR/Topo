@@ -68,11 +68,13 @@ CONTAINS
     real(r8), DIMENSION(ncube,ncube,6)                               :: daxx, rrfac_sm, lap
     real(r8), DIMENSION(ncube, ncube, 6)                             :: terr_sm00,terr_dev00,rr_updt
 
+    real(r8), DIMENSION(ncube,ncube,6) :: landfrac_local
+
     integer  :: ncubex, nhalox,NSCL_fx,NSCL_cx,ip
     real(r8) :: volterr_in,volterr_sm
      
 
-    integer  :: ncube_in_file, iter
+    integer  :: ncube_in_file, iter,i,j
 
     logical ::     read_in_precomputed, use_prefilter, stop_after_smoothing
     logical ::     smooth_topo_cubesph, do_refine
@@ -234,6 +236,21 @@ CONTAINS
            rrfac = rrfac_sm
          end if
          !
+         ! see issue 
+         !
+         if (.not.lsmoothing_over_ocean) then
+           landfrac_local = 1.0_r8
+           do ip=1,6
+             do j=1,ncube
+               do i=1,ncube
+                 if (ABS(terr(i,j,ip))<1.0E-12_r8.and.ABS(landfrac(i,j,ip))<1E-12_r8) then
+                   landfrac_local(i,j,ip) = 0.0_r8
+                 end if
+               end do
+             end do
+           end do
+         end if
+         !
          ! smooth surface height
          !
          write(*,*) "Smoooth height"
@@ -244,7 +261,7 @@ CONTAINS
          dt = 16.0/real(smooth_phis_numcycle)
          do iter = 1,smooth_phis_numcycle
            call progress_bar("# ", iter, DBLE(100*iter)/DBLE(smooth_phis_numcycle))
-           call laplacian(terr_sm, ncube, lap, landfrac,lsmoothing_over_ocean)
+           call laplacian(terr_sm, ncube, lap, landfrac_local,lsmoothing_over_ocean)
            terr_sm = terr_sm+lap*dt*nu_lap_unit_sphere*rrfac_sm
            if (MAXVAL(terr_sm)>1.2*max_terr.or.MINVAL(terr_sm)<min_terr-500.0) then
              write(*,*) "Laplace iteration seems to be unstable: MINVAL(terr_sm),MAXVAL(terr_sm)",MINVAL(terr_sm),MAXVAL(terr_sm)
@@ -265,9 +282,9 @@ CONTAINS
 
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
-          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments,rr_fac=rr_updt)
+          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments,rr_fac=rr_updt)
         else
-          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,ofname,command_line_arguments)
+          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments)
         end if
         if (stop_after_smoothing ) STOP
       end if
@@ -391,7 +408,7 @@ CONTAINS
     do ip=1,6
       do j=1,ncube
         do i=1,ncube
-          if (landfrac_local(i,j,ip) > 0) then
+          if (landfrac_local(i,j,ip) > 0.0_r8) then
             
             lap_x  = (terr_halo(i+1,j,ip)-terr_halo(i  ,j,ip))*sqgg_e(i+1,j)*ggaa_e(i+1,j)  !x-derivative on edge i+1/2
             lap_x  = lap_x -&
@@ -414,6 +431,8 @@ CONTAINS
             lap_yx = lap_yx*0.25*inv_da*inv_da
             
             lap(i,j,ip) = (lap_x+lap_y+lap_xy+lap_yx)/sqgg(i,j)
+          else
+            lap(i,j,ip) = 0.0
           end if
         end do
       end do
@@ -701,7 +720,7 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
    END SUBROUTINE smooth_rrfac_halo
 !======================================================================================
 
-subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,command_line_arguments,rr_fac)
+subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fname,command_line_arguments,rr_fac)
   use shr_kind_mod, only: r8 => shr_kind_r8
   use shared_vars, only : rad2deg
   implicit none
@@ -712,7 +731,7 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,comman
   ! Dummy arguments
   !
   integer, intent(in) :: n, ncube
-  real(r8),dimension(n),           intent(in) :: terr_sm,terr_dev
+  real(r8),dimension(n),           intent(in) :: terr_sm,terr_dev,landfrac
   character(len=1024),             intent(in) :: output_fname
   real(r8),dimension(n), optional, intent(in) :: rr_fac
   character(len=1024),             intent(in) :: command_line_arguments
@@ -720,7 +739,7 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,comman
   integer            :: foutid     ! Output file id
   integer            :: lonvid
   integer            :: latvid
-  integer            :: terr_smid, terr_devid, rr_fac_id
+  integer            :: terr_smid, terr_devid, rr_fac_id, landfrac_id
   integer            :: status
   character (len=8)  :: datestring
   integer, dimension(2) :: nid
@@ -807,6 +826,15 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,comman
   status = nf_put_att_double (foutid, terr_devid, 'missing_value', nf_double, 1, fillvalue)
   status = nf_put_att_double (foutid, terr_devid, '_FillValue'   , nf_double, 1, fillvalue)
 
+  status = nf_def_var (foutid,'landfrac', NF_DOUBLE, 1, nid(1), landfrac_id)
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  status = nf_put_att_text (foutid,landfrac_id,'long_name', 21, 'land fraction')
+  status = nf_put_att_text (foutid,landfrac_id,'units', 1, '')
+  status = nf_put_att_double (foutid, landfrac_id, 'missing_value', nf_double, 1, fillvalue)
+  status = nf_put_att_double (foutid, landfrac_id, '_FillValue'   , nf_double, 1, fillvalue)
+
+
   if (present(rr_fac)) then
     print *,"Create variable for output: rr_fac"
     status = nf_def_var (foutid,'rr_fac', NF_DOUBLE, 1, nid(1), rr_fac_id)
@@ -846,6 +874,10 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,output_fname,comman
   
   print*,"writing terr_dev",MINVAL(terr_dev),MAXVAL(terr_dev)
   status = nf_put_var_double (foutid, terr_devid, terr_dev)
+  if (status .ne. NF_NOERR) call handle_err(status)
+
+  print*,"writing landfrac",MINVAL(landfrac),MAXVAL(landfrac)
+  status = nf_put_var_double (foutid, landfrac_id, landfrac)
   if (status .ne. NF_NOERR) call handle_err(status)
 
   if (present(rr_fac)) then
