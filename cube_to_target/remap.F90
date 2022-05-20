@@ -364,6 +364,7 @@ end function paint_sg_field
           write(*,*) "w ",weights_eul_index(i,1),weights_eul_index(i,2),weights(i,1)
           write(*,*) " "
           if (weights(i,1)<-1.0E-11) then
+            write(*,*) "weights(i,1) =",weights(i,1)
             write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)),ygno(weights_eul_index(i,2))
             write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)+1),ygno(weights_eul_index(i,2))
             write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)+1),ygno(weights_eul_index(i,2)+1)
@@ -371,10 +372,13 @@ end function paint_sg_field
             write(*,*) "xgno,ygno: ",xgno(weights_eul_index(i,1)),ygno(weights_eul_index(i,2))
 
             write(*,*) " "
+            write(*,*) "Ill conditioned area? "
+            write(*,*) "setting weights(i,1) to zero"
+            weights(i,1) = 0.0
           end if
         enddo
         
-        stop
+!        stop
       END IF
     else
       jcollect = 0
