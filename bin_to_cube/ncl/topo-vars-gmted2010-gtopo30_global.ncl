@@ -10,7 +10,7 @@ begin
 
 ;  dataFile_gmted2010 = "../gmted2010_modis-ncube3000.nc"
 ;  dataFile_gtopo30   = "../gmted2010_modis-ncube3000-fix_inland_water_elevation.nc"
-  dataFile_gtopo30   = "../mars-ncube3000.nc"
+  dataFile_gtopo30   = "/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmahcine-ncube3000-220518.nc"
   format   = "pdf" 
   outputFile = "topo-vars-mars"
   f_gmted2010     = addfile(dataFile_gmted2010,"r")
