@@ -14,7 +14,7 @@ RM = rm
 # Default rules and macros
 #------------------------------------------------------------------------
 
-OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_utils.o ridge_ana.o cube_to_target.o f90getopt.o
+OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_utils.o ridge_ana.o write_ncoutput.o cube_to_target.o f90getopt.o
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
 	$(FC) -o $@ $(OBJS) $(LDFLAGS)

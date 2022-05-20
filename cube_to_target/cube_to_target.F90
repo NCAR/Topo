@@ -15,6 +15,7 @@ program convterr
   use shared_vars
   use reconstruct
   use f90getopt
+  use write_ncoutput_mod
 
   implicit none
 #     include         <netcdf.inc>
@@ -921,7 +922,13 @@ program convterr
            lfind_ridges,str_creator, command_line_arguments)
       
     ELSE
+#if 0
       CALL wrtncdf_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
+           landm_coslat_target,target_center_lon,target_center_lat,target_area,&
+           output_fname,lfind_ridges, command_line_arguments,&
+           lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
+#endif
+      CALL wrtnc2_unstructured(ntarget,terr_target,sgh_target,sgh30_target,&
            landm_coslat_target,target_center_lon,target_center_lat,target_area,&
            output_fname,lfind_ridges, command_line_arguments,&
            lwrite_rrfac_to_topo_file,rrfac_target,str_creator)

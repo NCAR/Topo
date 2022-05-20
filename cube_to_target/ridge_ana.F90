@@ -5,6 +5,7 @@ module ridge_ana
 
 use rotation, only : rotbyx => rotby4
 USE reconstruct
+use shr_kind_mod, only: rpx => shr_kind_r8
 use shr_kind_mod, only: r8 => shr_kind_r8
 use ridge_utils
 
@@ -28,25 +29,25 @@ public peak_type
 
 !===============================================================================
 !These quantities will be on ridge-based "list"
-  REAL, allocatable  :: MXVRX(:),MXDIS(:),MNSLP(:),ANGLX(:),ANISO(:),XS(:),YS(:) 
-  REAL, allocatable  :: XSPK(:),YSPK(:),MXDS0(:),MXDS1(:),SFT0(:),SFT1(:)
-  REAL, allocatable  :: PKHTS(:),VLDPS(:),RWPKS(:),RWVLS(:),ANGLL(:)
-  REAL, allocatable  :: BSVAR(:),HWDTH(:),NPKS(:),NVLS(:),MXVRY(:),CLNGT2(:)
-  REAL, allocatable  :: RISEQ(:),FALLQ(:),ANIXY(:),MXDSP(:),CLNGTH(:),MXDS2(:)
+  REAL(RPX), allocatable  :: MXVRX(:),MXDIS(:),MNSLP(:),ANGLX(:),ANISO(:),XS(:),YS(:) 
+  REAL(RPX), allocatable  :: XSPK(:),YSPK(:),MXDS0(:),MXDS1(:),SFT0(:),SFT1(:)
+  REAL(RPX), allocatable  :: PKHTS(:),VLDPS(:),RWPKS(:),RWVLS(:),ANGLL(:)
+  REAL(RPX), allocatable  :: BSVAR(:),HWDTH(:),NPKS(:),NVLS(:),MXVRY(:),CLNGT2(:)
+  REAL(RPX), allocatable  :: RISEQ(:),FALLQ(:),ANIXY(:),MXDSP(:),CLNGTH(:),MXDS2(:)
 
-  REAL, allocatable  :: rdg_profiles(:,:) , crst_profiles(:,:), crst_silhous(:,:)
+  REAL(RPX), allocatable  :: rdg_profiles(:,:) , crst_profiles(:,:), crst_silhous(:,:)
   INTEGER, allocatable ::  MyPanel(:), NSWx_diag(:)
-  REAL, allocatable  :: rt_diag(:,:,:), suba_diag(:,:,:),rdg_profiles_x(:,:)
+  REAL(RPX), allocatable  :: rt_diag(:,:,:), suba_diag(:,:,:),rdg_profiles_x(:,:)
 
-  REAL, allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:),xs01(:),ys01(:)
-  REAL, allocatable  :: RefFac(:)
-  REAL, allocatable  :: hnodes_list(:,:)
+  REAL(RPX), allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:),xs01(:),ys01(:)
+  REAL(RPX), allocatable  :: RefFac(:)
+  REAL(RPX), allocatable  :: hnodes_list(:,:)
   INTEGER, allocatable  :: xnodes_list(:,:), dcenter_list(:), nnodes_list(:)
   INTEGER, allocatable  :: xwedge_list(:,:)
-  REAL, allocatable  :: hwedge_list(:,:)
+  REAL(RPX), allocatable  :: hwedge_list(:,:)
 
 
-  REAL, allocatable  :: hwedge_o(:,:),hwedge_x(:,:),hnodes_x(:,:),hnodes_o(:,:)
+  REAL(RPX), allocatable  :: hwedge_o(:,:),hwedge_x(:,:),hnodes_x(:,:),hnodes_o(:,:)
 
 !================================================================================
 
@@ -69,14 +70,14 @@ public peak_type
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
-    REAL, allocatable ::  wt1p(:,:)
+    REAL(RPX), allocatable ::  wt1p(:,:)
 
-    REAL, allocatable :: agnom(:),bgnom(:)
+    REAL(RPX), allocatable :: agnom(:),bgnom(:)
 
     REAL(r8) :: grid_length_scale
 
-    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
-    REAL (KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
+    REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
+    REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
 
     integer, parameter             ::   NANG=16
     integer, parameter             ::   NSUBR = NANG
@@ -85,15 +86,15 @@ public peak_type
 
   !-----------------------------------
   ! Tunable parameters for Aniso Ana
-  real, parameter  :: CC_L1=0.5   ! y-slop/max(x_slop) for length (0.2 for cesm2.0)
-  real, parameter  :: CC_L2=0.5   ! y/max(y) for length
-  real, parameter  :: CC_W1=0.5   ! y/max(y) for length
+  real(rpx), parameter  :: CC_L1=0.5   ! y-slop/max(x_slop) for length (0.2 for cesm2.0)
+  real(rpx), parameter  :: CC_L2=0.5   ! y/max(y) for length
+  real(rpx), parameter  :: CC_W1=0.5   ! y/max(y) for length
 
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   TYPE peak_type
-    REAL :: maxht = -999.
+    REAL(RPX) :: maxht = -999.
     INTEGER :: i  = -99
     INTEGER :: j  = -99
     INTEGER :: ip = -99
@@ -114,7 +115,7 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
     !type (peak_type), allocatable, dimension(:), intent(out) ::  peaks
 
 
-    REAL (KIND=dbl_kind), &
+    REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), INTENT(IN) :: terr_dev
 
        INTEGER (KIND=int_kind), INTENT(IN)  :: ncube, nhalo, nsw
@@ -122,19 +123,19 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
        INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nhigher,npeaks
        INTEGER (KIND=int_kind) :: ipk,nblock,ijaa(2),im,jm,bloc,ivar1,ivar2,ii,jj
 
-    REAL (KIND=dbl_kind), &
+    REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6)  :: terr_max , terr_sm
 
-    REAL (KIND=dbl_kind),                                            &
+    REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_max_halo
 
-    REAL (KIND=dbl_kind),                                            &
+    REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_dev_halo, terr_sm_halo, terr_dev_halox
 
-    REAL  ,                                                          &
+    REAL(RPX) ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
 
-    real (KIND=dbl_kind), allocatable :: aa(:,:)
+    real(KIND=dbl_kind), allocatable :: aa(:,:)
 
 
     !REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
@@ -321,16 +322,16 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
 
     !type (peak_type), dimension(npeaks), intent(inout) ::  peaks
 
-    REAL (KIND=dbl_kind), &
+    REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6),           INTENT(IN) :: terr_dev
-    REAL (KIND=dbl_kind), &
+    REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6),           INTENT(IN) :: terr_raw
     INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube, nhalo, nsw !, npeaks
     INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube_sph_smooth_coarse
     INTEGER (KIND=int_kind),                    INTENT(IN) :: ncube_sph_smooth_fine
     LOGICAL,                                    INTENT(IN) :: ldevelopment_diags
     LOGICAL, OPTIONAL,                          INTENT(IN) :: lregional_refinement
-    REAL (KIND=dbl_kind), &
+    REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6), optional, INTENT(IN) :: rr_factor
     !
     ! Local variables
@@ -340,25 +341,25 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
 
 
-    REAL (KIND=dbl_kind),                                            &
+    REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
-    REAL (KIND=dbl_kind),                                            &
+    REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_dev_halo
-    REAL ,                                            &
+    REAL(RPX) ,                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo_r4
-    REAL ,                                            &
+    REAL(RPX) ,                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_dev_halo_r4
 
-    REAL  ,                                                          &
+    REAL(RPX) ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
 
-    !! real :: SUBA(2*nsw+1, 2*nsw+1 ), SUBARW(2*nsw+1, 2*nsw+1 ), SUBX(2*nsw+1), SUBY(2*nsw+1)
-    real , allocatable :: SUBA(: , : ), SUBARW( : , : ), SUBX(:), SUBY(:),subrot(:,:)
+    !! real(RPX) :: SUBA(2*nsw+1, 2*nsw+1 ), SUBARW(2*nsw+1, 2*nsw+1 ), SUBX(2*nsw+1), SUBY(2*nsw+1)
+    real(RPX),allocatable ::SUBA(: , : ), SUBARW( : , : ), SUBX(:), SUBY(:),subrot(:,:)
 
     REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
     REAL(KIND=dbl_kind)  :: ggaa,ggbb,ggab,irho
     !! Square root of DET(metric tensor), i.e., area 
-    REAL (KIND=dbl_kind),                                            &
+    REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo ) :: rdtg
 
     CHARACTER(len=1024) :: ofile,ve
@@ -613,35 +614,35 @@ end subroutine find_ridges
   subroutine ANISO_ANA( SUBA,SUBARW,SUBX,SUBY,NSW,IPK )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN)  ::  NSW,IPK
-  REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1),SUBX( 2*nsw+1),SUBY(2*nsw+1)
-  REAL,               intent(IN)  ::  SUBARW( 2*nsw+1, 2*nsw+1)
+  REAL(RPX),               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1),SUBX( 2*nsw+1),SUBY(2*nsw+1)
+  REAL(RPX),               intent(IN)  ::  SUBARW( 2*nsw+1, 2*nsw+1)
 
-  real, allocatable :: RT(:,:),RTX(:),XRT(:),RTXMN(:),RTXSLP(:),rtx_dt(:)
-  real, allocatable :: PKLC(:), RTY(:),RTRW(:,:),RTRWX(:),DERTX(:),DERTY(:),CUSP(:),face(:)
-  real, allocatable :: silux(:), sillx(:), siluy(:), silly(:)
+  real(rpx), allocatable :: RT(:,:),RTX(:),XRT(:),RTXMN(:),RTXSLP(:),rtx_dt(:)
+  real(rpx), allocatable :: PKLC(:), RTY(:),RTRW(:,:),RTRWX(:),DERTX(:),DERTY(:),CUSP(:),face(:)
+  real(rpx), allocatable :: silux(:), sillx(:), siluy(:), silly(:)
 
-  real, allocatable :: rdg_profile(:,:),crst_profile(:,:)
-  real, allocatable :: crst_silhouette(:,:)
-  real, allocatable :: rdg_profile_bk(:),crst_silhouette_bk(:)
+  real(rpx), allocatable :: rdg_profile(:,:),crst_profile(:,:)
+  real(rpx), allocatable :: crst_silhouette(:,:)
+  real(rpx), allocatable :: rdg_profile_bk(:),crst_silhouette_bk(:)
 
   logical,allocatable :: lhgts(:),lflats(:),lsides(:)
   logical :: Keep_Cuestas=.true.
   logical :: reposition_ridge
 
-  real :: THETRAD,PI,swt,ang,rotmn,rotvar,mnt,var,xmn,xvr,basmn,basvar,mn2,var2
-  real :: dyr_crest
-  real :: xspk0 , yspk0
+  real(RPX) :: THETRAD,PI,swt,ang,rotmn,rotvar,mnt,var,xmn,xvr,basmn,basvar,mn2,var2
+  real(RPX) :: dyr_crest
+  real(RPX) :: xspk0 , yspk0
   integer :: i,j,l,m,n2,mini,maxi,minj,maxj,ns0,ns1,iorn(1),jj
   integer :: ipkh(1),ivld(1),ift0(1),ift1(1),i2,ii,ipksv(1),nswx
   integer :: ibad_left,ibad_rght
   integer :: phase
 
-  real :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00
-  real :: dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),xvld(NANG)
+  real(RPX) :: vvaa(NANG),qual(NANG),dex(NANG),beta(NANG),alph,xpkh(NANG),ang00
+  real(RPX) :: dex0(nang),dex1(nang),xft0(NANG),xft1(NANG),xvld(NANG)
         
-  real :: NPKX(NANG),NVLX(NANG),vva2(NANG),pkht(NANG),vldp(NANG),rwpk(NANG)
-  real :: rwvl(NANG),RISEX(NANG),FALLX(NANG)
-  real :: dex_dt(NANG)
+  real(RPX) :: NPKX(NANG),NVLX(NANG),vva2(NANG),pkht(NANG),vldp(NANG),rwpk(NANG)
+  real(RPX) :: rwvl(NANG),RISEX(NANG),FALLX(NANG)
+  real(RPX) :: dex_dt(NANG)
 
 
   !-----------------------------------------
@@ -868,11 +869,11 @@ end subroutine ANISO_ANA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine ANISO_ANA_2( SUBA,NSW,IPK )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  INTEGER,            intent(IN)  ::  NSW,IPK
-  REAL,               intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1)
-  real    :: rt( 2*nsw+1, 2*nsw+1)
-  real    :: ridge_x( 2*nsw+1 )  ,hnodes(nsw+1),pkht0,npk0
-  integer :: ns0,ns1, xnodes(nsw+1)
+  INTEGER,   intent(IN)  ::  NSW,IPK
+  REAL(RPX), intent(IN)  ::  SUBA(2*nsw+1,2*nsw+1)
+  real(RPX) :: rt( 2*nsw+1, 2*nsw+1)
+  real(RPX) :: ridge_x( 2*nsw+1 )  ,hnodes(nsw+1),pkht0,npk0
+  integer   :: ns0,ns1, xnodes(nsw+1)
   logical :: lredo
   !-----------------------------------------
   ! Indices for most ridge scheme subarrays.
@@ -942,8 +943,8 @@ subroutine thinout_list( ncube, npeaks,NSW )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,   intent(IN)  ::  ncube,NSW,npeaks
   integer :: i,j,ipk,bloc,np,ipkx,nalloc,ipk0,ib0,ib1,jb0,jb1
-  real, allocatable     :: anglx_sv(:),quali_sv(:)
-  real    :: max_quali
+  real(rpx), allocatable     :: anglx_sv(:),quali_sv(:)
+  real(RPX)  :: max_quali
   integer, allocatable  :: ipk_sv(:)
 
 
@@ -1090,7 +1091,7 @@ end subroutine THINOUT_LIST
       integer ,           intent(in) :: ncube,nhalo,nsw,nsmcoarse,nsmfine
       logical,            intent(in) :: lzerovalley
       logical,            intent(in) :: ldevelopment_diags
-      REAL (KIND=dbl_kind), &
+      REAL(KIND=dbl_kind), &
                           intent(in) :: rr_factor(ncube,ncube,6)
       LOGICAL,            intent(in) :: lregional_refinement
 
@@ -1103,7 +1104,7 @@ end subroutine THINOUT_LIST
       real(KIND=dbl_kind), & 
            dimension(ncube*ncube*6),            INTENT(out) :: nodesC,  cwghtC, wedgoC
   
-      REAL  ,                                                          &
+      REAL(RPX) ,                                                          &
          DIMENSION(1-nhalo:ncube+nhalo )                          :: xv,yv,alph,beta
       
       integer :: alloc_error
@@ -1311,7 +1312,7 @@ end subroutine THINOUT_LIST
 
       integer,dimension(ncube*ncube*6),intent(out)  :: itrgtC
 
-      REAL (KIND=dbl_kind), &
+      REAL(KIND=dbl_kind), &
             DIMENSION(ncube*ncube*6),           INTENT(IN)  :: terr_dev
       real(KIND=dbl_kind), & 
            dimension(ncube*ncube*6),            INTENT(IN)  :: uniqidC, uniqwgC, mxdisC
@@ -1720,7 +1721,7 @@ end subroutine THINOUT_LIST
                WtObject(i,ird) = WtRidges(i,iir)
                LnObject(i,ird) = 0._r8
             end if
-            if ( .not.(any(IdxPackRdg==j)) .and. (any(IdxPackCst==j)) ) then ! just crest NOT crest. Shouldn't happen much, ...
+            if ( .not.(any(IdxPackRdg==j)) .and. (any(IdxPackCst==j)) ) then ! just crest NOT ridge. Shouldn't happen much, ...
                ird = ird+1 
                MyObject(i,ird)=j   
                do ii=1,numcrests(i)
@@ -2136,10 +2137,10 @@ function fleshout_block ( ncube,nhalo,nsw,mxdisC,hwdthC,anglxC,rrfac ) result( a
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: rrfac
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
-       real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
-       real, dimension(-nsw:nsw)          :: xq,yq
-       real :: rotangl,dsq,ssq
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real(rpx), dimension(-nsw:nsw)          :: xq,yq
+       real(RPX) :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
 !---------------------------------------------------
 
@@ -2197,13 +2198,13 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) 
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: anglxC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: uniqidC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 ) :: rrfac
-       real,                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
+       real(rpx),                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
-       real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
-       real, dimension(-nsw:nsw)          :: xq,yq
-       real :: rotangl,dsq,ssq
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real(rpx), dimension(-nsw:nsw)          :: xq,yq
+       real(RPX) :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
@@ -2263,15 +2264,15 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: anglxC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: uniqidC
        real(KIND=dbl_kind), intent(in), dimension( ncube, ncube, 6 )   :: rrfac
-       real,                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
-       real,                intent(in), dimension( size(xs) )          :: colors
+       real(rpx),                intent(in), dimension( 2*PSW+1, size(xs) ) :: shape_x
+       real(rpx),                intent(in), dimension( size(xs) )          :: colors
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: bxc
-       real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis,subcolo
-       real, dimension(-nsw:nsw)          :: xq,yq
-       real :: rotangl,dsq,ssq
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis,subcolo
+       real(rpx), dimension(-nsw:nsw)          :: xq,yq
+       real(RPX) :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
 !---------------------------------------------------
 
@@ -2340,7 +2341,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
                            result( axc )
    
        integer, intent(in) :: ncube,nhalo,nsw
-       real, intent(in), dimension( size(xs) ) :: axr
+       real(rpx), intent(in), dimension( size(xs) ) :: axr
        logical, intent(in) :: lzerovalley
        logical, optional, intent(in) :: crest_length
        logical, optional, intent(in) :: crest_weight
@@ -2348,11 +2349,11 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: qc
-       real, dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
-       real, dimension(-nsw:nsw,-nsw:nsw) :: subblk,subblk0
-       real, dimension(-nsw:nsw)          :: xq,yq
-       real :: rotangl,dsq,ssq
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
+       real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subblk,subblk0
+       real(rpx), dimension(-nsw:nsw)          :: xq,yq
+       real(RPX) :: rotangl,dsq,ssq
        integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
        logical :: lcrestln,lcrestwt,lblockfl,lprofifl,lbumpfl,allpixels
 !---------------------------------------------------

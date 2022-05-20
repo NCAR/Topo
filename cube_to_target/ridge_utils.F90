@@ -2,7 +2,8 @@ module ridge_utils
 
 use rotation, only : rotbyx => rotby4
 USE reconstruct
-use shr_kind_mod, only: r8 => shr_kind_r8
+use shr_kind_mod, only: r8  => shr_kind_r8
+use shr_kind_mod, only: rpx => shr_kind_r8
 
 IMPLICIT NONE
 private
@@ -14,8 +15,8 @@ public rebuild_nodes
 public length_in_square
 public repaint
 
-    REAL (KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
-    REAL (KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
+    REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
+    REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
 
 contains
 
@@ -28,15 +29,15 @@ contains
                            lyshift )
 
     integer ,          intent(in   )  :: nsw
-    real,              intent(in   )  :: ridge(nsw+1), crest(nsw+1)
-    real,              intent(in   )  :: xs0,ys0,anglx0
-    real,              intent(inout)  :: xspk0,yspk0
+    real(RPX),              intent(in   )  :: ridge(nsw+1), crest(nsw+1)
+    real(RPX),              intent(in   )  :: xs0,ys0,anglx0
+    real(RPX),              intent(inout)  :: xspk0,yspk0
     logical, optional, intent(in   )  :: lyshift
     ! local vars
-    real    :: xr(nsw+1),xmn 
-    real    :: ang00,xshft,yshft,pcrest(nsw+1),pridge(nsw+1),gridge(nsw+1),cran,hran
-    real    :: hwd1,hwd2,isox
-    real    :: rt( 2*nsw+1, 2*nsw+1),rt2d(nsw+1 , nsw+1),iso2d(nsw+1 , nsw+1)
+    real(RPX)   :: xr(nsw+1),xmn 
+    real(RPX)   :: ang00,xshft,yshft,pcrest(nsw+1),pridge(nsw+1),gridge(nsw+1),cran,hran
+    real(RPX)   :: hwd1,hwd2,isox
+    real(RPX)   :: rt( 2*nsw+1, 2*nsw+1),rt2d(nsw+1 , nsw+1),iso2d(nsw+1 , nsw+1)
     integer :: ipkh(1),ns0,ns1,j,i
     logical :: Lcount(nsw+1) , shift_along_y
 
@@ -103,21 +104,21 @@ contains
               ridge_x )
 
     integer , intent(in   )  :: nsw,ipk
-    real,     intent(inout)  :: ridge(nsw+1), crest(nsw+1)
+    real(RPX),     intent(inout)  :: ridge(nsw+1), crest(nsw+1)
     integer,  intent(  out)  :: xnodes(nsw+1) , xwedge(3) , dcenter0, nnode0
-    real,     intent(  out)  :: hnodes(nsw+1) , hwedge(3)
-    real,     intent(inout)  :: xspk0, yspk0
-    real,     intent(in   )  :: anglx0
-    real,     intent(  out)  :: clngt0,hwdth0,aniso0,mxdis0,pkhts0,rnpks0
-    real,     intent(  out)  :: riseq0,fallq0
-    real,     intent(in   )  :: suba( 2*nsw+1 , 2*nsw+1 )
-    real,     intent(inout)  :: ridge_x( 2*nsw+1 )
+    real(RPX),     intent(  out)  :: hnodes(nsw+1) , hwedge(3)
+    real(RPX),     intent(inout)  :: xspk0, yspk0
+    real(RPX),     intent(in   )  :: anglx0
+    real(RPX),     intent(  out)  :: clngt0,hwdth0,aniso0,mxdis0,pkhts0,rnpks0
+    real(RPX),     intent(  out)  :: riseq0,fallq0
+    real(RPX),     intent(in   )  :: suba( 2*nsw+1 , 2*nsw+1 )
+    real(RPX),     intent(inout)  :: ridge_x( 2*nsw+1 )
 
     ! local vars
-    real    :: xr(nsw+1),xmn, yr(nsw+1),ymn,yshft,ycrst,ycvar
-    real    :: ang00,xshft,pcrest(nsw+1),pridge(nsw+1),gridge(nsw+1),cran,hran
-    real    :: hwd1,hwd2,isox,mnt,rotvar,var,rotmn,qual_upd,mxdis_upd
-    real    :: rt( 2*nsw+1, 2*nsw+1),rt2d(nsw+1 , nsw+1),iso2d(nsw+1 , nsw+1)
+    real(RPX)   :: xr(nsw+1),xmn, yr(nsw+1),ymn,yshft,ycrst,ycvar
+    real(RPX)   :: ang00,xshft,pcrest(nsw+1),pridge(nsw+1),gridge(nsw+1),cran,hran
+    real(RPX)   :: hwd1,hwd2,isox,mnt,rotvar,var,rotmn,qual_upd,mxdis_upd
+    real(RPX)   :: rt( 2*nsw+1, 2*nsw+1),rt2d(nsw+1 , nsw+1),iso2d(nsw+1 , nsw+1)
     integer :: ipkh(1),ns0,ns1,j,i,nvls0,npks0
     logical :: Lcount(nsw+1)
 
@@ -196,23 +197,23 @@ contains
 
  subroutine rnodes (nsw , ridge, xnodes, hnodes, dcenter, xwedge,hwedge, npeak, nvail, nnode )
     integer , intent(in   )  :: nsw
-    real,     intent(in   )  :: ridge(nsw+1)
+    real(RPX),     intent(in   )  :: ridge(nsw+1)
     integer,  intent(  out)  :: xnodes(nsw+1) , xwedge(3)
-    real,     intent(  out)  :: hnodes(nsw+1) , hwedge(3)
+    real(RPX),     intent(  out)  :: hnodes(nsw+1) , hwedge(3)
     integer,  intent(  out)  :: dcenter
     integer , intent(  out)  :: npeak,nvail,nnode
     
 
     ! local
-    integer :: picos(nsw+1),vails(nsw+1),kinks(nsw+1),mesas(nsw+1)
-    integer :: xpico(nsw+1),xvail(nsw+1),xnode(nsw+1),xkink(nsw+1)
-    integer :: ncntrpk,xcntrpk(nsw+1)
-    real    :: ldh,rdh,hq1,tol,ahq,ihq,dhn
-    integer :: i,j,k,nkink,ns2
+    integer    :: picos(nsw+1),vails(nsw+1),kinks(nsw+1),mesas(nsw+1)
+    integer   :: xpico(nsw+1),xvail(nsw+1),xnode(nsw+1),xkink(nsw+1)
+    integer   :: ncntrpk,xcntrpk(nsw+1)
+    real(RPX) :: ldh,rdh,hq1,tol,ahq,ihq,dhn
+    integer   :: i,j,k,nkink,ns2
 
-    !real    :: hwedge(3)
+    !real(RPX)   :: hwedge(3)
     !integer :: xwedge(3)
-    integer :: xwdg0,xwdg1,xwdg2,inode_c
+    integer   :: xwdg0,xwdg1,xwdg2,inode_c
 
     ns2=nsw/2
 
@@ -351,10 +352,10 @@ contains
 end subroutine rnodes
 !==================================================
 subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_profiles )
-    integer , intent(in   )  :: nsw,psw,nnodes
-    real,     intent(  out)  :: ridge(2*psw+1)
-    integer,  intent(in   )  :: xnodes(nnodes) 
-    real,     intent(in   )  :: hnodes(nnodes) 
+    integer ,  intent(in   )  :: nsw,psw,nnodes
+    real(RPX), intent(  out)  :: ridge(2*psw+1)
+    integer,   intent(in   )  :: xnodes(nnodes) 
+    real(RPX), intent(in   )  :: hnodes(nnodes) 
 !--------- optional arguments
     logical, optional, intent(in   )  :: lextend_profiles
 

@@ -247,7 +247,7 @@ if keyword_set(over_raw) then begin
 endif
 if keyword_set(x) then begin 
    oplot,x.xspk(ox)-1, x.yspk(ox)-1 ,ps=1,syms=.5
-endifexit
+endif
 
 xcolorbar,pos=[.83,.2,.85,.8],clev=lev,unit=unit$,labsz=1.5,uns=1.5
 xyouts,/norm,align=.5,.4,.92,Title$+sm$,size=3.
