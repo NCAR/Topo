@@ -117,6 +117,7 @@ contains
                         if (arg(len_arg+2:) == '') then ! no value (len_arg+2 value after "="
                             write(stderr, '(a,a,a)') "ERROR: Option '", trim(arg), "' requires a value"
                             process_long=char(0) ! Option not valid
+                            stop
                         else
                             call get_command_argument(optind, optarg)
                             optarg = optarg(len_arg+2:)
@@ -129,6 +130,7 @@ contains
                         elseif ( opterr ) then
                             write(stderr, '(a,a,a)') "ERROR: Option '", trim(arg), "' requires a value"
                             process_long=char(0) ! Option not valid
+                            stop
                         endif
                     endif
                 endif
@@ -178,6 +180,7 @@ contains
             elseif ( opterr ) then
                 write(stderr, '(a,a,a)') "ERROR: Option '-", optopt, "' requires a value"
                 process_short = char(0) ! Option not valid
+                stop
             endif
             grpind = 2
         elseif ( arglen > grpind ) then

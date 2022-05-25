@@ -1,22 +1,18 @@
 MODULE shared_vars
   use shr_kind_mod, only: r8 => shr_kind_r8
 
-  real(r8), allocatable, dimension(:,:):: target_corner_lon, target_corner_lat
-  real(r8), allocatable, dimension(:)  :: target_center_lon, target_center_lat, target_area
-!+++ARH
-  real(r8), allocatable, dimension(:)  :: target_rrfac
 !---ARH
 !+++ARH
-  !real(r8), allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30, refine_l
-  real(r8), allocatable, dimension(:) :: landm_coslat, terr, var30, refine_l
+  real(r8), allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30, refine_l
+  !real(r8), allocatable, dimension(:) :: landm_coslat, terr, var30, refine_l
 !---ARH
   integer,  allocatable, dimension(:) :: refine_li
 
 !+++ARH
-  !real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
-  real(r8), allocatable, dimension(:) :: terr_target, sgh30_target, sgh_target
+  real(r8), allocatable, dimension(:) :: landfrac_target, terr_target, sgh30_target, sgh_target
+  !real(r8), allocatable, dimension(:) :: terr_target, sgh30_target, sgh_target
 !---ARH
-  real(r8), allocatable, dimension(:) :: landm_coslat_target, area_target
+  real(r8), allocatable, dimension(:) :: landm_coslat_target
 !+++ARH
   real(r8), allocatable, dimension(:) :: sumwgts_target
 !---ARH
@@ -37,6 +33,17 @@ MODULE shared_vars
       rotate_cube = 0.0D0 !default is 0
     end subroutine set_constants
 
+    subroutine progress_bar(txt, n, x)
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      implicit none
+      character(*) :: txt
+      integer :: n
+      real(r8) :: x
+      integer, parameter :: s = 5
+      character :: c(0:s-1) = (/ achar(127), "/", "|", "/","-" /)
+      character, parameter :: CR = achar(13)
+      write( *, "((a1,a, t4,i10, f10.2,' percent  done ', a1, '  '))", advance = "NO") CR, txt, n, x, c(mod(n, s))
+    end subroutine progress_bar
   
     
     subroutine smooth_terrain(lexternal_smooth_terr,ltarget_latlon,terr_target,ntarget,externally_smoothed_topo_file,&
@@ -126,67 +133,55 @@ subroutine allocate_target_vars(ntarget)
     print*,'Program could not allocate space for terr_target'
     stop
   end if
-     print*,'Allocated space for terr_target'
-
+!+++ARH
+  allocate (landfrac_target(ntarget),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for landfrac_target'
+    stop
+  end if
+!---ARH
   allocate (landm_coslat_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for landfrac_target'
     stop
   end if
-     print*,'Allocated space for landm_coslat_target'
-
   allocate (sgh30_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh30_target'
     stop
   end if
-     print*,'Allocated space for sgh30_target'
-
   allocate (sgh_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh_target'
     stop
   end if
-     print*,'Allocated space for sgh_target'
 
   allocate (terr_uf_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for terr_uf_target'
     stop
   end if
-     print*,'Allocated space for terr_uf_target'
-
   allocate (sgh_uf_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for sgh_uf_target'
     stop
   end if
 !+++ARH
-     print*,'Allocated space for sgh_uf_target'
-
   allocate (sumwgts_target(ntarget),stat=alloc_error )
   if( alloc_error /= 0 ) then
-    print*,'Program could not allocate space for sumwgts_target'
-     stop
+    print*,'Program could not allocate space for sgh_target'
+    stop
   end if
 !---ARH
-     print*,'Allocated space for sumwgts_target'
-
-
-  allocate (area_target(ntarget),stat=alloc_error )
-
-  area_target = 0.0
-     print*,'Allocated space for area_target'
-
-
 end subroutine allocate_target_vars
 
 
-subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube)
+subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: intermediate_cubed_sphere_fname
   integer, intent(out) :: ncube
+  logical, intent(out) :: llandfrac
   integer :: ncid,status, dimid, alloc_error, landid,n
   !
   !****************************************************
@@ -256,18 +251,23 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   !!
   !! read LANDFRAC
   !!
-  !allocate ( landfrac(n),stat=alloc_error )
-  !if( alloc_error /= 0 ) then
-  !  print*,'Program could not allocate space for landfrac'
-  !  stop
-  !end if
+  allocate ( landfrac(n),stat=alloc_error )
+  if( alloc_error /= 0 ) then
+    print*,'Program could not allocate space for landfrac'
+    stop
+  end if
   !
-  !status = NF_INQ_VARID(ncid, 'LANDFRAC', landid)
-  !IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  !
-  !status = NF_GET_VAR_DOUBLE(ncid, landid,landfrac)
-  !IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
-  !WRITE(*,*) "min/max of landfrac",MINVAL(landfrac),MAXVAL(landfrac)
+  status = NF_INQ_VARID(ncid, 'LANDFRAC', landid)
+  IF (status .NE. NF_NOERR) then
+    write(*,*) "LANDFRAC not on file"
+    llandfrac = .false.
+    landfrac  = 1.0
+  else  
+    status = NF_GET_VAR_DOUBLE(ncid, landid,landfrac)
+    IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+    WRITE(*,*) "min/max of landfrac",MINVAL(landfrac),MAXVAL(landfrac)
+    llandfrac = .true.
+  end if
 !---ARH
   !
   ! read terr - this is the elevation data (meters) on cubed sphere grid
@@ -310,13 +310,19 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
 end subroutine read_intermediate_cubed_sphere_grid
 
 
-subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank)
+subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
+     target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: grid_descriptor_fname
   logical, intent(out) :: lregional_refinement
   logical, intent(out) :: lpole, ltarget_latlon
   integer, intent(out) :: nlat,nlon,ntarget,ncorner,nrank
+  real(r8), allocatable, dimension(:,:), intent(out) :: target_corner_lon, target_corner_lat
+  real(r8), allocatable, dimension(:)  , intent(out) :: target_center_lon, target_center_lat, target_area
+  real(r8), allocatable, dimension(:)  , intent(out) :: target_rrfac
+
+
   integer :: ncid,status
   integer :: ntarget_id, ncorner_id, nrank_id, nodeCount_id,nodeCoords_id,elementConn_id,numElementConn_id,centerCoords_id
   integer :: alloc_error
@@ -332,6 +338,9 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   character(len=23)  :: str_center_lon(2), str_center_lat(2)
   integer            :: esmf_file = 1 ! =1 SCRIP naming convention; =2 ESMF naming convention
   integer            :: icorner,icell,num
+  integer            :: grid_dims(2)
+
+  ltarget_latlon = .FALSE.
   !
   !*********************************************************
   !
@@ -454,24 +463,17 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     !
     ! file uses SCRIP format
     !
-    IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     WRITE(*,*) "grid rank: nrank=",nrank
     IF (nrank==2) THEN
       WRITE(*,*) "target grid is a lat-lon grid"
       ltarget_latlon = .TRUE.
-      status = NF_INQ_DIMID(ncid, 'nlon', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlon)
-      status = NF_INQ_DIMID(ncid, 'nlat', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, nlat)
-      status = NF_INQ_DIMID(ncid, 'lpole', ntarget_id)
-      status = NF_INQ_DIMLEN(ncid, ntarget_id, ntarget_id)
-      !    status = NF_INQ_DIMLEN(ncid, ntarget_id, lpole)
+      status = NF_INQ_VARID(ncid,'grid_dims', ntarget_id)
+      IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
+      status = NF_GET_VAR_INT(ncid, ntarget_id,grid_dims)
+      nlon = grid_dims(1)
+      nlat = grid_dims(2)
+
       WRITE(*,*) "nlon=",nlon,"nlat=",nlat
-      IF (lpole) THEN
-        WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
-      ELSE
-        WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
-      END IF
     ELSE IF (nrank==1) THEN
       ltarget_latlon = .FALSE.
     ELSE
@@ -488,6 +490,7 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     status = NF_INQ_VARID(ncid, TRIM(str_corner_lat(esmf_file)), latid)
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     status = NF_GET_VAR_DOUBLE(ncid, latid,target_corner_lat)
+
     IF (STATUS .NE. NF_NOERR) CALL HANDLE_ERR(STATUS)
     IF (maxval(target_corner_lat)>10.0) target_corner_lat = deg2rad*target_corner_lat    
     !
@@ -495,9 +498,21 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     !    
     status = NF_INQ_VARID(ncid, 'grid_center_lon', lonid)
     status = NF_GET_VAR_DOUBLE(ncid, lonid,target_center_lon)
+    IF (maxval(target_center_lon)>10.0) target_center_lon = deg2rad*target_center_lon    
     
     status = NF_INQ_VARID(ncid, 'grid_center_lat', latid)
     status = NF_GET_VAR_DOUBLE(ncid, latid,target_center_lat)
+    IF (maxval(target_center_lat)>10.0) target_center_lat = deg2rad*target_center_lat    
+    if (ltarget_latlon) then
+      if (maxval(target_center_lat)>pih-1E-5) then
+        lpole=.true.
+      end if
+    end if
+    IF (lpole) THEN      
+      WRITE(*,*) "center of most Northern grid cell is lat=90; similarly for South pole"
+    ELSE
+      WRITE(*,*) "center of most Northern grid cell is NOT lat=90; similarly for South pole"
+    END IF
   end if
 
   status = NF_INQ_VARID(ncid, TRIM(str_rrfac(esmf_file)), rrfacid)
@@ -519,84 +534,6 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   if (status .ne. NF_NOERR) call handle_err(status)          
   end subroutine read_target_grid
   
-  subroutine get_latlon_grid(im,jm,lpole)
-    use shr_kind_mod, only: r8 => shr_kind_r8
-    implicit none
-        !
-        ! Dummy arguments
-        !
-        integer      , intent(in) :: im,jm 
-        logical      , intent(in) :: lpole
-        !
-        ! Local variables
-        !
-        real(r8) :: dx, dy
-        real(r8),dimension(im) :: lonar       ! longitude array
-        real(r8),dimension(im) :: latar       ! latitude array
-        !
-        !-----------------------------------------------------------------------
-        !
-        integer            :: i,j, atm_add
-        real(r8) :: centerlon,centerlat,minlat,minlon,maxlat,maxlon
-
-        dx = 2.0D0*pi/dble(im)
-        if (lpole) then
-          dy = pi/dble(jm-1)
-        else
-          dy = pi/dble(jm)
-        end if
-        !
-        ! Fill lat and lon arrays
-        !  
-        do i = 1,im
-          lonar(i)=  dx * DBLE((i-1)) !CAM-FV grid
-        enddo
-        if (lpole) THEN
-          do j = 1,jm
-            latar(j)= -pih + dy * DBLE(j-1)
-          enddo
-        else
-          do j = 1,jm
-            latar(j)= -pih + dy * (DBLE(j)-0.5D0)
-          enddo          
-        end if
-        
-        
-        do j=1,jm
-          centerlat = latar(j)
-          IF (lpole.AND.j==1) THEN
-            minlat = centerlat
-          ELSE
-            minlat = centerlat - 0.5D0*dy
-          END IF
-          IF (lpole.AND.j==jm) THEN
-            maxlat = centerlat 
-          ELSE
-            maxlat = centerlat + 0.5D0*dy
-          END IF
-          
-          do i=1,im
-            centerlon = lonar(i)
-            minlon = centerlon - 0.5D0*dx
-            maxlon = centerlon + 0.5D0*dx
-            
-            atm_add = (j-1)*im + i
-            
-            target_center_lat(atm_add  ) = centerlat
-            target_corner_lat(1,atm_add) = minlat
-            target_corner_lat(2,atm_add) = minlat
-            target_corner_lat(3,atm_add) = maxlat
-            target_corner_lat(4,atm_add) = maxlat
-            
-            target_center_lon(atm_add  ) = centerlon
-            target_corner_lon(1,atm_add) = minlon
-            target_corner_lon(2,atm_add) = maxlon
-            target_corner_lon(3,atm_add) = maxlon
-            target_corner_lon(4,atm_add) = minlon
-          end do
-        end do
-
-      end subroutine get_latlon_grid
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine read_refinement_factor(rrfactor_fname,ncube_rr)
