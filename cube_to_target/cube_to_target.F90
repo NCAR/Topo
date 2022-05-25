@@ -1766,7 +1766,8 @@ program convterr
     print *,"close file"
     status = nf_close (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
-  end subroutine 
+ end subroutine wrtncdf_unstructured_append_phis
+
   !
   !**************************************************************     
   ! 

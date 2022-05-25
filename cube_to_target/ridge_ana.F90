@@ -52,8 +52,8 @@ public peak_type
 !================================================================================
 
 
-    REAL(KIND=dbl_kind), allocatable ::  ALP0(:),BET0(:),LAT0(:),LON0(:)
-    REAL(KIND=dbl_kind), allocatable ::  ALP1(:),BET1(:),LAT1(:),LON1(:)
+    real(r8), allocatable ::  ALP0(:),BET0(:),LAT0(:),LON0(:)
+    real(r8), allocatable ::  ALP1(:),BET1(:),LAT1(:),LON1(:)
 
   real(r8), allocatable, dimension(:,:) :: anglx_target,aniso_target,mxdis_target,hwdth_target
   real(r8), allocatable, dimension(:,:) :: mxvrx_target,mxvry_target,bsvar_target,wghts_target 
@@ -138,8 +138,8 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
     real(KIND=dbl_kind), allocatable :: aa(:,:)
 
 
-    !REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
-    REAL(KIND=dbl_kind)  :: thsh
+    !real(r8)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
+    real(r8)  :: thsh
 
     CHARACTER(len=1024) :: ofile,ve
 
@@ -321,7 +321,6 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
 
 
     !type (peak_type), dimension(npeaks), intent(inout) ::  peaks
-
     REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6),           INTENT(IN) :: terr_dev
     REAL(KIND=dbl_kind), &
@@ -356,9 +355,10 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     !! real(RPX) :: SUBA(2*nsw+1, 2*nsw+1 ), SUBARW(2*nsw+1, 2*nsw+1 ), SUBX(2*nsw+1), SUBY(2*nsw+1)
     real(RPX),allocatable ::SUBA(: , : ), SUBARW( : , : ), SUBX(:), SUBY(:),subrot(:,:)
 
-    REAL(KIND=dbl_kind)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
-    REAL(KIND=dbl_kind)  :: ggaa,ggbb,ggab,irho
+    real(r8)  :: lon_r8, lat_r8, cosll, dx, dy, dcube2, ampfsm,dbet,dalp,diss,diss00
+    real(r8)  :: ggaa,ggbb,ggab,irho
     !! Square root of DET(metric tensor), i.e., area 
+
     REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo ) :: rdtg
 
@@ -1975,10 +1975,10 @@ end subroutine THINOUT_LIST
 
 
 !================================================================
-  subroutine importancesort (ntarget)
+ subroutine importancesort (ntarget)
 !-----------------------------------
 
-     integer,  intent(in) :: ntarget
+   integer,  intent(in) :: ntarget
 
 
   real(r8), allocatable, dimension(:) :: imprtnc,tmp2
@@ -2359,7 +2359,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 !---------------------------------------------------
 
 
-write(*,*) " in paintridge "
+       write(*,*) " in paintridge "
 
     if(present(crest_length)) then
       lcrestln = crest_length
@@ -2589,7 +2589,6 @@ write(*,*) " in paintridge "
      write(*,*) " finished paintridge2cube "
      
   end function paintridge2cube
-
  !==================================================================
 
  subroutine alloc_ridge_qs (npeaks , NSW )

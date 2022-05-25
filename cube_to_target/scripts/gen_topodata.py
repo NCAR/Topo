@@ -40,13 +40,24 @@ def get_parser():
         dest="input_path",
         default="/glade/p/cesm/cseg/inputdata/",
     )
+    parser.add_argument(
+        "--author",
+        help="""
+            author name and Email
+            """,
+        action="store",
+        dest="author",
+        required=True
+    )
+
     return parser
 
 def main ():
 
     args = get_parser().parse_args()
 
-    res = args.res
+    res    = args.res
+    author = args.author
     input_path = args.input_path
     #
     # tree points to https://github.com/ESCOMP/CAM check out
@@ -87,13 +98,26 @@ def main ():
 
     print (f"smoothing radius is {smoothing_radius}")
 
-    intermediate_cubed_sphere_data = 'foo'
+#    intermediate_cubed_sphere_data = str(input_path)+""
+#    intermediate_cubed_sphere_data = "/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_bedmachine-ncube3000.nc"
+    intermediate_cubed_sphere_data = "/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_bedmachine-ncube0540.nc"
     # get smoothing radius - parse gen_topodata.xml
     # now call something - binary for topo 
-    arguments = "-c "+str(smoothing_radius)
+    arguments = " --coarse_radius="+str(smoothing_radius)
+    arguments = arguments+" --grid_descriptor_file="+"'"+model_mesh+"'"
+    arguments = arguments+" --intermediate_cs_name="+"'"+intermediate_cubed_sphere_data+"'"
+    arguments = arguments+" --output_grid="+res
+    arguments = arguments+" -u '"+author+"'"
+    arguments = arguments+" -p -r"
     print(arguments)
+#    cmd = '../cube_to_target'.split()
 #    subprocess.call(["../cube_to_target",arguments])
-
+    cmd = ['../cube_to_target','--coarse_radius',smoothing_radius,'''--grid_descriptor_file='''+model_mesh]
+    cmd.append('--intermediate_cs_name='+"'"+intermediate_cubed_sphere_data+"'")
+    cmd.append(' --output_grid='+"'"+res+"'")
+    print(cmd)
+    subprocess.run(cmd)
+#    subprocess.run(['ls', '-l','-r'])
 
 if __name__ == "__main__":
     main()

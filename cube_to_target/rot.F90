@@ -1,7 +1,7 @@
 module rotation
+
 !  use shr_kind_mod, only: r8 => shr_kind_r8
 use shr_kind_mod, only: rpx => shr_kind_r8
-
 private
 public rotby
 public rotby2
@@ -16,6 +16,7 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
+
 
   REAL(RPX),               intent(IN) ::  AA(N,N),THETA
   REAL(RPX)                           ::  AR(N,N)
@@ -161,6 +162,7 @@ end FUNCTION ROTBY2
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
+
 
   REAL(RPX),               intent(IN) ::  AA(N,N),THETA
   REAL(RPX)                           ::  AR(N,N)
