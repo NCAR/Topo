@@ -889,25 +889,6 @@ program convterr
 
     if(lfind_ridges) then
 
-#if 0
-      call remapridge2target(area_target,target_center_lon,target_center_lat, & 
-           weights_eul_index_all(1:jall,:), & 
-           weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-           nreconstruction,ntarget,nhalo,nsw, &
-           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
-           output_grid, ldevelopment_diags,&
-           lregional_refinement=lregional_refinement,           &
-           rr_factor = rrfac  )
-    
-      if (lridgetiles) then 
-         call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
-              weights_eul_index_all(1:jall,:), & 
-              weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-              nreconstruction,ntarget,nhalo,ldevelopment_diags)
-      endif
-
-#else
-
       allocate( uniqiC( ncube*ncube*6 ), uniqwC( ncube*ncube*6 ), wedgoC( ncube*ncube*6 )  )
       allocate( anisoC( ncube*ncube*6 ), anglxC( ncube*ncube*6 ), mxdisC( ncube*ncube*6 )  )
       allocate( hwdthC( ncube*ncube*6 ), clngtC( ncube*ncube*6 )  )
@@ -946,7 +927,6 @@ program convterr
 
       deallocate( uniqiC,uniqwC,anisoC,anglxC,mxdisC,hwdthC,clngtC, &
                   riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC   )
-#endif
 
 
     endif
