@@ -281,6 +281,14 @@ CONTAINS
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
 
+      terr_sm = (volterr_in/volterr_sm)*terr_sm
+      volterr_sm=0.
+      do ip=1,6 
+         volterr_sm =  volterr_sm + sum( terr_sm(:,:,ip) * da )
+      end do
+      write(*,*) " Smooth Topo volume  AFTER rescaling = ",volterr_sm/(6*sum(da))
+
+
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
           call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments,rr_fac=rr_updt)

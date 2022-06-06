@@ -102,7 +102,7 @@ if ( $ogrid == 'HMA' ) then
 endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
-set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube3000.nc'
+set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis_bedmachine-ncube3000-220518.nc'
 
 set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi0_ctlq/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060.nc'
 #set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi8_x01/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060_Fi008.nc'
@@ -131,7 +131,10 @@ ln -sf $smtopo output/topo_smooth.nc
 
 
 #READ IN Smooth and find ridges
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -a 2
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=100. --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z -m
+
+#READ IN Smooth and find ridges
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=100. --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z
 
 
 #READ IN Smooth, Refine and find ridges
