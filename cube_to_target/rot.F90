@@ -1,10 +1,12 @@
 module rotation
-  use shr_kind_mod, only: r8 => shr_kind_r8
-  private
-  public rotby
-  public rotby2
-  public rotby3
-  public rotby4
+
+!  use shr_kind_mod, only: r8 => shr_kind_r8
+use shr_kind_mod, only: rpx => shr_kind_r8
+private
+public rotby
+public rotby2
+public rotby3
+public rotby4
 
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -15,13 +17,14 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
 
-  REAL(R8),               intent(IN) ::  AA(N,N),THETA
-  REAL(R8)                           ::  AR(N,N)
 
-  real(r8) :: x(n),y(n)
-  real(r8) :: xp(n,n),yp(n,n)
-  real(r8) :: r(n,n),wt(n,n)
-  real(r8) :: THETRAD,PI,swt
+  REAL(RPX),               intent(IN) ::  AA(N,N),THETA
+  REAL(RPX)                           ::  AR(N,N)
+
+  real(rpx) :: x(n),y(n)
+  real(rpx) :: xp(n,n),yp(n,n)
+  real(rpx) :: r(n,n),wt(n,n)
+  real(rpx) :: THETRAD,PI,swt
   integer :: i,j,l,m,n2
 
   PI = 2*ACOS(0.0)
@@ -85,13 +88,13 @@ end FUNCTION ROTBY
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
 
-  REAL(R8),               intent(IN) ::  AA(N,N),THETA
-  REAL(R8)                           ::  AR(N,N)
+  REAL(RPX),               intent(IN) ::  AA(N,N),THETA
+  REAL(RPX)                           ::  AR(N,N)
 
-  real(r8) :: x(n),y(n)
-  real(r8) :: xp(n,n),yp(n,n)
-  real(r8) :: r(n,n),wt(n,n)
-  real(r8) :: THETRAD,PI,swt
+  real(rpx) :: x(n),y(n)
+  real(rpx) :: xp(n,n),yp(n,n)
+  real(rpx) :: r(n,n),wt(n,n)
+  real(rpx) :: THETRAD,PI,swt
   integer :: i,j,l,m,n2,ii,jj,i1,j1,r00,r10,r01,r11
 
   PI = 2*ACOS(0.0)
@@ -160,13 +163,14 @@ end FUNCTION ROTBY2
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
 
-  REAL(R8),               intent(IN) ::  AA(N,N),THETA
-  REAL(R8)                           ::  AR(N,N)
 
-  real(r8) :: x(n),y(n)
-  real(r8) :: xp(n,n),yp(n,n)
-  real(r8) :: r(n,n),wt(n,n)
-  real(r8) :: THETRAD,PI,swt
+  REAL(RPX),               intent(IN) ::  AA(N,N),THETA
+  REAL(RPX)                           ::  AR(N,N)
+
+  real(rpx) :: x(n),y(n)
+  real(rpx) :: xp(n,n),yp(n,n)
+  real(rpx) :: r(n,n),wt(n,n)
+  real(rpx) :: THETRAD,PI,swt
   integer :: i,j,l,m,n2,ii,jj,i1,j1,r00,r10,r01,r11,ic,d00
 
   PI = 2*ACOS(0.0)
@@ -255,13 +259,13 @@ end FUNCTION ROTBY3
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   INTEGER,            intent(IN) ::  N
 
-  REAL(R8),               intent(IN) ::  AA(0:N-1,0:N-1),THETA
-  REAL(R8)                           ::  AR(0:N-1,0:N-1)
+  REAL(RPX),               intent(IN) ::  AA(0:N-1,0:N-1),THETA
+  REAL(RPX)                           ::  AR(0:N-1,0:N-1)
 
-  real(r8) :: x(0:n-1),y(0:n-1)
-  real(r8) :: xp(0:n-1,0:n-1),yp(0:n-1,0:n-1)
-  real(r8) :: r(0:n-1,0:n-1),wt(0:n-1,0:n-1)
-  real(r8) :: THETRAD,PI,swt
+  real(rpx) :: x(0:n-1),y(0:n-1)
+  real(rpx) :: xp(0:n-1,0:n-1),yp(0:n-1,0:n-1)
+  real(rpx) :: r(0:n-1,0:n-1),wt(0:n-1,0:n-1)
+  real(rpx) :: THETRAD,PI,swt
   integer :: i,j,l,m,n2,ii,jj,i1,j1,r00,r10,r01,r11,ic,d00
   integer :: ir,jr
 

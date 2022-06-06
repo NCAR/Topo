@@ -100,6 +100,16 @@ program convterr
   INTEGER :: UNIT, ioptarg
   
   INTEGER :: NSCL_f, NSCL_c, nhalo,nsw
+
+  !++JTB
+  integer :: iopt_ridge_seed = 2
+  ! cube quantities for remapping
+  real(r8), allocatable, dimension(:) :: uniqiC , uniqwC,  cwghtC, wedgoC
+  real(r8), allocatable, dimension(:) :: anglxC,  anisoC,  hwdthC, clngtC, mxdisC
+  real(r8), allocatable, dimension(:) :: riseqC,  fallqC,  mxvrxC, mxvryC, nodesC
+  integer,  allocatable, dimension(:) :: itrgtC
+  !--JTB
+
   !
   ! namelist filenames
   !
@@ -673,7 +683,7 @@ program convterr
       nsw = nwindow_halfwidth
       nhalo=2*nsw
       
-      call find_local_maxes ( terr_dev, ncube, nhalo, nsw ) !, npeaks, peaks )
+      call find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
 
 
       call find_ridges ( terr_dev, terr, ncube, nhalo, nsw,&
@@ -878,21 +888,47 @@ program convterr
 
 
     if(lfind_ridges) then
+
+      allocate( uniqiC( ncube*ncube*6 ), uniqwC( ncube*ncube*6 ), wedgoC( ncube*ncube*6 )  )
+      allocate( anisoC( ncube*ncube*6 ), anglxC( ncube*ncube*6 ), mxdisC( ncube*ncube*6 )  )
+      allocate( hwdthC( ncube*ncube*6 ), clngtC( ncube*ncube*6 )  )
+      allocate( riseqC( ncube*ncube*6 ), fallqC( ncube*ncube*6 )  )
+      allocate( mxvrxC( ncube*ncube*6 ), mxvryC( ncube*ncube*6 )  )
+      allocate( nodesC( ncube*ncube*6 ), cwghtC( ncube*ncube*6 ) )
+      allocate( itrgtC( ncube*ncube*6 )  )
+  
+ 
+      call remapridge2cube( ncube,nhalo,nsw, &
+           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           ldevelopment_diags,lregional_refinement,  &
+           rrfac, & 
+           uniqiC, uniqwC, anisoC, &
+           anglxC,mxdisC,hwdthC,clngtC, &
+           riseqC,fallqC,mxvrxC,mxvryC, & 
+           nodesC,cwghtC,wedgoC  )
+
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-           nreconstruction,ntarget,nhalo,nsw, &
-           ncube_sph_smooth_coarse,ncube_sph_smooth_fine,lzero_negative_peaks, &
+           nreconstruction,ntarget, &
            output_grid, ldevelopment_diags,&
-           lregional_refinement=lregional_refinement,           &
-           rr_factor = rrfac  )
-    
+           terr_dev, uniqiC, uniqwC, anisoC, &
+           anglxC,mxdisC,hwdthC,clngtC, &
+           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, itrgtC  )
+
       if (lridgetiles) then 
-         call remapridge2tiles(area_target,target_center_lon,target_center_lat, & 
-              weights_eul_index_all(1:jall,:), & 
-              weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
-              nreconstruction,ntarget,nhalo,ldevelopment_diags)
-      endif
+      call remapridge2tiles ( ntarget,ncube,jall,nreconstruction,     &
+           area_target,target_center_lon,target_center_lat,         &
+           weights_eul_index_all(1:jall,:), &
+           weights_lgr_index_all(1:jall),  &
+           weights_all(1:jall,:), &
+           uniqiC,uniqwC,itrgtC,wedgoC )
+      end if      
+
+      deallocate( uniqiC,uniqwC,anisoC,anglxC,mxdisC,hwdthC,clngtC, &
+                  riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC   )
+
+
     endif
 
     if (lwrite_rrfac_to_topo_file) then
@@ -1093,7 +1129,7 @@ program convterr
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
-         fallq_target
+         fallq_target, isovar_target
     
     
     
@@ -1127,7 +1163,8 @@ program convterr
     integer            :: landfracid,sghid,sgh30id,landm_coslatid
     !---ARH
     integer             :: mxdisid, ang22id, anixyid, anisoid, mxvrxid, mxvryid, hwdthid, wghtsid, anglxid, gbxarid
-    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid
+    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid,isovarid
+    integer             :: ThisId
     
     integer            :: status    ! return value for error control of netcdf routin
     !  integer, dimension(2) :: nc_lat_vid,nc_lon_vid
@@ -1217,24 +1254,16 @@ program convterr
     end if
     
     if (Lfind_ridges) then 
-      
-      status = nf_def_var (foutid,'SGH_UF', NF_DOUBLE, 1, nid(1), sghufid)
+      status = nf_def_var (foutid,'ISOVAR', NF_DOUBLE, 1, nid(1), isovarid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
-        write(*,*) "SGH_UF error"
-      end if
-      status = nf_def_var (foutid,'TERR_UF', NF_DOUBLE, 1, nid(1), terrufid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "TERR_UF error"
-      end if
+        write(*,*) "ISOVAR error"
+      end if      
       status = nf_def_var (foutid,'GBXAR', NF_DOUBLE, 1, nid(1), gbxarid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "GBXAR error"
       end if
-      
-      
       status = nf_def_var (foutid,'MXDIS', NF_DOUBLE, 2, nid , mxdisid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1249,20 +1278,7 @@ program convterr
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "FALLQ error"
-      endif
-      
-      status = nf_def_var (foutid,'MXVRX', NF_DOUBLE, 2, nid , mxvrxid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "MXVRX error"
-      end if
-      
-      status = nf_def_var (foutid,'MXVRY', NF_DOUBLE, 2, nid , mxvryid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "MXVRY"
-      end if
-      
+      endif      
       status = nf_def_var (foutid,'ANGLL', NF_DOUBLE, 2, nid , ang22id)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1273,7 +1289,6 @@ program convterr
         call handle_err(status)
         write(*,*) "ANGLX error"
       endif
-      
       status = nf_def_var (foutid,'ANISO', NF_DOUBLE, 2, nid , anisoid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
@@ -1284,31 +1299,15 @@ program convterr
         call handle_err(status)
         write(*,*) "ANIXY error"
       end if
-      
       status = nf_def_var (foutid,'HWDTH', NF_DOUBLE, 2, nid , hwdthid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "HWDTH error"
       end if
-      status = nf_def_var (foutid,'WGHTS', NF_DOUBLE, 2, nid , wghtsid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "WGHTS error"
-      end if
-      status = nf_def_var (foutid,'CWGHT', NF_DOUBLE, 2, nid , cwghtid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "CWGHT error"
-      end if
       status = nf_def_var (foutid,'CLNGT', NF_DOUBLE, 2, nid , clngtid)
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "CLNGT error"
-      end if
-      status = nf_def_var (foutid,'COUNT', NF_DOUBLE, 2, nid , countid)
-      if (status .ne. NF_NOERR) then
-        call handle_err(status)
-        write(*,*) "COUNT error"
       end if
       
     endif
@@ -1363,6 +1362,12 @@ program convterr
          'area of target grid cell')
     status = nf_put_att_text   (foutid, areaid, 'units'     , 1, 'm+2')
     
+    status = nf_put_att_double (foutid, isovarid, 'missing_value', nf_double, 1, fillvalue)
+    status = nf_put_att_double (foutid, isovarid, '_FillValue'   , nf_double, 1, fillvalue)
+    status = nf_put_att_text   (foutid, isovarid, 'long_name' , 30, &
+         'residual variance after ridges')
+    status = nf_put_att_text   (foutid, isovarid, 'units'     , 1, 'm+2')
+
     status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
     if (status .ne. NF_NOERR) call handle_err(status)
     status = nf_put_att_text (foutid,latvid,'units', 13, 'degrees_north')
@@ -1376,6 +1381,117 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     !        status = nf_put_att_text (foutid,lonvid,'units' , 21, 'cell center locations')
     !        if (status .ne. NF_NOERR) call handle_err(status)
+
+    if (Lfind_ridges) then 
+       ThisId = mxdisid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 48, &
+       'Obtsacle height diagnosed by ridge-finding alg. ')
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = riseqid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 38, &
+       'Rise to peak from left (ridge_finding)')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = fallqid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 43, &
+       'Fall from peak toward right (ridge_finding)')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = ang22id
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 48, &
+       'Ridge orientation clockwise from true north     ')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'degrees')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anglxid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 61, &
+       'Ridge orientation clockwise from b-axis in cubed sphere panel')
+       !1234567890123456789012345678901234567890123456789012345678901
+       !         10        20        30        40        50        60
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'degrees')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = hwdthid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 21, &
+       'Estimated Ridge width')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 2, 'km')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = clngtid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 34, &
+       'Estimated Ridge length along crest')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 2, 'km')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anixyid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 42, &
+       'Variance ratio: cross/(cross+length) -wise')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = anisoid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 36, &
+       'Variance fraction explained by ridge')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId = isovarid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 50, &
+       'SQRT(Variance) from topo NOT represented by ridges')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       ThisId=gbxarid
+       status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 46, &
+       'angular area of target grid cell from scheme')
+       !12345678901234567890123456789012345678901234
+       !              10        20        30        40
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 7, 'm+2 m-2')
+       status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+    end if
+
     call wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)
     !
     ! End define mode for output file
@@ -1462,16 +1578,6 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing FALLQ data"
       
-      print*,"writing MXVRX  data",MINVAL(mxvrx_target),MAXVAL(mxvrx_target)
-      status = nf_put_var_double (foutid, mxvrxid, mxvrx_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing MXVRX data"
-      
-      print*,"writing MXVRY  data",MINVAL(mxvry_target),MAXVAL(mxvry_target)
-      status = nf_put_var_double (foutid, mxvryid, mxvry_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing MXVRY data"
-      
       print*,"writing ANGLL data",MINVAL(ang22_target),MAXVAL(ang22_target)
       status = nf_put_var_double (foutid, ang22id, ang22_target )
       if (status .ne. NF_NOERR) call handle_err(status)
@@ -1496,46 +1602,18 @@ program convterr
       status = nf_put_var_double (foutid, hwdthid, hwdth_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing HWDTH data"
-      
-      print*,"writing WGHTS  data",MINVAL(wghts_target),MAXVAL(wghts_target)
-      status = nf_put_var_double (foutid, wghtsid, wghts_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing WGHTS data"
-      
+            
       print*,"writing CLNGT  data",MINVAL(clngt_target),MAXVAL(clngt_target)
       status = nf_put_var_double (foutid, clngtid, clngt_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing CLNGT data"
-      
-      print*,"writing CWGHT  data",MINVAL(cwght_target),MAXVAL(cwght_target)
-      status = nf_put_var_double (foutid, cwghtid, cwght_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing CWGHT data"
-      
-      print*,"writing COUNT  data",MINVAL(count_target),MAXVAL(count_target)
-      status = nf_put_var_double (foutid, countid, count_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing COUNT data"
-      
-      
-      print*,"writing TERR_UF  data",MINVAL(terr_uf_target),MAXVAL(terr_uf_target)
-      status = nf_put_var_double (foutid, terrufid, terr_uf_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing TERR_UF data"
-      
-      print*,"writing SGH_UF  data",MINVAL(sgh_uf_target),MAXVAL(sgh_uf_target)
-      status = nf_put_var_double (foutid, sghufid, sgh_uf_target)
-      if (status .ne. NF_NOERR) call handle_err(status)
-      print*,"done writing SGH_UF data"
-      
+            
       print*,"writing GBXAR  data",MINVAL(area_target),MAXVAL(area_target)
       status = nf_put_var_double (foutid, gbxarid, area_target)
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing GBXAR data"
       
-    endif
-    
-    
+    endif    
     !
     ! Close output file
     !
@@ -1543,7 +1621,7 @@ program convterr
     status = nf_close (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrtncdf_unstructured
-
+ 
   subroutine wrtncdf_unstructured_append_phis(n,terr,lon,lat,output_fname)
     !---ARH
     use shared_vars, only : rad2deg
@@ -1668,7 +1746,8 @@ program convterr
     print *,"close file"
     status = nf_close (foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
-  end subroutine 
+ end subroutine wrtncdf_unstructured_append_phis
+
   !
   !**************************************************************     
   ! 

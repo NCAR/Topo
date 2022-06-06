@@ -76,6 +76,7 @@ CONTAINS
 
     integer  :: ncube_in_file, iter,i,j
 
+
     logical ::     read_in_precomputed, use_prefilter, stop_after_smoothing
     logical ::     smooth_topo_cubesph, do_refine
     logical ::     read_in_and_refine, new_smooth_topo
@@ -279,6 +280,14 @@ CONTAINS
       write(*,*) " Topo volume BEFORE smoother = ",volterr_in/(6*sum(da))
       write(*,*) " Topo volume  AFTER smoother = ",volterr_sm/(6*sum(da))
       write(*,*) "            Difference       = ",(volterr_in - volterr_sm)/(6*sum(da))
+
+      terr_sm = (volterr_in/volterr_sm)*terr_sm
+      volterr_sm=0.
+      do ip=1,6 
+         volterr_sm =  volterr_sm + sum( terr_sm(:,:,ip) * da )
+      end do
+      write(*,*) " Smooth Topo volume  AFTER rescaling = ",volterr_sm/(6*sum(da))
+
 
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then

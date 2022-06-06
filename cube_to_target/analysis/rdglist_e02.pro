@@ -1,5 +1,5 @@
 pro rdglist_e02,list=fn0,terr=terr,basedir=basedir$ , $
-                xlist=xlist,xterr=xterr
+                xlist=xlist
 
 
 if not keyword_set(basedir$) then basedir$ = '' ;'/project/amp/juliob/Topo-generate-devel/Topo/cube_to_target_devel/output/'
@@ -10,28 +10,28 @@ close,1
  openr,1,/f77_u,fn
 
 
-nc=0L & nch=0L & grid_length_scale=0.D
-readu,1,nch , grid_length_scale
+;nc=0L & nch=0L & grid_length_scale=0.D
+;readu,1,nch , grid_length_scale
+;t1=fltarr(nch,nch,6)
+;t1d=fltarr(nch,nch,6)
+;dtg=dblarr(nch,nch)
+;xv=fltarr(nch)&yv=fltarr(nch)
+; readu,1,xv,yv
+; readu,1,t1
+; readu,1,t1d ;pr,dtg
 
-
-t1=fltarr(nch,nch,6)
-t1d=fltarr(nch,nch,6)
-dtg=dblarr(nch,nch)
-xv=fltarr(nch)&yv=fltarr(nch)
-
- readu,1,xv,yv
- readu,1,t1
- readu,1,t1d ;pr,dtg
-
- npks=0L & m=0L & NSW=0L
- readu,1,npks  , NSW
+ 
+npks=0L & m=0L & NSW=0L & PSW=0L
+ readu,1,npks  , NSW, PSW
 
   pki=lonarr(npks) & pkj=lonarr(npks)&pkip=lonarr(npks)
  
   xs=  fltarr(npks) &ys=fltarr(npks)&xspk=fltarr(npks)&yspk=fltarr(npks)
+  xs01=  fltarr(npks) &ys01=fltarr(npks)
   mypanel = lonarr( npks )
+  nswx_diag = lonarr( npks )
 
-  readu,1,xs,ys   , mypanel
+  readu,1,xs,ys   , mypanel, nswx_diag
 
   mxdis=fltarr(npks) & clngt=fltarr(npks) & hwdth=fltarr(npks) & anglx=fltarr(npks)
   aniso=fltarr(npks) & pkhts=fltarr(npks) & vldps=fltarr(npks) & npeak=fltarr(npks)
@@ -43,11 +43,22 @@ xv=fltarr(nch)&yv=fltarr(nch)
 
   xspk= fltarr(npks) & yspk= fltarr(npks)
 
- rdg_profiles = fltarr( nsw+1,npks )
- crst_profiles = fltarr( nsw+1,npks )
- crst_silhous = fltarr( nsw+1,npks )
+ hnodes_x = fltarr( 2*Psw+1,npks )
+ hwedge_x = fltarr( 2*Psw+1,npks )
+ hnodos_x = fltarr( 2*Psw+1,npks )
+ hwedgo_x = fltarr( 2*Psw+1,npks )
+ rdg_profiles_x = fltarr( 2*Psw+1,npks )
+ rdg_profiles = fltarr( Psw+1,npks )
+ crst_profiles = fltarr( Psw+1,npks )
+ crst_silhous = fltarr( Psw+1,npks )
  rt_diag = fltarr( 2*nsw+1, 2*nsw+1, npks )
  rtx_diag = fltarr( nsw+1, nsw+1, npks )
+ nnodes_list = lonarr( npks )
+ xnodes_list = lonarr( Psw+1,npks )
+ hnodes_list = fltarr( Psw+1,npks )
+ dcenter_list = lonarr( npks )
+ xwedge_list = lonarr( 3, npks )
+ hwedge_list = fltarr( 3, npks )
 
 
 readu, 1 ;, mxvrx
@@ -57,8 +68,8 @@ readu, 1, anglx
 readu, 1, aniso
 readu, 1 ;, mnslp
 readu, 1, angll
-readu, 1, xspk
-readu, 1, yspk
+readu, 1, xspk , xs01
+readu, 1, yspk , ys01
 readu, 1 ;, mxds0
 readu, 1 ;, mxds1
 readu, 1 ;, sft0
@@ -96,48 +107,29 @@ readu, 1, crst_silhous
 readu, 1, isoht
 readu, 1, isowd
 readu, 1, isobs
-;readu, 1, RefFac
+readu, 1  ;, RefFac
+if not (eof(1) ) then readu, 1, rdg_profiles_x
+if not (eof(1) ) then readu, 1, xnodes_list
+if not (eof(1) ) then readu, 1, hnodes_list
+if not (eof(1) ) then readu, 1, dcenter_list
+if not (eof(1) ) then readu, 1, xwedge_list,hwedge_list
+if not (eof(1) ) then readu, 1, nnodes_list
+if not (eof(1) ) then readu, 1, hwedge_x
+if not (eof(1) ) then readu, 1, hnodes_x
+if not (eof(1) ) then readu, 1, hwedge_o
+if not (eof(1) ) then readu, 1, hnodes_o
 
 close,1
 
 
 
-
-ipo1=where( mypanel eq 1 )
-ipo2=where( mypanel eq 2 )
-ipo3=where( mypanel eq 3 )
-ipo4=where( mypanel eq 4 )
-ipo5=where( mypanel eq 5 )
-ipo6=where( mypanel eq 6 )
-
-mxdis0=700.
-;Locations in Colorado Rockies
- rock=where( ys gt 2700. and xs gt 900 and xs lt 1050 and mxdis gt mxdis0 and mypanel eq 4 )                    
- sang=where( ys gt 2780. and ys lt 2810 and xs gt 950 and xs lt 1020 and mxdis gt mxdis0  and mypanel eq 4 )  
- loco=where( ys gt 2850. and ys lt 2890 and xs gt 940 and xs lt 1000 and mxdis gt mxdis0  and mypanel eq 4 )  
-
-; This is Longs peak/Indian Peaks
-;IDL> print,loco(12:13)
-;      188921      189103
-
-;Locations in southern Andes
-pata=where( ys gt 1850 and ys lt 2200 and xs gt 0 and xs lt 450 and mxdis gt mxdis0  and mypanel eq 5 )  
-paine=where( ys gt 1950 and ys lt 1970 and xs gt 150 and xs lt 200 and mxdis gt mxdis0  and mypanel eq 5 )  
-
-cantp = where( ys gt 1810 and ys lt 1860 and xs gt 750 and xs lt 800 and mxdis gt mxdis0  and mypanel eq 5 )  
-
-sgeorgia =  where( ys gt 2400 and ys lt 2600 and xs gt 600 and xs lt 900 and mxdis gt 10.  and mypanel eq 5 )  
-
-peru=where( xs gt 2000 and xs lt 2200 and ys gt 1100 and ys lt 1300 and mxdis gt mxdis0 and  mypanel eq 4)
-
-; locations in Europe ..
-
-norw=where( xs gt 1550 and xs lt 1650 and ys gt 450 and ys lt 550 and mxdis gt 500. and  mypanel eq 6)
-
-
 if keyword_set(stop) then STOP
 
-xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, panel:mypanel, mxdis:mxdis, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, rdg_profiles:rdg_profiles }
+xlist = { xs:xs, ys:ys, xspk:xspk, yspk:yspk, xs01:xs01, ys01:ys01, panel:mypanel, nswx:nswx_diag, $ 
+          mxdis:mxdis, pkhts:pkhts, hwdth:hwdth, clngt:clngt, anglx:anglx, aniso:aniso, uniqid:uqrid, $ 
+          ridge:rdg_profiles , crest:crst_profiles, silh:crst_silhous, $ 
+          ridge_x:rdg_profiles_x, xnodes:xnodes_list,hnodes:hnodes_list,dcenter:dcenter_list, $ 
+          xwedge:xwedge_list, hwedge:hwedge_list, nnodes:nnodes_list,hwedge_x:hwedge_x,hnodes_x:hnodes_x}
 
 return
 end

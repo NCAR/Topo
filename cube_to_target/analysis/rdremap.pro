@@ -23,26 +23,19 @@ mxdis=dblarr(nc,nc,6)
 block=dblarr(nc,nc,6)
 profi=dblarr(nc,nc,6)
 uniqi=dblarr(nc,nc,6)
-
-;++ more and more
-isoht=dblarr(nc,nc,6)
-bumps=dblarr(nc,nc,6)
-
-
-;anglx=dblarr(nc,nc,6)
-;hwdth=dblarr(nc,nc,6)
-;clngt=dblarr(nc,nc,6)
-;cwght=dblarr(nc,nc,6)
-
-
-dum=0.d
-readu,1,mxdis
-readu,1,block
-readu,1,profi
-readu,1,uniqi
-readu,1,isoht
-readu,1,bumps
-
+aniso=dblarr(nc,nc,6)
+nodes=dblarr(nc,nc,6)
+wedge=dblarr(nc,nc,6)
+nodos=dblarr(nc,nc,6)
+wedgo=dblarr(nc,nc,6)
+wedgi=dblarr(nc,nc,6)
+anglx=dblarr(nc,nc,6)
+hwdth=dblarr(nc,nc,6)
+clngt=dblarr(nc,nc,6)
+riseq=dblarr(nc,nc,6)
+fallq=dblarr(nc,nc,6)
+uniqw=dblarr(nc,nc,6)
+repnt=dblarr(nc,nc,6)
 
 xs=fltarr(npeaks)
 ys=fltarr(npeaks)
@@ -51,22 +44,34 @@ yspk=fltarr(npeaks)
 ipks=lonarr(npeaks)
 jpks=lonarr(npeaks)
 
+dum=0.d
+
+readu,1,uniqi
+readu,1,aniso
+readu,1,anglx
+
+
+readu,1,mxdis
+readu,1,hwdth
+readu,1,clngt
+ 
+
+readu,1,block
+readu,1,profi
+
+readu,1,nodes
+readu,1,wedge
+
+readu,1,nodos
+readu,1,wedgo
+   
 readu,1,xs,ys,xspk,yspk,ipks,jpks
 
-if not eof(1) then begin
-   anglx=dblarr(nc,nc,6)
-   hwdth=dblarr(nc,nc,6)
-   clngt=dblarr(nc,nc,6)
-   cwght=dblarr(nc,nc,6)
-   isowd=dblarr(nc,nc,6)
-   extension=1
-   readu,1,anglx
-   readu,1,hwdth
-   readu,1,cwght
-   readu,1,clngt
-   readu,1,isowd
-   print,' Extended remap file '
-endif
+if not eof(1) then readu,1,riseq
+if not eof(1) then readu,1,fallq
+if not eof(1) then readu,1,uniqw
+if not eof(1) then readu,1,wedgi
+if not eof(1) then readu,1,repnt
 
 
 
@@ -75,16 +80,12 @@ print," read from"
 print,f
 
 
-if not keyword_set(extension) then begin
 cube={mxdis:mxdis  $ 
-     ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
-     ,rf:fn0}
-endif else begin
-cube={mxdis:mxdis  $ 
-     ,block:block,profi:profi,uniqi:uniqi,bumps:bumps  $ 
-     ,anglx:anglx,hwdth:hwdth,clngt:clngt  $ 
-     ,rf:fn0}
-endelse
+     ,block:block,profi:profi,uniqi:uniqi  $ 
+     ,anglx:anglx,hwdth:hwdth,clngt:clngt,aniso:aniso  $ 
+     ,nodes:nodes,wedge:wedge,riseq:riseq,fallq:fallq  $
+     ,nodos:nodos,wedgo:wedgo,uniqw:uniqw,wedgi:wedgi  $
+     ,repnt:repnt,rf:fn0}
 
 
 if keyword_set(fvgrid) then begin

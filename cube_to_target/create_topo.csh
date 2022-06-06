@@ -7,18 +7,14 @@ if ( "$#argv" != 4) then
   echo "ogrid = argv[1]"
   echo "Co    = argv[2]"
   echo "Fi    = argv[3]"
-  ##echo "Nsw   = argv[4]"
-  echo "tag  = argv[4]"
+  echo "tag   = argv[4]"
   echo "     "
   echo "possible ogrid values: fv_0.9x1.25, ne30pg3 ..."
   exit
 endif
 
-set n = 4
 set case = $argv[1]"_co"$argv[2]"_fi"$argv[3]"_"$argv[4]
-
 echo $case
-
 
 mkdir -p ../cases/${case}/output
 cp *.F90 ../cases/${case}
@@ -86,6 +82,9 @@ endif
 if ( $ogrid == 'fv_0.9x1.25' ) then
    set scrip='fv_0.9x1.25.nc'
 endif
+if ( $ogrid == 'scam' ) then
+   set scrip='fv_0.9x1.25.nc'
+endif
 if ( $ogrid == 'ne120pg3' ) then
    set scrip='ne120pg3.nc'
 endif
@@ -103,23 +102,43 @@ if ( $ogrid == 'HMA' ) then
 endif
 
 set scrip = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/grid-descriptor-file/'${scrip}
-set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_bedmachine-ncube3000.nc'
+set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis_bedmachine-ncube3000-220518.nc'
 
 set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi0_ctlq/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060.nc'
+#set smtopo = '/project/amp/juliob/Topo-generate-devel/Topo/Topo.git/cases/ne30pg3_co60_fi8_x01/output/topo_smooth_gmted2010_bedmachine_nc3000_Co060_Fi008.nc'
 
-echo $smtopo
+set topodir = '/project/amp/juliob/Topo-generate-devel/Topo/smooth_topo/bedmachine/'
+set cog = `printf "%.3d" $Co`
+set cog = "Co"$cog
+set fig = `printf "%.3d" $Fi`
+set fig = "Fi"$fig
+
+if ( $Fi == 0 ) then
+   set smtopo = 'topo_smooth_gmted2010_bedmachine_nc3000_'$cog'.nc'
+else
+   set smtopo = 'topo_smooth_gmted2010_bedmachine_nc3000_'$cog'_'$fig'.nc'
+endif
+
+echo  $cog
+echo  $fig
+set smtopo = $topodir$smtopo
+
+echo  "SMooth topo file= "$smtopo
 ln -sf $smtopo output/topo_smooth.nc
 
 #Smooth and find ridges
-#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z -a 2
 
 
 #READ IN Smooth and find ridges
-#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z
+./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=100. --fine_radius=$Fi -r -u 'juliob@ucar.edu' -q 'output/' -z -m
+
+#READ IN Smooth and find ridges
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=100. --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z
 
 
 #READ IN Smooth, Refine and find ridges
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -y $Yfac
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --coarse_radius=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -r -u 'juliob@ucar.edu' -q 'output/' -z -y $Yfac
 
 
 exit

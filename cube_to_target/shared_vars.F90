@@ -519,6 +519,10 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
   if (STATUS .NE. NF_NOERR) then
     lregional_refinement = .false.
     write(*,*) "rrfac not on file; setting lregional_refinement = .false."
+    write(*,*) "  ... allocating target_rrfac ANYWAY"
+    ! allocate target_rrfac anyway since it may be invoked
+    ! if rrfac write is requested
+    allocate ( target_rrfac(ntarget),stat=alloc_error)
   else
     lregional_refinement = .true.
     allocate ( target_rrfac(ntarget),stat=alloc_error)

@@ -1,17 +1,14 @@
-pro gridjeck,xcase=xcase,repo=repo,fi=fi,co=co,nsw0=nsw0,nc=nc,ogrid=ogrid,quick=quick,stops=stops $
-            ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg,list=list $
-            ,cu=cu,latt=latt,lont=lont,itrgt=itrgt,xlist=xlist,xy=xy,terroutput=terroutput $
+pro gridjeck,xcase=xcase,xtag=xtag,repo=repo,fi=fi,co=co,nsw0=nsw0,nc=nc,ogrid=ogrid,quick=quick,stops=stops $
+            ,rema=rema,fcam=fcam,topo=topo,grem=grem,tg=tg,list=list,tile=tile $
+            ,cu=cu,latt=latt,lont=lont,itrgt=itrgt,xlist=xlist,xy=xy,terroutput=terroutput,xloutput=xloutput $
             ,rr=rr
 
  ;d='/project/amp/juliob/Topo-generate-devel/Topo/Ridge-Finding.git/output/'
 
-if not keyword_set(xcase) then begin
-   print,'Need xcase'
-   stop
-endif 
 if not keyword_set(nc) then begin
    nc=3000L
 endif 
+nc=long(nc)
 if not keyword_set(ogrid) then begin
    ogrid='ne30pg3'
 endif 
@@ -22,9 +19,15 @@ endif else begin
     nsw=fix( co/SQRT(2.) )
 endelse
 
+if not keyword_set(xcase) then begin
+   if nc eq 3000 then xcase=ogrid+'_co'+strtrim(string(co),2)+'_fi'+strtrim(string(fi),2)+'_'+xtag
+   if nc eq  540 then xcase='Reg_'+ogrid+'_co'+strtrim(string(co),2)+'_fi'+strtrim(string(fi),2)+'_'+xtag
+   print,xcase
+endif 
+
 ;topo_smooth_gmted2010_bedmachine_nc0540_Co012_Fi001.nc
 
-fnames,xc=xcase,repo=repo,co=co,fi=fi,ns=nsw,og=ogrid,fcam=fcam,grem=grem,rema=rema,topo=topo,tg=tg,list=list,nc=nc,trxy=trxy
+fnames,xc=xcase,repo=repo,co=co,fi=fi,ns=nsw,og=ogrid,fcam=fcam,grem=grem,rema=rema,topo=topo,tg=tg,list=list,nc=nc,trxy=trxy,tile=tile
 
 
 rdgrid,grem=grem,itrgt=itrgt
@@ -37,7 +40,7 @@ rncvar,f=topo,get='terr_sm',dat=smooth
 if keyword_set(rr) then rncvar,f=topo,get='rr_fac',dat=rrfac
 
 rdremap,rem=rema,cube=cu
-rdglist_e02,list=list,xlist=xlist
+if keyword_set(xloutput) then rdglist_e02,list=list,xlist=xlist
 
 if keyword_set(trxy) and keyword_set(terroutput) then terrxy,xy=xy,trxy=trxy
 
@@ -58,6 +61,7 @@ cu=create_struct( cu, 'smooth',smooth )
 cu=create_struct( cu, 'lon',lont )
 cu=create_struct( cu, 'lat',latt )
 if keyword_set(rr) then cu=create_struct( cu, 'rrfac',rrfac )
+cu=create_struct( cu, 'itrgt',itrgt )
 
         if keyword_set(STOPS) then STOP
 
