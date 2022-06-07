@@ -37,7 +37,7 @@ Software will produce plot.sh which can be used to produce NCL plots of topograp
 
 Default interemdiate cubed-sphere data on Cheyenne is located at
 
-	/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmahcine-ncube3000-220518.nc
+	/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmachine-ncube3000-220518.nc
 
 Example:
 
