@@ -1,3 +1,5 @@
+June 2022, NCAR.
+
 This software is documented in:
 
 Peter H. Lauritzen, Julio T. Bacmeister, Patrick Callaghan and Mark A. Taylor, 2015: 
@@ -7,52 +9,31 @@ Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
 and updated by Julio Bacmeister for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
 and variable resolution (Adam Herrington).
 
-Get code:
-
-      git clone https://github.com/NCAR/Topo
-      cd Topo
-
-Execute code:
-
-	The raw data (assumed to be on lat-lon grid) 
-
-	The user does not need create_netCDF_from_rawdata/ and bin_to_cube/ steps unless wanting to change
-	base dataset. create_netCDF_from_rawdata is currently broken!
-	
-	The CESM2.2 inteermediate cubed-sphere dataset is located here:
-
-	intermediate_cubed_sphere_file=/glade/p/cgd/amp/aherring/grids/topo/gmted2010_modis-ncube3000-stitch.nc
-
-Type "make"
-
-	Code will compute ne30pg3 dataset by default.
-
-Make new dataset:
-
 
 Overview of directories
 =======================
 
 
-0. make_rll_grid_descriptor_file:
----------------------------------
-
-Make grid-descriptor files for regular lat-lon grids
-
-1. bin_to_cube:
----------------
+bin_to_cube:
+------------
 
 Bin high resolution elevation data (on regular lat-lon grid) onto cubed-sphere grid.
 Creates intermediate cubed-sphere data for cube_to_target. This is used to separate
 scales for SGH and SGH30.
 
-2. cube_to_target:
-------------------
+Note: The user does not need bin_to_cube step unless wanting to change
+      source dataset and/or intermediate cubed-sphere resolution.
+
+cube_to_target:
+---------------
 
 Remap elevation data to target grid and compute associated variables.
 
-3. cesm_meta_data_compliance:
------------------------------
+Default interemdiate cubed-sphere data on Cheyenne is located at
 
-Python script to add CESM meta data to topography data file (must be done manually: "make cesm_compliance")
-(currently broken)
+	/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmahcine-ncube3000-220518.nc
+
+make_rll_grid_descriptor_file:
+------------------------------
+
+Code do make SCRIP grid descriptor files for regular latitude-longitude grids
