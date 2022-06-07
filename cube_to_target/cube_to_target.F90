@@ -1082,7 +1082,6 @@ program convterr
     write (6,*) "-b, --distance_weighted_smoother                -> if not specified Laplacian smoothing operator used"
     write (6,*) "-p, --use_prefilter                             -> -b smoother option"
     write (6,*) "-f, --fine_radius=<int>                         -> "
-    write (6,*) "-0, --zero_negative_peaks                       -> ??? "
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) " "
     write (6,*) "   LAPLACIAN SMOOTHER OPTIONS"
