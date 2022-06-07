@@ -216,7 +216,7 @@ program convterr
       opts(10)%specified = .true.
     case( 'v' )
       lrrfac_manipulation= .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' --rrfac_manipulation '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --rrfac_manipulation '
       opts(11)%specified = .true.
     case( 'z' )
       ldevelopment_diags = .TRUE.
@@ -521,7 +521,8 @@ program convterr
       da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
       da_min_target = MAXVAL(target_area)
       if (da_min_target==0) then !bug with MPAS files
-        jmax_segments = 100000
+        write(*,*) "ERROR: da_min_target =",da_min_target
+        stop
       else
         write(*,*) "using dynamic estimate for jmax_segments " 
         !++ jtb : Increased by 4x. Needed for c1440 FV3
@@ -541,7 +542,8 @@ program convterr
     end if
     if (jall_anticipated<0) then
       write(*,*) "anticipated number of overlaps likely not representable: jall_anticipated=", jall_anticipated
-      stop
+      jall_anticipated = 1080000000
+      write(*,*) "setting to large value = ",jall_anticipated
     else
       write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
     end if
