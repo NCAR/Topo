@@ -24,22 +24,41 @@ scales for SGH and SGH30.
 Note: The user does not need bin_to_cube step unless wanting to change
       source dataset and/or intermediate cubed-sphere resolution.
 
+
 cube_to_target:
 ---------------
 
-Remap elevation data to target grid and compute associated variables.
+Code to process elevation data and remap to target grid.
+
+List namelist options: Execute ./cube_to_target --help
+
+Software will produce plot.sh which can be used to produce NCL plots of topography data
+(source plot.sh)
 
 Default interemdiate cubed-sphere data on Cheyenne is located at
 
 	/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmahcine-ncube3000-220518.nc
 
+Example:
+
+See cubed_to_target/ne30pg3.sh. Execute (on Cheyenne) with:
+
+    qcmd -l walltime=04:00:00 -- source ne30pg3.sh
+
+Fast regression tests:
+
+    source regr_test1.sh     (fast version of ne30pg3.sh but using ncube=540 intermediate cubed-sphere grid data)
+    source regr_test2.sh     (low resolution variable resolution test using ncube=540 intermediate cubed-sphere grid data)
+    source regr_test2_lap.sh (same as regr_test2.sh but using Laplacian smoother)
+    source regr_test3.sh     (low resolution test for lat-lon grid using ncube=540 intermediate cubed-sphere grid data)
+
 
 regression-test-data:
 ---------------------
 
-Data used for regression tests in cubed_to_target.
+Data used for regression tests in cubed_to_target. See above.
 
 make_rll_grid_descriptor_file:
 ------------------------------
 
-Code do make SCRIP grid descriptor files for regular latitude-longitude grids
+Code to make SCRIP grid descriptor files for regular latitude-longitude grids
