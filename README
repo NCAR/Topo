@@ -33,6 +33,12 @@ Default interemdiate cubed-sphere data on Cheyenne is located at
 
 	/glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmahcine-ncube3000-220518.nc
 
+
+regression-test-data:
+---------------------
+
+Data used for regression tests in cubed_to_target.
+
 make_rll_grid_descriptor_file:
 ------------------------------
 
