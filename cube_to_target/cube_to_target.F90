@@ -548,7 +548,7 @@ program convterr
       write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
     end if
     
-    jmax_segments = MIN( jmax_segments, 5000 )
+    jmax_segments = MIN( jmax_segments, 10000 )
     
     nreconstruction = 1
     allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
