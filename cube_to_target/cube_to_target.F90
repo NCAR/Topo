@@ -74,7 +74,7 @@ program convterr
   ! namelist variables for detection of sub-grid scale orientation
   ! i.e., "ridge finding"
   !
-  logical :: lfind_ridges = .FALSE.
+  logical :: lfind_ridges = .TRUE.
   !                             Ridge analysis takes place on
   !                             squares of 2*NW+1
   integer :: nwindow_halfwidth =  0
@@ -134,7 +134,7 @@ program convterr
   opts(5 ) = option_s( "intermediate_cs_name"      ,.true.    , 'i'   ,.false.       ,.true.)
   opts(6 ) = option_s( "output_grid"               ,.true.    , 'o'   ,.false.       ,.true.)
   opts(7 ) = option_s( "use_prefilter"             ,.false.   , 'p'   ,.false.       ,.false.)
-  opts(8 ) = option_s( "find_ridges"               ,.false.   , 'r'   ,.false.       ,.false.)
+  opts(8 ) = option_s( "no_ridges"                 ,.false.   , 'r'   ,.false.       ,.false.)
   opts(9)  = option_s( "stop_after_smooth"         ,.false.   , 'x'   ,.false.       ,.false.)
   opts(10) = option_s( "rrfac_max"                 ,.true.    , 'y'   ,.false.       ,.false.)
   opts(11) = option_s( "rrfac_manipulation"        ,.false.   , 'v'   ,.false.       ,.false.)
@@ -151,9 +151,6 @@ program convterr
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   
-  print(optarg)
-  stop
-
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -203,8 +200,8 @@ program convterr
       command_line_arguments = TRIM(command_line_arguments)//' --use_prefilter '
       opts(7)%specified = .true.
     case( 'r' )
-      lfind_ridges = .TRUE.
-      command_line_arguments = TRIM(command_line_arguments)//' --find_ridges '
+      lfind_ridges = .FALSE.
+      command_line_arguments = TRIM(command_line_arguments)//' --no_ridges '
       opts(8)%specified = .true.
     case( 'x' )
       lstop_after_smoothing = .TRUE.
