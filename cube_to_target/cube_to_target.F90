@@ -151,6 +151,9 @@ program convterr
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   
+  print(optarg)
+  stop
+
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
