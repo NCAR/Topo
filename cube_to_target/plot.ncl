@@ -9,7 +9,7 @@ begin
   ; SCRIP file
   ;
   sf =  addfile(scripFile,"r")
-  cellfill = True
+  cellfill = False ;True
 
   if (isfilevar(a, "PHIS")) then
     PHIS      = a->PHIS
@@ -50,10 +50,63 @@ begin
   res@lbLabelAutoStride   = True         ; Clean up labelbar labels.
 
   if (cellfill) then
-    lat1d   = sf->grid_center_lat
-    lon1d   = sf->grid_center_lon
-    latvert = sf->grid_corner_lat
-    lonvert = sf->grid_corner_lon
+    ;
+    ; SCRIP format
+    ;
+    if (isfilevar(sf, "grid_center_lat")) then
+      lat1d   = sf->grid_center_lat
+      lon1d   = sf->grid_center_lon
+      latvert = sf->grid_corner_lat
+      lonvert = sf->grid_corner_lon
+    end if
+    ;
+    ; ESMF format
+    ;
+    print("adsfasdf")
+    if (isfilevar(sf, "centerCoords")) then 
+      print("inside")
+      centerCoords   = sf->centerCoords
+      nodeCoords     = sf->nodeCoords
+      numElementConn = sf->numElementConn
+      elementConn    = sf->elementConn
+      printVarSummary(centerCoords)
+      ;
+      ; convert to SCRIP format
+      ;
+      lon1d = centerCoords(:,0)
+      lat1d = centerCoords(:,1)
+
+     dSizes = getfiledimsizes(sf)  
+     print (dSizes)
+     dNames = getfiledimnames(sf) 
+     print(dNames)
+     do i=0,dimsizes(dNames)-1
+       if (dNames(i).eq."maxNodePElement") then
+         maxNodePElement = dSizes(i)
+       end if
+       if (dNames(i).eq."nodeCount") then
+         nodeCount = dSizes(i)
+       end if
+       if (dNames(i).eq."elementCount") then
+         elementCount = dSizes(i)
+       end if
+     end do
+     lonvert = new((/elementCount,maxNodePElement/),double)
+     latvert = new((/elementCount,maxNodePElement/),double)
+     do element=0,0;elementCount-1
+       numNodes = numElementConn(element)
+       do node=0,numNodes-1
+         tmp_lon = nodeCoords(elementConn(element,node),0)
+         tmp_lat = nodeCoords(elementConn(element,node),1)
+         lonvert(element,node) = tmp_lon
+         latvert(element,node) = tmp_lat
+       end do
+         if (node.ne.numNodes-1) then
+           lonvert(element,node+1:numNodes) = tmp_lon
+           latvert(element,node+1:numNodes) = tmp_lat
+         end if
+     end do
+  end if
 	
     if (lonvert@units.eq."radians") then
       r2d  = get_r2d("double")

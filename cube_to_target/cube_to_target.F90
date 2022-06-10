@@ -141,7 +141,7 @@ program convterr
   opts(12) = option_s( "development_diags"         ,.false.   , 'z'   ,.false.       ,.false.)
   opts(13) = option_s( "ridge2tiles"               ,.false.   , '1'   ,.false.       ,.false.)
   opts(14) = option_s( "smooth_topo_file"          ,.true.    , 't'   ,.false.       ,.false.)
-  opts(15) = option_s( "write_rrfac_to_topo_file"  ,.true.    , 'd'   ,.false.       ,.false.)
+  opts(15) = option_s( "write_rrfac_to_topo_file"  ,.false.   , 'd'   ,.false.       ,.false.)
   opts(16) = option_s( "name_email_of_creator"     ,.true.    , 'u'   ,.false.       ,.true.)
   opts(17) = option_s( "source_data_identifier"    ,.true.    , 'n'   ,.false.       ,.false.)
   opts(18) = option_s( "output_data_directory"     ,.true.    , 'q'   ,.false.       ,.false.)
@@ -375,6 +375,13 @@ program convterr
   if (.not.lstop_after_smoothing) then
     call read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_latlon,lpole,nlat,nlon,ntarget,ncorner,nrank,&
          target_corner_lon, target_corner_lat, target_center_lon, target_center_lat, target_area, target_rrfac)
+    if (.not.lregional_refinement.and.rrfac_max.ne.1) then
+      write(*,*) "User has set rrfac_max =",rrfac_max
+      write(*,*) "which turns on regional refinement, however, the refinementfactor is not on grid descriptor file"
+      write(*,*) "SCRIP format: rrfac; ESMF format: elementRefinementRatio"
+      stop
+    end if
+
     allocate (area_target(ntarget),stat=alloc_error )
     area_target = 0.0
   end if
