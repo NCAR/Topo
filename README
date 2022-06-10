@@ -1,13 +1,35 @@
 June 2022, NCAR.
 
-This software is documented in:
+User's guide: https://github.com/NCAR/Topo/wiki/User's-Guide
 
-Peter H. Lauritzen, Julio T. Bacmeister, Patrick Callaghan and Mark A. Taylor, 2015: 
-NCAR Global Model Topography Generation Software for Unstructured Grids. 
-Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
+What's new in version 2.0:
 
-and updated by Julio Bacmeister for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
-and variable resolution (Adam Herrington).
+	*Command-line execution (e.g.):
+
+	./cube_to_target --grid_descriptor_file ne30pg3.nc  --intermediate_cs_name gmted2010_modis_bedmachine-ncube3000-220518.nc 
+  	                 --output_grid ne30pg3 --smoothing_scale 100.0 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu'
+
+	*New improved source topography data (ice sheet regions)
+
+	*Internal iterative Laplacian smoother with "no leak" option
+
+	*Support for SCRIP and ESMF grid descriptor file formats
+
+	*Seamless support for variable resolution grids 
+	 (sub-grid-scale variables and smoothing seamlessly adapts to resolution changes)
+
+	*CESM compliant metadata on netCDF file
+
+
+
+This software is partially documented in
+
+	Peter H. Lauritzen, Julio T. Bacmeister, Patrick Callaghan and Mark A. Taylor, 2015: 
+	NCAR Global Model Topography Generation Software for Unstructured Grids. 
+	Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
+
+and updated by Julio Bacmeister/Peter Hjort Lauritzen for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
+and variable resolution (Adam Herrington, Rene Wijngaard).
 
 
 Overview of directories
