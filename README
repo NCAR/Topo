@@ -12,8 +12,10 @@ What's new in version 2.0:
 			 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu'
 
 	*New improved source topography data (ice sheet regions)
+	 See https://github.com/NCAR/Topo/issues/10
 
 	*Internal iterative Laplacian smoother with "no leak" option
+	 See https://github.com/NCAR/Topo/issues/39
 
 	*Support for SCRIP and ESMF grid descriptor file formats
 
