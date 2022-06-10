@@ -192,15 +192,7 @@ CONTAINS
 
          
          terr_sm( 1:ncube , 1:ncube, :)  = terr_halo_sm( 1:ncube , 1:ncube, :) 
-         terr_dev( 1:ncube , 1:ncube, :) = terr_halo( 1:ncube , 1:ncube, :) -  terr_halo_sm( 1:ncube , 1:ncube, :) 
     
-         ! 
-         if (read_in_and_refine) then
-            where( rr_updt <= 1. )
-               terr_sm   =  terr_sm00
-               terr_dev  =  terr_dev00
-            end where
-         end if
        else
          !
          ! sanity check
@@ -269,7 +261,6 @@ CONTAINS
              stop
            end if
          end do
-         terr_dev = terr - terr_sm
        endif
       volterr_in=0.
       volterr_sm=0.
@@ -287,6 +278,16 @@ CONTAINS
          volterr_sm =  volterr_sm + sum( terr_sm(:,:,ip) * da )
       end do
       write(*,*) " Smooth Topo volume  AFTER rescaling = ",volterr_sm/(6*sum(da))
+
+      terr_dev = terr - terr_sm
+
+      if (read_in_and_refine) then
+        where( rr_updt <= 1. )
+          terr_sm   =  terr_sm00
+          terr_dev  =  terr_dev00
+        end where
+      end if
+
 
 
       if (stop_after_smoothing .OR. ldevelopment_diags) then
