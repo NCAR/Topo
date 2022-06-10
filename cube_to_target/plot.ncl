@@ -9,7 +9,7 @@ begin
   ; SCRIP file
   ;
   sf =  addfile(scripFile,"r")
-  cellfill = False ;True
+  cellfill = True
 
   if (isfilevar(a, "PHIS")) then
     PHIS      = a->PHIS
@@ -62,14 +62,12 @@ begin
     ;
     ; ESMF format
     ;
-    print("adsfasdf")
     if (isfilevar(sf, "centerCoords")) then 
-      print("inside")
       centerCoords   = sf->centerCoords
       nodeCoords     = sf->nodeCoords
       numElementConn = sf->numElementConn
       elementConn    = sf->elementConn
-      printVarSummary(centerCoords)
+;      printVarSummary(nodeCoords)
       ;
       ; convert to SCRIP format
       ;
@@ -77,9 +75,7 @@ begin
       lat1d = centerCoords(:,1)
 
      dSizes = getfiledimsizes(sf)  
-     print (dSizes)
      dNames = getfiledimnames(sf) 
-     print(dNames)
      do i=0,dimsizes(dNames)-1
        if (dNames(i).eq."maxNodePElement") then
          maxNodePElement = dSizes(i)
@@ -93,18 +89,21 @@ begin
      end do
      lonvert = new((/elementCount,maxNodePElement/),double)
      latvert = new((/elementCount,maxNodePElement/),double)
-     do element=0,0;elementCount-1
+     do element=0,elementCount-1
        numNodes = numElementConn(element)
        do node=0,numNodes-1
-         tmp_lon = nodeCoords(elementConn(element,node),0)
-         tmp_lat = nodeCoords(elementConn(element,node),1)
+         j = elementConn(element,node)-1
+;	 print("j="+j+" element="+element+" node="+node)
+         tmp_lon = nodeCoords(j,0)
+         tmp_lat = nodeCoords(j,1)
+;         print("node="+node+" lon="+tmp_lon+" lat="+tmp_lat)
          lonvert(element,node) = tmp_lon
          latvert(element,node) = tmp_lat
        end do
-         if (node.ne.numNodes-1) then
-           lonvert(element,node+1:numNodes) = tmp_lon
-           latvert(element,node+1:numNodes) = tmp_lat
-         end if
+       if (node-1.ne.maxNodePElement-1) then
+         lonvert(element,node:maxNodePElement-1) = tmp_lon
+         latvert(element,node:maxNodePElement-1) = tmp_lat
+       end if
      end do
   end if
 	
@@ -124,9 +123,12 @@ begin
     lon1d = a->lon
     res@cnFillMode          ="RasterFill"
   end if   
-
+  print("done")
+  
   res@sfXArray            = lon1d        ; Required to tell NCL where to
   res@sfYArray            = lat1d        ; overlay data on globe.
+
+  print("done2")
 
 ;  res@cnFillMode       = "RasterFill"       ; Raster Mode
 
