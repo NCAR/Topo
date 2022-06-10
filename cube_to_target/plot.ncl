@@ -93,10 +93,8 @@ begin
        numNodes = numElementConn(element)
        do node=0,numNodes-1
          j = elementConn(element,node)-1
-;	 print("j="+j+" element="+element+" node="+node)
          tmp_lon = nodeCoords(j,0)
          tmp_lat = nodeCoords(j,1)
-;         print("node="+node+" lon="+tmp_lon+" lat="+tmp_lat)
          lonvert(element,node) = tmp_lon
          latvert(element,node) = tmp_lat
        end do
@@ -123,14 +121,9 @@ begin
     lon1d = a->lon
     res@cnFillMode          ="RasterFill"
   end if   
-  print("done")
   
   res@sfXArray            = lon1d        ; Required to tell NCL where to
   res@sfYArray            = lat1d        ; overlay data on globe.
-
-  print("done2")
-
-;  res@cnFillMode       = "RasterFill"       ; Raster Mode
 
   res@mpCenterLonF     = 180                ; set map center at 180
                                             ; must be in colormap  
