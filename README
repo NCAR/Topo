@@ -6,8 +6,10 @@ What's new in version 2.0:
 
 	*Command-line execution (e.g.):
 
-	./cube_to_target --grid_descriptor_file ne30pg3.nc  --intermediate_cs_name gmted2010_modis_bedmachine-ncube3000-220518.nc 
-  	                 --output_grid ne30pg3 --smoothing_scale 100.0 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu'
+	./cube_to_target --grid_descriptor_file ne30pg3.nc  
+			 --intermediate_cs_name gmted2010_modis_bedmachine-ncube3000-220518.nc 
+  	                 --output_grid ne30pg3 --smoothing_scale 100.0 
+			 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu'
 
 	*New improved source topography data (ice sheet regions)
 
@@ -28,8 +30,8 @@ This software is partially documented in
 	NCAR Global Model Topography Generation Software for Unstructured Grids. 
 	Geosci. Model Dev., 8, 3975-3986, doi:10.5194/gmd-8-3975-2015
 
-and updated by Julio Bacmeister/Peter Hjort Lauritzen for CESM2.2 support (internal smoothing, ridge finding algorithm, etc.)
-and variable resolution (Adam Herrington, Rene Wijngaard).
+and updated by Julio Bacmeister/Peter Hjort Lauritzen for CESM2.2 support (internal smoothing, 
+ridge finding algorithm, etc.) and variable resolution (Adam Herrington, Rene Wijngaard).
 
 
 Overview of directories
@@ -69,10 +71,13 @@ See cubed_to_target/ne30pg3.sh. Execute (on Cheyenne) with:
 
 Fast regression tests:
 
-    source regr_test1.sh     (fast version of ne30pg3.sh but using ncube=540 intermediate cubed-sphere grid data)
-    source regr_test2.sh     (low resolution variable resolution test using ncube=540 intermediate cubed-sphere grid data)
-    source regr_test2_lap.sh (same as regr_test2.sh but using Laplacian smoother)
-    source regr_test3.sh     (low resolution test for lat-lon grid using ncube=540 intermediate cubed-sphere grid data)
+    source regr_test1.sh     -fast version of ne30pg3.sh but using ncube=540 
+    	   		      intermediate cubed-sphere grid data
+    source regr_test2.sh     -low resolution variable resolution test using ncube=540 
+    	   		      intermediate cubed-sphere grid data
+    source regr_test2_lap.sh -same as regr_test2.sh but using Laplacian smoother
+    source regr_test3.sh      low resolution test for lat-lon grid using ncube=540 
+    	   		      intermediate cubed-sphere grid data
 
 
 regression-test-data:
