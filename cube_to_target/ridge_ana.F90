@@ -1938,21 +1938,28 @@ end subroutine THINOUT_LIST
 
   real(r8) :: lat22,lon22,a22,b22,dx2,dy2,cosll
   real(r8) :: lat22s,lon22s,a22s,b22s
+  real(r8) :: To_Radians
 
   integer  :: i,j,isubr,ipanel22
   integer  :: alloc_error
 
+    if ( maxval( abs( target_center_lat )) > 2.0 ) then
+       ! Center coords are in DEGREES. Rescale.
+       To_Radians = PI/180.
+    else
+       ! Center coords are in RADIANS. Leave alone.
+       To_Radians=  1.
+    endif
 
     allocate (ang22_target(ntarget,nsubr),stat=alloc_error )
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for ang22_target'; stop; endif
     ang22_target = 0.
 
-
 ! Calculate angles in lat-lon system
 
   do i=1,ntarget
-     lon22 = target_center_lon(i) * PI/180.
-     lat22 = target_center_lat(i) * PI/180.
+     lon22 = target_center_lon(i) * To_Radians
+     lat22 = target_center_lat(i) * To_Radians
      call CubedSphereABPFromRLL(lon22, lat22, a22, b22, ipanel22 , .true. )
 
      do isubr=1,nsubr
