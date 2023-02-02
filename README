@@ -2,7 +2,7 @@ June 2022, NCAR.
 
 User's guide: https://github.com/NCAR/Topo/wiki/User's-Guide
 
-What's new in version 2.0:
+What's new in version 2.0.1:
 
 	*Command-line execution (e.g.):
 
@@ -24,7 +24,7 @@ What's new in version 2.0:
 
 	*CESM compliant metadata on netCDF file
 
-
+Please note important bug fix in tag NCAR_Topo_2_0_1
 
 This software is partially documented in
 
