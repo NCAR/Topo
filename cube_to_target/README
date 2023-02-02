@@ -6,6 +6,7 @@ Example of job on Cheyenne:
 
 git clone https://github.com/NCAR/Topo
 cd Topo
+git checkout NCAR_Topo_2_0_1
 module load gnu/9.1.0
 cd cube_to_target
 make
