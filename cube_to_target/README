@@ -1,1 +1,8 @@
+Example of job on Cheyenne:
 
+git clone https://github.com/NCAR/Topo
+cd Topo
+module load gnu/9.1.0
+cd cube_to_target
+make
+qcmd -l walltime=12:00:00 -l select=1:ncpus=1 -- ./cube_to_target --grid_descriptor_file /glade/p/cesmdata/inputdata/atm/cam/coords/ne16pg3_scrip_170725.nc --intermediate_cs_name /glade/p/cgd/amp/pel/topo/cubedata/gmted2010_modis_bedmachine-ncube3000-220518.nc --output_grid ne16pg3 --smoothing_scale 200.0 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu' >& out &
