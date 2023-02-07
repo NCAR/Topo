@@ -1,4 +1,4 @@
-June 2022, NCAR.
+February 2023, NCAR.
 
 User's guide: https://github.com/NCAR/Topo/wiki/User's-Guide
 
@@ -10,6 +10,14 @@ What's new in version 2.0.1:
 			 --intermediate_cs_name gmted2010_modis_bedmachine-ncube3000-220518.nc 
   	                 --output_grid ne30pg3 --smoothing_scale 100.0 
 			 --name_email_of_creator 'Peter Hjort Lauritzen, pel@ucar.edu'
+
+  	 Note: if you get the error message
+	
+	  No smoothed topo file specified
+ 	  Required argument not specified: 
+ 	  grid_descriptor_file
+
+	 you are probably using Intel compiler. Please use GNU as outlined in the User's guide.
 
 	*New improved source topography data (ice sheet regions)
 	 See https://github.com/NCAR/Topo/issues/10
