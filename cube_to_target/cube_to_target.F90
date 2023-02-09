@@ -315,34 +315,6 @@ program convterr
     str_dir = 'output'
   end if
   
-  if (lregional_refinement) then
-    write(*,*) "rrfac_max = ", rrfac_max
-    if (rrfac_max<1) then
-      write(*,*) "refinement factor must be >1"
-      stop
-    end if
-    if (lrrfac_manipulation) then
-      write(*,*) " "
-      write(*,*) " lrrfac_manipulation=.TRUE. -> the following manipulation of rrfac_max is taking place:"
-      write(*,*) " "
-      write(*,*) "   rrfac = REAL(NINT(rrfac))"
-      write(*,*) "   where (rrfac.gt.rrfac_max) rrfac = rrfac_max"
-      write(*,*) "   where (rrfac.lt.1.0) rrfac = 1.0"
-      write(*,*) "   Laplacian smoother is applied to rrfac"
-      write(*,*) "   (same level of smoothing as PHIS)"
-      write(*,*) " "
-    end if
-  else
-    if (lrrfac_manipulation) then
-      write(*,*) "setting lrrfac_manipulation=.TRUE. (namelist option -v or --rrfac_manipulation)"
-      write(*,*) "has no effect when not running regional refinement. Regional refinement is "
-      write(*,*) "activated with -y=R --rrfac_max=R where R is the maximum refinement factor"
-      write(*,*) " "
-      write(*,*) "To keep the user safe - ABORT"
-      stop
-    end if
-  end if
-  
   write(*,*) " "
   write(*,*) "Namelist settings"
   write(*,*) "================="
@@ -384,6 +356,44 @@ program convterr
 
     allocate (area_target(ntarget),stat=alloc_error )
     area_target = 0.0
+  end if
+
+  if (lregional_refinement) then
+    write(*,*) "rrfac_max = ", rrfac_max
+    if (rrfac_max.le.1) then
+      if (rrfac_max<1) then
+        write(*,*) "refinement factor must be >1"
+        stop
+      end if
+      if (rrfac_max==1) then
+        write(*,*) "max refinement factor must be specified in namelist for regional refinement"
+        write(*,*) " "
+        write(*,*) "  --rrfac_max xx"
+        write(*,*) " "
+        write(*,*) "where xx = coarse resolution / finest resolution"
+        stop
+      end if
+    end if
+    if (lrrfac_manipulation) then
+      write(*,*) " "
+      write(*,*) " lrrfac_manipulation=.TRUE. -> the following manipulation of rrfac_max is taking place:"
+      write(*,*) " "
+      write(*,*) "   rrfac = REAL(NINT(rrfac))"
+      write(*,*) "   where (rrfac.gt.rrfac_max) rrfac = rrfac_max"
+      write(*,*) "   where (rrfac.lt.1.0) rrfac = 1.0"
+      write(*,*) "   Laplacian smoother is applied to rrfac"
+      write(*,*) "   (same level of smoothing as PHIS)"
+      write(*,*) " "
+    end if
+  else
+    if (lrrfac_manipulation) then
+      write(*,*) "setting lrrfac_manipulation=.TRUE. (namelist option -v or --rrfac_manipulation)"
+      write(*,*) "has no effect when not running regional refinement. Regional refinement is "
+      write(*,*) "activated with -y=R --rrfac_max=R where R is the maximum refinement factor"
+      write(*,*) " "
+      write(*,*) "To keep the user safe - ABORT"
+      stop
+    end if
   end if
   
   ! Read in topo data on cubed sphere grid
