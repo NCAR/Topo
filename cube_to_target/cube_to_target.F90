@@ -359,6 +359,14 @@ program convterr
   end if
 
   if (lregional_refinement) then
+    if (lstop_after_smoothing) then
+      write(*,*) "stop after smoothing is not supported for variable resolution grids!"
+      write(*,*) " "
+      write(*,*) "stop after smoothing is intended for efficiency when produing several"
+      write(*,*) "topo files which need the same amount of smoothing but different"
+      write(*,*) "target grids"
+      stop
+    end if
     write(*,*) "rrfac_max = ", rrfac_max
     if (rrfac_max.le.1) then
       if (rrfac_max<1) then
