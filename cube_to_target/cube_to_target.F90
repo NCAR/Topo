@@ -506,15 +506,25 @@ program convterr
     ! Laplacian smoother standard file name
     !
     if(lfind_ridges) then
-      nsw = nwindow_halfwidth
-      call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile ,"('_nc',i0.4,'_Laplace',i0.4)" ) &
-           ncube, NINT(smoothing_scale)
+      nsw = nwindow_halfwidth        
+      if (lsmoothing_over_ocean) then
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile ,"('_nc',i0.4,'_Laplace',i0.4)" ) &
+             ncube, NINT(smoothing_scale)
+      else
+        call DATE_AND_TIME( DATE=date,TIME=time)
+        write( ofile ,"('_nc',i0.4,'_Laplace',i0.4,'_noleak')" ) &
+             ncube, NINT(smoothing_scale)
+      endif
     else
       call DATE_AND_TIME( DATE=date,TIME=time)
-      write( ofile , &
-           "('_nc',i0.4,'_NoAniso_Laplace',i0.4)" ) & 
-           ncube, NINT(smoothing_scale)
+      if (lsmoothing_over_ocean) then
+        write( ofile , "('_nc',i0.4,'_NoAniso_Laplace',i0.4)" ) & 
+             ncube, NINT(smoothing_scale)
+      else
+        write( ofile , "('_nc',i0.4,'_NoAniso_Laplace',i0.4,'_noleak')" ) & 
+             ncube, NINT(smoothing_scale)
+      end if
     endif
   end if
   
