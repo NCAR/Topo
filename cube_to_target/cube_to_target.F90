@@ -358,6 +358,14 @@ program convterr
     area_target = 0.0
   end if
 
+  if (maxval(target_rrfac)/minval(target_rrfac)<1.5) then
+    write(*,*) "rrfac specified but little variation: max(rrfac)/min(rrfac)=",maxval(target_rrfac)/minval(target_rrfac)
+    write(*,*) "Code will assume this is a uniform resolution setup"
+    write(*,*) "setting rrfac_max=1 and lregional_refinement=.false."
+    rrfac_max = 1.0
+    lregional_refinement=.false.
+  end if
+
   if (lregional_refinement) then
     if (lstop_after_smoothing) then
       write(*,*) "stop after smoothing is not supported for variable resolution grids!"
