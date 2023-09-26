@@ -101,7 +101,6 @@
         implicit none
 
 #     include         <netcdf.inc>
-
 !
 ! Dummy arguments
 !
@@ -254,8 +253,13 @@
         ncstat = nf_def_dim (nc_grid_id, 'nlat', jm, nc_lat_id)
         call handle_err(ncstat)        
 
-        ncstat = nf_def_dim (nc_grid_id, 'lpole', lpole, nc_lat_id)
+        if (lpole) then
+          ncstat = nf_def_dim(nc_grid_id, 'lpole', 1, nc_lat_id)
+        else
+          ncstat = nf_def_dim (nc_grid_id, 'lpole', 0, nc_lat_id)
+        end if
         call handle_err(ncstat)        
+
 
 
 
@@ -321,7 +325,7 @@
         nc_dims2_id(1) = nc_gridcorn_id
         nc_dims2_id(2) = nc_gridsize_id
         
-        ncstat = nf_def_var (nc_grid_id, 'grid_corner_lat', NF_DOUBLE,2, nc_dims2_id, nc_grdcrnrlat_id)
+        ncstat = nf_def_var (nc_grid_id, 'grid_corner_lat', NF_DOUBLE,2, nc_dims2_id(1), nc_grdcrnrlat_id)
         call handle_err(ncstat)
         
         ncstat = nf_put_att_text (nc_grid_id, nc_grdcrnrlat_id, 'units',7, 'degrees')
@@ -331,7 +335,7 @@
         !*** define grid corner longitude array
         !***
         
-        ncstat = nf_def_var (nc_grid_id, 'grid_corner_lon', NF_DOUBLE,2, nc_dims2_id, nc_grdcrnrlon_id)
+        ncstat = nf_def_var (nc_grid_id, 'grid_corner_lon', NF_DOUBLE,2, nc_dims2_id(1), nc_grdcrnrlon_id)
         call handle_err(ncstat)
         
         ncstat = nf_put_att_text (nc_grid_id, nc_grdcrnrlon_id, 'units',7, 'degrees')
