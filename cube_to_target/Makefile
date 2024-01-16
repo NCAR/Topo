@@ -1,4 +1,4 @@
-include ../machine_settings.make
+include ./machine_settings.make
 EXEDIR = .
 EXENAME = cube_to_target
 RM = rm
@@ -7,7 +7,7 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 .F90.o:
-	$(FC) $(FFLAGS) $< $(LDFLAGS)
+	$(FC) $(FFLAGS) $< $(LDFLAGS) $(LIBS)
 
 #------------------------------------------------------------------------
 # Default rules and macros
@@ -16,7 +16,7 @@ RM = rm
 OBJS := reconstruct.o remap.o shr_kind_mod.o shared_vars.o rot.o smooth_topo_cube.o ridge_utils.o ridge_ana.o cube_to_target.o f90getopt.o
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
-	$(FC) -o $@ $(OBJS) $(LDFLAGS)
+	$(FC) -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
 	mkdir -p output
 
 clean:
