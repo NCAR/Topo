@@ -1,6 +1,7 @@
 DEBUG=FALSE
 
-FC = $(shell nf-config --fc)
+FC ?= $(shell nf-config --fc)
+# The ? mark sets the compiler to whatever compiler you've chosen in your module environment.
 LDFLAGS = $(shell nf-config --flibs)
 LIBS = $(shell nc-config --libs)
 FFLAGS = -c $(shell nf-config --fflags)
