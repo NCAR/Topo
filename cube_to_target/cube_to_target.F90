@@ -29,7 +29,7 @@ program convterr
   logical :: ldbg=.false.
   real(r8):: wt
   integer :: ii,ip,jx,jy,jp,np,counti !counters,dimensions
-  integer :: jmax_segments,jall,jall_anticipated !overlap segments
+  integer :: jmax_segments=-1,jall,jall_anticipated !overlap segments
   integer, parameter :: ngauss = 3               !quadrature for line integrals
   
   integer                              :: ntarget, ncorner, nrank, nlon, nlat               !target grid dimensions
@@ -122,7 +122,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(23)
+  type(option_s):: opts(24)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -150,6 +150,7 @@ program convterr
   opts(21) = option_s( "distance_weighted_smoother",.false.   , 'b'   ,.false.       ,.false.)
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
+  opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -163,7 +164,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:m", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -275,6 +276,12 @@ program convterr
       lsmoothing_over_ocean = .TRUE.
       command_line_arguments = TRIM(command_line_arguments)//' --smoothing_over_ocean '
       opts(23)%specified = .true.
+    case( 'j' )
+      read (optarg, '(i7)') ioptarg
+      jmax_segments = ioptarg
+      write(str,*) ioptarg
+      command_line_arguments = TRIM(command_line_arguments)//' --jmax_segments '//TRIM(ADJUSTL(str))
+      opts(24)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -337,6 +344,7 @@ program convterr
   write(*,*) "ldistance_weighted_smoother     = ",ldistance_weighted_smoother
   write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
+  write(*,*) "jmax_segments                   = ",jmax_segments
 
   !*********************************************************
   
@@ -567,15 +575,24 @@ program convterr
         write(*,*) "ERROR: da_min_target =",da_min_target
         stop
       else
-        write(*,*) "using dynamic estimate for jmax_segments " 
-        !++ jtb : Increased by 4x. Needed for c1440 FV3
-        !jmax_segments = 10 * ncorner*NINT(da_min_target/da_min_ncube)!phl - FAILS for MPAS ~3km
-        jmax_segments = 4 * ncorner*NINT(da_min_target/da_min_ncube)
+        if (jmax_segments<0) then
+           write(*,*) "using dynamic estimate for jmax_segments " 
+           !++ jtb : Increased by 4x. Needed for c1440 FV3
+           !jmax_segments = 10 * ncorner*NINT(da_min_target/da_min_ncube)!phl - FAILS for MPAS ~3km
+           jmax_segments = 4 * ncorner*NINT(da_min_target/da_min_ncube)
+           jmax_segments = MIN( jmax_segments, 10000 )
+        else
+           write(*,*) "jmax_segments set by user = ",jmax_segments
+        end if
       end if
       write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
       write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
     else
-      jmax_segments = 100000   !can be tweaked
+      if (jmax_segments<0) then
+         jmax_segments = 100000   !can be tweaked
+      else
+         write(*,*) "jmax_segments set by user = ",jmax_segments
+      end if
     end if
     if (real(ntarget)*real(jmax_segments)>huge(real(jall_anticipated))) then
       jall_anticipated = 1080000000 !huge(jmax_segments) !anticipated number of weights (can be tweaked)
@@ -591,7 +608,7 @@ program convterr
       write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
     end if
     
-    jmax_segments = MIN( jmax_segments, 10000 )
+
     
     nreconstruction = 1
     allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
@@ -1147,6 +1164,7 @@ program convterr
     write (6,*) " "
     write (6,*) "-a, --grid_descriptor_file_gll=<string>         -> grid descriptor file for dual grid configurations"
     write (6,*) "-s, --interpolate_phis                          -> bilinear interpolate PHIS to target grid (instead of remapping)"
+    write (6,*) "-j, --jmax_segments                             -> max number of overlap segments"
 
 
     stop
