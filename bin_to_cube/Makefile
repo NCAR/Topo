@@ -1,4 +1,4 @@
-include ../machine_settings.make
+include ./machine_settings.make
 EXEDIR = .
 EXENAME = bin_to_cube
 RM = rm
@@ -7,7 +7,8 @@ RM = rm
 .SUFFIXES: .F90 .o
 
 .F90.o:
-	$(FC) $(FFLAGS) $< $(LDFLAGS)
+	$(FC) $(FFLAGS) $< $(LDFLAGS) $(LIBS)
+
 
 #------------------------------------------------------------------------
 # Default rules and macros
@@ -16,9 +17,10 @@ RM = rm
 OBJS := bin_to_cube.o shr_kind_mod.o
 
 $(EXEDIR)/$(EXENAME): $(OBJS)
-	$(FC) -o $@ $(OBJS) $(LDFLAGS)
+	$(FC) -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
+	mkdir -p output
 
 clean:
-	$(RM) -f $(OBJS)  *.mod $(EXEDIR)/$(EXENAME)
+	$(RM) -f $(OBJS)  *.mod $(EXEDIR)/$(EXENAME) *.nl
 
 bin_to_cube.o: shr_kind_mod.o
