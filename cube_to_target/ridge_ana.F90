@@ -465,6 +465,9 @@ write(*,*) " SHAPE ", shape( peaks%i )
         if(do_refine) nswx = NINT( nswx / rr_factor(i,j,np) )
         if(do_refine) RefFac(ipk) = rr_factor(i,j,np) 
 
+        !++jtb 05/26/24: Protection against too-small nswx
+        nswx = MAX( 4 , nswx )
+
         NSWx_diag( ipk ) = nswx
 
              allocate( suba( 2*nswx+1 ,  2*nswx+1 ) )
@@ -1228,8 +1231,9 @@ end subroutine THINOUT_LIST
                    
     i_last = -9999
 
-     call repaint( ncube, mxdisC, uniqidC, repntC )
-
+    ! call repaint( ncube, mxdisC, uniqidC, repntC )
+    repntC = mxdisC * 0._r8
+    
 ! Previous calculation of wghts_target was bad because "flat" areas had ANGLX=0.
 ! Fix by setting ANGLX to "bad" value in "flats" before remap
      where( mxdisC < 0.1 )
@@ -2496,6 +2500,8 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              
              
              NSWx = NSW / RefFac(ipk)
+             !++jtb 05/26/24: Protection against too-small nswx
+             NSWx = MAX( 4 , NSWx )
 
              if (.NOT.(allpixels)) then
 #if 0
