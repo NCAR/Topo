@@ -1233,7 +1233,7 @@ program convterr
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (trim(output_fname), NF_64BIT_OFFSET , foutid)
+    status = nf_create (trim(output_fname), NF_64BIT_DATA, foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output
@@ -2003,7 +2003,7 @@ program convterr
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (fout, NF_64BIT_OFFSET , foutid)
+    status = nf_create (fout, NF_64BIT_DATA, foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output

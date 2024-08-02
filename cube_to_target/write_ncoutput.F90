@@ -72,7 +72,7 @@ subroutine wrtnc2_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (fout, NF_64BIT_OFFSET , foutid)
+    status = nf_create (fout, NF_64BIT_DATA, foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output

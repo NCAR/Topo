@@ -727,7 +727,7 @@ subroutine wrt_cube(ncube,terr_cube,landfrac_cube,landm_coslat_cube,var30_cube,r
   end do
   
   WRITE(*,*) "Create NetCDF file for output: ", TRIM(output_file)
-  ncstat = nf_create (TRIM(output_file), NF_64BIT_OFFSET,nc_grid_id)
+  ncstat = nf_create (TRIM(output_file), NF_64BIT_DATA,nc_grid_id)
   call handle_err(ncstat)
   
   ncstat = nf_put_att_text (nc_grid_id, NF_GLOBAL, 'title',len_trim(grid_name), grid_name)

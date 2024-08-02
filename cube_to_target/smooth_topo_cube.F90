@@ -764,7 +764,7 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fna
   !  Create NetCDF file for output
   !
   print *,"Create NetCDF file for output: ",trim(output_fname)
-  status = nf_create (trim(output_fname), NF_64BIT_OFFSET , foutid)
+  status = nf_create (trim(output_fname), NF_64BIT_DATA, foutid)
   if (status .ne. NF_NOERR) call handle_err(status)
   !
   ! Meta data for CESM compliance
