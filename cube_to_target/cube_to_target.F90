@@ -456,8 +456,8 @@ program convterr
       end if
     end if
     if (ncube_sph_smooth_coarse<5) then
-      write(*,*) "can not find ridges when ncube_sph_smooth_coarse<5"
-      STOP
+       write(*,*) "SHOULD NOT try to find ridges when ncube_sph_smooth_coarse<5"
+       write(*,*) "but going ahead anyway ... ... "
     end if
   end if
 
