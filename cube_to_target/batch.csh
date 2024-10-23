@@ -17,7 +17,7 @@
 # This job's working directory
 #
 
-cd /glade/work/juliob/Topo/MyTopo/cube_to_target
+#cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.csh ne30pg3 100 Test01
+./create_topo.csh ne30pg3 100 Test02

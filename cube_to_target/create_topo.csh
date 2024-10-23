@@ -51,6 +51,8 @@ set Fi = "0"
 echo "Here you are "
 set Yfac = "1"
 
+set scrip_gll='None'
+
 if ( $ogrid == 'geos_fv_c48' ) then
    set scrip='PE48x288-CF.nc4'
 endif
@@ -77,12 +79,15 @@ if ( $ogrid == 'scam' ) then
 endif
 if ( $ogrid == 'ne120pg3' ) then
    set scrip='ne120pg3_scrip_170628.nc'
+   set scrip_gll='ne120np4_pentagons_100310.nc' 
 endif
 if ( $ogrid == 'ne240pg3' ) then
    set scrip='ne240pg3_scrip_170628.nc'
+   set scrip_gll='ne240np4_091227_pentagons.nc'
 endif
 if ( $ogrid == 'ne30pg3' ) then
    set scrip='ne30pg3.nc'
+   set scrip_gll='ne30np4_091226_pentagons.nc'
 endif
 if ( $ogrid == 'Arctic' ) then
    ## set scrip='ne0ARCTICne30x4_scrip_c191212.nc'
@@ -104,6 +109,8 @@ endif
 #set cstopo = '/project/amp/juliob/Topo-generate-devel/Topo/inputdata/cubed-sphere-topo/gmted2010_modis_bedmachine-ncube3000-220518.nc'
 
 set scrip = '/glade/work/juliob/GridFiles/Scrip/'${scrip}
+set scrip_gll = '/glade/work/juliob/GridFiles/Scrip/'${scrip_gll}
+
 set cstopo = '/glade/work/juliob/Topo/CubeData/gmted2010_modis_bedmachine-ncube3000-220518.nc'
 
 
@@ -132,9 +139,11 @@ echo  "SMooth topo file= "$smtopo
 
 
 #READ IN Smooth and find ridges
-./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
-#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --rrfac_max=$Yfac --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
+./cube_to_target --grid_descriptor_file=$scrip --grid_descriptor_file_gll=$scrip_gll --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
 
+
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --rrfac_max=$Yfac --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
 #./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi --smooth_topo_file=$smtopo -u 'juliob@ucar.edu' -q 'output/' -z
 
 
