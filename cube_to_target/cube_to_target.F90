@@ -107,6 +107,7 @@ program convterr
   real(r8), allocatable, dimension(:) :: uniqiC , uniqwC,  cwghtC, wedgoC
   real(r8), allocatable, dimension(:) :: anglxC,  anisoC,  hwdthC, clngtC, mxdisC
   real(r8), allocatable, dimension(:) :: riseqC,  fallqC,  mxvrxC, mxvryC, nodesC
+  real(r8), allocatable, dimension(:) :: residHC, residIC
   integer,  allocatable, dimension(:) :: itrgtC
   !--JTB
 
@@ -949,6 +950,7 @@ program convterr
       allocate( riseqC( ncube*ncube*6 ), fallqC( ncube*ncube*6 )  )
       allocate( mxvrxC( ncube*ncube*6 ), mxvryC( ncube*ncube*6 )  )
       allocate( nodesC( ncube*ncube*6 ), cwghtC( ncube*ncube*6 ) )
+      allocate( residHC( ncube*ncube*6 ), residIC( ncube*ncube*6 ) )
       allocate( itrgtC( ncube*ncube*6 )  )
   
  
@@ -961,6 +963,9 @@ program convterr
            riseqC,fallqC,mxvrxC,mxvryC, & 
            nodesC,cwghtC,wedgoC  )
 
+      call residual(ncube, terr_dev, nodesC, residHC, residIC ) 
+
+
       call remapridge2target(area_target,target_center_lon,target_center_lat, & 
            weights_eul_index_all(1:jall,:), & 
            weights_lgr_index_all(1:jall),weights_all(1:jall,:),ncube,jall,&
@@ -968,7 +973,8 @@ program convterr
            output_grid, ldevelopment_diags,&
            terr_dev, uniqiC, uniqwC, anisoC, &
            anglxC,mxdisC,hwdthC,clngtC, &
-           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, itrgtC  )
+           riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, &
+           residHC,residIC,itrgtC  )
 
       if (lridgetiles) then 
       call remapridge2tiles ( ntarget,ncube,jall,nreconstruction,     &
@@ -1184,7 +1190,7 @@ program convterr
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
-         fallq_target, isovar_target
+         fallq_target, isovar_target, isowgt_target
     
     
     
@@ -1218,7 +1224,7 @@ program convterr
     integer            :: landfracid,sghid,sgh30id,landm_coslatid
     !---ARH
     integer             :: mxdisid, ang22id, anixyid, anisoid, mxvrxid, mxvryid, hwdthid, wghtsid, anglxid, gbxarid
-    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid,isovarid
+    integer             :: sghufid, terrufid, clngtid, cwghtid, countid,riseqid,fallqid,rrfacid,isovarid,isowgtid
     integer             :: ThisId
     
     integer            :: status    ! return value for error control of netcdf routin
@@ -1313,6 +1319,11 @@ program convterr
       if (status .ne. NF_NOERR) then
         call handle_err(status)
         write(*,*) "ISOVAR error"
+      end if      
+      status = nf_def_var (foutid,'ISOWGT', NF_DOUBLE, 1, nid(1), isowgtid)
+      if (status .ne. NF_NOERR) then
+        call handle_err(status)
+        write(*,*) "ISOWGT error"
       end if      
       status = nf_def_var (foutid,'GBXAR', NF_DOUBLE, 1, nid(1), gbxarid)
       if (status .ne. NF_NOERR) then
@@ -1417,12 +1428,6 @@ program convterr
          'area of target grid cell')
     status = nf_put_att_text   (foutid, areaid, 'units'     , 1, 'm+2')
     
-    status = nf_put_att_double (foutid, isovarid, 'missing_value', nf_double, 1, fillvalue)
-    status = nf_put_att_double (foutid, isovarid, '_FillValue'   , nf_double, 1, fillvalue)
-    status = nf_put_att_text   (foutid, isovarid, 'long_name' , 30, &
-         'residual variance after ridges')
-    status = nf_put_att_text   (foutid, isovarid, 'units'     , 1, 'm+2')
-
     status = nf_put_att_text (foutid,latvid,'long_name', 8, 'latitude')
     if (status .ne. NF_NOERR) call handle_err(status)
     status = nf_put_att_text (foutid,latvid,'units', 13, 'degrees_north')
@@ -1529,12 +1534,21 @@ program convterr
        ThisId = isovarid
        status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
        status = nf_put_att_double (foutid, ThisId, '_FillValue'   , nf_double, 1, fillvalue)
-       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 50, &
-       'SQRT(Variance) from topo NOT represented by ridges')
+       status = nf_put_att_text   (foutid, ThisId, 'long_name' , 45, &
+       'Residual variance from topo NOT rep by ridges')
        !12345678901234567890123456789012345678901234567890
        !         10        20        30        40        
-       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, '1')
+       status = nf_put_att_text   (foutid, ThisId, 'units'     , 1, 'm')
        status = nf_put_att_text   (foutid, ThisId, 'filter'    , 4, 'none')
+
+       status = nf_put_att_double (foutid, isowgtid, 'missing_value', nf_double, 1, fillvalue)
+       status = nf_put_att_double (foutid, isowgtid, '_FillValue'   , nf_double, 1, fillvalue)
+       status = nf_put_att_text   (foutid, isowgtid, 'long_name' , 32, &
+       'area weight of residual variance')
+       !12345678901234567890123456789012345678901234567890
+       !         10        20        30        40        
+       status = nf_put_att_text   (foutid, isowgtid, 'units'     , 1, '1')
+
 
        ThisId=gbxarid
        status = nf_put_att_double (foutid, ThisId, 'missing_value', nf_double, 1, fillvalue)
@@ -1663,6 +1677,16 @@ program convterr
       if (status .ne. NF_NOERR) call handle_err(status)
       print*,"done writing CLNGT data"
             
+      print*,"writing ISOWGT  data",MINVAL(isowgt_target),MAXVAL(isowgt_target)
+      status = nf_put_var_double (foutid, isowgtid, isowgt_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing ISOWGT data"
+      
+      print*,"writing ISOVAR  data",MINVAL(isovar_target),MAXVAL(isovar_target)
+      status = nf_put_var_double (foutid, isovarid, isovar_target)
+      if (status .ne. NF_NOERR) call handle_err(status)
+      print*,"done writing ISOVAR data"
+      
       print*,"writing GBXAR  data",MINVAL(area_target),MAXVAL(area_target)
       status = nf_put_var_double (foutid, gbxarid, area_target)
       if (status .ne. NF_NOERR) call handle_err(status)
