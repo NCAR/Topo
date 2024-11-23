@@ -71,8 +71,8 @@ endif
 if ( $ogrid == 'geos_fv_c1440' ) then
    set scrip='PE1440x8640-CF.nc4'
 endif
-if ( $ogrid == 'fv_0.9x1.25' ) then
-   set scrip='fv_0.9x1.25.nc'
+if ( $ogrid == 'fv0.9x1.25' ) then
+   set scrip='fv0.9x1.25.nc'
 endif
 if ( $ogrid == 'scam' ) then
    set scrip='fv_0.9x1.25.nc'
@@ -140,6 +140,7 @@ echo  "SMooth topo file= "$smtopo
 
 #READ IN Smooth and find ridges
 ./cube_to_target --grid_descriptor_file=$scrip --grid_descriptor_file_gll=$scrip_gll --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
+#./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z
 
 
 #./cube_to_target --grid_descriptor_file=$scrip --intermediate_cs_name=$cstopo --output_grid=$ogrid --smoothing_scale=$Co --fine_radius=$Fi -u 'juliob@ucar.edu' -q 'output/' -z

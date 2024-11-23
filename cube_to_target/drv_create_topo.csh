@@ -20,4 +20,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.csh ne30pg3 100 Test02
+./create_topo.py --ogrid=fv0.9x1.25 --smoothing_scale=14 --tag=Q02
