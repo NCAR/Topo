@@ -25,6 +25,108 @@ def clean_case_directory(case_dir):
         print(f"Cleaning existing case directory: {case_dir}")
         shutil.rmtree(case_dir)
 
+def gridInfo(grid):
+    # Default values
+    scrip = None
+    scrip_gll = None
+    yfac = None
+
+    base_path = "/glade/work/juliob/GridFiles/Scrip/"
+
+    # Conditional logic for all grids
+    if grid == "geos_fv_c48":
+        scrip = f"{base_path}PE48x288-CF.nc4"
+    elif grid == "geos_fv_c90":
+        scrip = f"{base_path}PE90x540-CF.nc4"
+    elif grid == "geos_fv_c180":
+        scrip = f"{base_path}PE180x1080-CF.nc4"
+    elif grid == "geos_fv_c360":
+        scrip = f"{base_path}PE360x2160-CF.nc4"
+    elif grid == "geos_fv_c720":
+        scrip = f"{base_path}PE720x4320-CF.nc4"
+    elif grid == "geos_fv_c1440":
+        scrip = f"{base_path}PE1440x8640-CF.nc4"
+    elif grid == "fv0.9x1.25" or grid == "scam" or grid == "fv1x1":
+        scrip = f"{base_path}fv0.9x1.25.nc"
+    elif grid == "ne120pg3":
+        scrip = f"{base_path}ne120pg3_scrip_170628.nc"
+        scrip_gll = f"{base_path}ne120np4_pentagons_100310.nc"
+    elif grid == "ne240pg3":
+        scrip = f"{base_path}ne240pg3_scrip_170628.nc"
+        scrip_gll = f"{base_path}ne240np4_091227_pentagons.nc"
+    elif grid == "ne30pg3":
+        scrip = f"{base_path}ne30pg3.nc"
+        scrip_gll = f"{base_path}ne30np4_091226_pentagons.nc"
+    elif grid == "Arctic":
+        scrip = f"{base_path}ne0ARCTICne30x4_np4_SCRIP.nc"
+        yfac = "4"
+    elif grid == "POLARRES":
+        scrip = f"{base_path}POLARRES_ne30x4_np4_SCRIP.nc"
+        yfac = "4"
+    elif grid == "HMA":
+        scrip = f"{base_path}HMACUBIT_ne30x16_np4_SCRIP.nc"
+    else:
+        raise ValueError(f"Unrecognized grid: {grid}")
+
+    # Return results as a dictionary
+    Res = {
+        "scrip": scrip,
+        "scrip_gll": scrip_gll,
+        "yfac": yfac
+                    }
+
+    return Res
+
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False ):
+    """
+    Creates a command for subprocess.run, in this list form:
+    
+    command = [
+        "./cube_to_target",
+        f"--grid_descriptor_file={scrip}",
+        f"--intermediate_cs_name={cstopo}",
+        f"--output_grid={ogrid}",
+        f"--smoothing_scale={smoothing_scale}",
+        f"--fine_radius=0",
+        "-u", "juliob@ucar.edu",
+        "-q", "output/",
+        "-z"
+         ]
+    """
+    #----------------------------------------------------
+    # Some of these 'optional' arguments are not really
+    # optional - ogrid, cstopo, scrip and smoothing_scale.
+    # Sorry.
+    #-----------------------------------------------------
+    command = [  "./cube_to_target" ]
+
+    if scrip: 
+        command.append(f"--grid_descriptor_file={scrip}")
+    if scrip_gll: 
+        command.append(f"--grid_descriptor_file_gll={scrip_gll}")
+    if cstopo: 
+        command.append(f"--intermediate_cs_name={cstopo}")
+    if ogrid: 
+        command.append(f"--output_grid={ogrid}")
+    if smoothing_scale: 
+        command.append(f"--smoothing_scale={smoothing_scale}")
+
+    command.append(f"--fine_radius=0")
+
+    if yfac: 
+        command.append(f"--rrfac_max={yfac}")
+
+    command.append(f"-u juliob@ucar.edu")
+    command.append(f"-q output")
+
+    if development_diags==True: 
+        command.append(f"-z")
+
+    print("created command line", flush=True)
+    print( command, flush=True )
+    
+    return command
+
 def main():
 
     # Parse command-line arguments
@@ -78,90 +180,47 @@ def main():
     os.chdir(case_dir)
 
     
-    # Load gcc and compile
-    # subprocess.run(["module", "load", "gcc"], shell=True)
-    #command = "module load gcc"
-
+    #----------------------------------------------------------
+    # Load gcc and compile.  Note these command are glommed 
+    # together because otherwise gcc's settting of FC=gfortran
+    # is not passed to the make commands ...
+    #----------------------------------------------------------
     command=f"module load gcc; gmake -f Makefile clean; gmake -f Makefile"
     result = subprocess.run(command, shell=True, executable="/bin/tcsh", capture_output=True, text=True)
     print(result.stdout)
     print(result.stderr)
     print("Return code:", result.returncode)
 
-    #subprocess.run(["make", "-f", "Makefile", "clean"], shell=True)
-    #subprocess.run(["make", "-f", "Makefile"], shell=True)
-
-    # Define grid descriptor
-    scrip = None
-    scrip_gll = None
-    yfac = "1"
-
-    ogrid_to_scrip = {
-        "geos_fv_c48": "PE48x288-CF.nc4",
-        "geos_fv_c90": "PE90x540-CF.nc4",
-        "geos_fv_c180": "PE180x1080-CF.nc4",
-        "geos_fv_c360": "PE360x2160-CF.nc4",
-        "geos_fv_c720": "PE720x4320-CF.nc4",
-        "geos_fv_c1440": "PE1440x8640-CF.nc4",
-        "fv0.9x1.25": "fv0.9x1.25.nc",
-        "scam": "fv0.9x1.25.nc",
-        "ne120pg3": "ne120pg3_scrip_170628.nc",
-        "ne240pg3": "ne240pg3_scrip_170628.nc",
-        "ne30pg3": "ne30pg3.nc",
-        "Arctic": "ne0ARCTICne30x4_np4_SCRIP.nc",
-        "POLARRES": "POLARRES_ne30x4_np4_SCRIP.nc",
-        "HMA": "HMACUBIT_ne30x16_np4_SCRIP.nc"
-    }
-
-    if ogrid in ogrid_to_scrip:
-        scrip = f"/glade/work/juliob/GridFiles/Scrip/{ogrid_to_scrip[ogrid]}"
-        if ogrid == "ne120pg3":
-            scrip_gll = "/glade/work/juliob/GridFiles/Scrip/ne120np4_pentagons_100310.nc"
-        elif ogrid == "ne240pg3":
-            scrip_gll = "/glade/work/juliob/GridFiles/Scrip/ne240np4_091227_pentagons.nc"
-        elif ogrid == "ne30pg3":
-            scrip_gll = "/glade/work/juliob/GridFiles/Scrip/ne30np4_091226_pentagons.nc"
-        elif ogrid in ["Arctic", "POLARRES"]:
-            yfac = "4"
-
+    #------------------------------------------------------------------------------------
+    # Get information about destination grid 'ogrid' 
+    #------------------------------------------------------------------------------------
+    grid_info = gridInfo( ogrid )
+    scrip = grid_info['scrip']
+    scrip_gll = grid_info['scrip_gll']
+    yfac = grid_info['yfac']
+    
+    #------------------------------------------------------------------------------------
+    # Specify cubed-sphere 'intermediate' topography. Currently, code is configured 
+    # to work with a 3000x3000x6 grid, which corresponds to a grid size of around 3km.
+    # Clearly, this is a problem at k-scale resolutions.
+    #------------------------------------------------------------------------------------
     cstopo = "/glade/work/juliob/Topo/CubeData/gmted2010_modis_bedmachine-ncube3000-220518.nc"
 
     cog = f"Co{int(smoothing_scale):03d}"
-    fig = "Fi000"
     smtopo = f"topo_smooth_gmted2010_bedmachine_nc3000_{cog}.nc"
 
     print("Here you are")
     print(f"Smoothing scale: {cog}")
-    print(f"Fine radius: {fig}")
     print(f"Smooth topo file: {smtopo}")
 
-    # Run cube_to_target
-    if (scrip_gll==None):
-        command = [
-            "./cube_to_target",
-            f"--grid_descriptor_file={scrip}",
-            f"--intermediate_cs_name={cstopo}",
-            f"--output_grid={ogrid}",
-            f"--smoothing_scale={smoothing_scale}",
-            f"--fine_radius=0",
-            "-u", "juliob@ucar.edu",
-            "-q", "output/",
-            "-z"
-        ]
-    else:
-        command = [
-            "./cube_to_target",
-            f"--grid_descriptor_file={scrip}",
-            f"--grid_descriptor_file_gll={scrip_gll}",
-            f"--intermediate_cs_name={cstopo}",
-            f"--output_grid={ogrid}",
-            f"--smoothing_scale={smoothing_scale}",
-            f"--fine_radius=0",
-            "-u", "juliob@ucar.edu",
-            "-q", "output/",
-            "-z"
-        ]
-
+    # Create command line that runs cube_to_target
+    command = create_command(ogrid=ogrid, 
+                             cstopo=cstopo, 
+                             smoothing_scale=smoothing_scale, 
+                             scrip=scrip, 
+                             scrip_gll=scrip_gll, 
+                             yfac=yfac, 
+                             development_diags=True )
         
     subprocess.run(command, check=True)
 
