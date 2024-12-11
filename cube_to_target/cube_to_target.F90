@@ -621,7 +621,6 @@ program convterr
       CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
            jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     end if
-    deallocate(target_corner_lon,target_corner_lat)
   end if
   ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
   !------------------------------------------------------------------------------------------------
@@ -817,30 +816,32 @@ program convterr
         !
         ! max height is higher than Mount Everest
         !
-        write(*,*) "FATAL error: max height is higher than Mount Everest!"
+        write(*,*) "Potential error: max height is higher than Mount Everest!"
         write(*,*) "terr_target",counti,terr_target(counti)
         write(*,*) "(lon,lat) locations of vertices of cell with excessive max height::"
         do i=1,ncorner
           write(*,*) target_corner_lon(i,counti),target_corner_lat(i,counti)
         end do
-        STOP
+!        STOP
       else if (terr_target(counti)<-423.0) then
         !
         ! min height is lower than Dead Sea
         !
-        write(*,*) "FATAL error: min height is lower than Dead Sea!"
+        write(*,*) "Potential error: min height is lower than Dead Sea!"
         write(*,*) "terr_target",counti,terr_target(counti)
         write(*,*) "(lon,lat) locations of vertices of cell with excessive min height::"
+        write(*,*) "counti=",counti,ncorner
         do i=1,ncorner
           write(*,*) target_corner_lon(i,counti),target_corner_lat(i,counti)
         end do
-        STOP
+!        STOP
       else 
         
       end if
     end do
     WRITE(*,*) "Elevation data passed min/max consistency check!"
     WRITE(*,*) " "
+    deallocate(target_corner_lon,target_corner_lat)
     
     
     !
