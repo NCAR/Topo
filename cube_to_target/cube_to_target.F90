@@ -96,6 +96,7 @@ program convterr
   real (r8):: nu_lap = -1
   integer  :: smooth_phis_numcycle=-1
   real (r8):: smoothing_scale=0
+  real (r8):: compute_sgh30_from_sgh_fac=-1
   !
   INTEGER :: UNIT, ioptarg
   
@@ -122,7 +123,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(24)
+  type(option_s):: opts(25)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -151,6 +152,7 @@ program convterr
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
+  opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -282,6 +284,11 @@ program convterr
       write(str,*) ioptarg
       command_line_arguments = TRIM(command_line_arguments)//' --jmax_segments '//TRIM(ADJUSTL(str))
       opts(24)%specified = .true.
+   case( '3' )
+      read (optarg, *) compute_sgh30_from_sgh_fac
+      write(str,*) compute_sgh30_from_sgh_fac
+      command_line_arguments = TRIM(command_line_arguments)//' -- compute_sgh30_from_sgh_fac '//TRIM(ADJUSTL(str))
+      opts(25)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -345,6 +352,7 @@ program convterr
   write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
   write(*,*) "jmax_segments                   = ",jmax_segments
+  write(*,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
 
   !*********************************************************
   
@@ -1029,6 +1037,12 @@ program convterr
     END DO
     sgh30_target = SQRT(sgh30_target)
     sgh_target = SQRT(sgh_target)
+
+    if (compute_sgh30_from_sgh_fac>0.0D0) then
+       write(*,*) "Overwriting SGH30 with SGH*",compute_sgh30_from_sgh_fac
+       sgh30_target = compute_sgh30_from_sgh_fac*sgh_target
+    end if
+
     
     WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)
     WRITE(*,*) "min/max of terr_target                   : ",MINVAL(terr_target    ),MAXVAL(terr_target    )
