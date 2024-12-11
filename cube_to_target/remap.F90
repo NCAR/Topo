@@ -1093,7 +1093,8 @@ end function paint_sg_field
 
             if (xseg(1).EQ.xseg(2))then
               slope = bignum
-            else if (abs(yseg(1) -yseg(2))<fuzzy_width) then
+           !else if (abs(yseg(1) -yseg(2))<fuzzy_width) then !remove the exact integration
+            else if (.false.) then
               slope = 0.0
             else
               slope    = (yseg(2)-yseg(1))/(xseg(2)-xseg(1))
@@ -1196,7 +1197,8 @@ end function paint_sg_field
 !    if (fuzzy(abs(xseg(1) -xseg(2)),fuzzy_width)==0)then
     if (xseg(1).EQ.xseg(2))then
       weights = 0.0D0
-    else if (abs(yseg(1) -yseg(2))<fuzzy_width) then
+    !else if (abs(yseg(1) -yseg(2))<fuzzy_width) then !remove the exact integration
+    else if (.false.) then
       !
       ! line segment parallel to latitude - compute weights exactly
       !
