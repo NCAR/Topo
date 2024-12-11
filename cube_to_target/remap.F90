@@ -1094,8 +1094,7 @@ end function paint_sg_field
             if (xseg(1).EQ.xseg(2))then
               slope = bignum
            !else if (abs(yseg(1) -yseg(2))<fuzzy_width) then !remove the exact integration
-            else if (.false.) then
-              slope = 0.0
+           !   slope = 0.0
             else
               slope    = (yseg(2)-yseg(1))/(xseg(2)-xseg(1))
             end if
@@ -1198,21 +1197,20 @@ end function paint_sg_field
     if (xseg(1).EQ.xseg(2))then
       weights = 0.0D0
     !else if (abs(yseg(1) -yseg(2))<fuzzy_width) then !remove the exact integration
-    else if (.false.) then
       !
       ! line segment parallel to latitude - compute weights exactly
       !
-!      if (ldbgr) write(*,*) "line segment parallel to latitude - compute weights exactly"
-      weights(1) = ((I_00(xseg(2),yseg(2))-I_00(xseg(1),yseg(1))))
-      if (nreconstruction>1) then
-        weights(2) = ((I_10(xseg(2),yseg(2))-I_10(xseg(1),yseg(1))))
-        weights(3) = ((I_01(xseg(2),yseg(2))-I_01(xseg(1),yseg(1))))
-      endif
-      if (nreconstruction>3) then
-       weights(4) = ((I_20(xseg(2),yseg(2))-I_20(xseg(1),yseg(1))))
-        weights(5) = ((I_02(xseg(2),yseg(2))-I_02(xseg(1),yseg(1))))
-        weights(6) = ((I_11(xseg(2),yseg(2))-I_11(xseg(1),yseg(1))))
-      endif
+!!      if (ldbgr) write(*,*) "line segment parallel to latitude - compute weights exactly"
+!      weights(1) = ((I_00(xseg(2),yseg(2))-I_00(xseg(1),yseg(1))))
+!      if (nreconstruction>1) then
+!        weights(2) = ((I_10(xseg(2),yseg(2))-I_10(xseg(1),yseg(1))))
+!        weights(3) = ((I_01(xseg(2),yseg(2))-I_01(xseg(1),yseg(1))))
+!      endif
+!      if (nreconstruction>3) then
+!       weights(4) = ((I_20(xseg(2),yseg(2))-I_20(xseg(1),yseg(1))))
+!        weights(5) = ((I_02(xseg(2),yseg(2))-I_02(xseg(1),yseg(1))))
+!        weights(6) = ((I_11(xseg(2),yseg(2))-I_11(xseg(1),yseg(1))))
+!      endif
     else
       
       
