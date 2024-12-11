@@ -2396,7 +2396,7 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     
     str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
-         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
+         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-3975-2015, 2015.')
     status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrt_cesm_meta_data
