@@ -99,17 +99,29 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
     # Sorry.
     #-----------------------------------------------------
     command = [  "./cube_to_target" ]
-
+    #------------------------------------------------------------
+    # We are to rely on Python's 'truthy' vs 'falsy' idea below,
+    # to decide whether an input is 'provided'. If this doesn't 
+    # work can always go to 'if var is not None:'
+    #------------------------------------------------------------
     if scrip: 
         command.append(f"--grid_descriptor_file={scrip}")
+    else:
+        raise ValueError("scrip file is required but was not provided.")
     if scrip_gll: 
         command.append(f"--grid_descriptor_file_gll={scrip_gll}")
     if cstopo: 
         command.append(f"--intermediate_cs_name={cstopo}")
+    else:
+        raise ValueError("intermediate cubed sphere topo file is required but was not provided.")
     if ogrid: 
         command.append(f"--output_grid={ogrid}")
+    else:
+        raise ValueError("destination grid is required but was not provided.")
     if smoothing_scale: 
         command.append(f"--smoothing_scale={smoothing_scale}")
+    else:
+        raise ValueError("smoothing scale is required but was not provided.")
 
     command.append(f"--fine_radius=0")
 
