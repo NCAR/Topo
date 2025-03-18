@@ -203,13 +203,17 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
 
     DO np = 1, 6
     DO j=1-nhalo+1,ncube+nhalo-1,bloc
-    DO i=1-nhalo+1,ncube+nhalo-1,bloc
-       aa   = terr_dev_halo(i:i+bloc,j:j+bloc,np)
-       ijaa = MAXLOC( aa )
-       im   = ijaa(1)-1 + i
-       jm   = ijaa(2)-1 + j
-       if ( terr_dev_halo(im,jm,np) >= thsh ) terr_max_halo(im,jm,np)= terr_dev_halo(im,jm,np)
-    END DO
+       DO i=1-nhalo+1,ncube+nhalo-1,bloc
+          if (i-bloc<1-nhalo.or.j-bloc<1-nhalo.or.i+bloc>ncube+nhalo.or.j+bloc>ncube+nhalo) then
+             !out of bounds - skip
+          else          
+             aa   = terr_dev_halo(i:i+bloc,j:j+bloc,np)
+             ijaa = MAXLOC( aa )
+             im   = ijaa(1)-1 + i
+             jm   = ijaa(2)-1 + j
+             if ( terr_dev_halo(im,jm,np) >= thsh ) terr_max_halo(im,jm,np)= terr_dev_halo(im,jm,np)
+          end if
+       END DO
     END DO
              write(*,*) " FACE = ",np
     END DO

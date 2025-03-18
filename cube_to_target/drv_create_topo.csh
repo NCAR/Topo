@@ -2,7 +2,7 @@
 #PBS -N topodrv
 
 ### Charging account
-#PBS -A P93300642 
+#PBS -A P93300042 
 ### Request one chunk of resources with N CPU and M GB of memory
 #PBS -l select=1:ncpus=1:mem=16GB
 ### 
@@ -20,4 +20,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.py --ogrid=fv0.9x1.25 --smoothing_scale=14 --tag=Q02
+./create_topo.py --ogrid=ne120pg3 --smoothing_scale=25 --tag=X02
