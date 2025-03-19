@@ -18,12 +18,13 @@ public find_ridges
 public remapridge2target
 public remapridge2cube
 public remapridge2tiles
+public residual
 
 public anglx_target,aniso_target,mxdis_target,hwdth_target
 public mxvrx_target,mxvry_target,bsvar_target,wghts_target,riseq_target
 public ang22_target,anixy_target,clngt_target,cwght_target,count_target
 public nsubr,grid_length_scale,fallq_target,isoht_target,isowd_target
-public isovar_target
+public isovar_target,isowgt_target
 
 public peak_type
 
@@ -60,7 +61,7 @@ public peak_type
   real(r8), allocatable, dimension(:,:) :: ang22_target,anixy_target,clngt_target,cwght_target
   real(r8), allocatable, dimension(:,:) :: count_target,riseq_target,fallq_target
   real(r8), allocatable, dimension(:,:) :: isoht_target,isowd_target
-  real(r8), allocatable, dimension(:)   :: isovar_target
+  real(r8), allocatable, dimension(:)   :: isovar_target,isowgt_target
   !!,rwpks_target
 
     INTEGER (KIND=int_kind),allocatable :: UQRID(:) 
@@ -201,15 +202,15 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
     write(*,*) " ---> NSW , bloc ",nsw,bloc
 
     DO np = 1, 6
-       DO j=1-nhalo+1,ncube+nhalo-1,bloc
-          DO i=1-nhalo+1,ncube+nhalo-1,bloc
-             if (i-bloc<1-nhalo.or.j-bloc<1-nhalo.or.i+bloc>ncube+nhalo.or.j+bloc>ncube+nhalo) then
-                !out of bounds - skip
-             else          
-                aa   = terr_dev_halo(i:i+bloc,j:j+bloc,np)
-                ijaa = MAXLOC( aa )
-                im   = ijaa(1)-1 + i
-                jm   = ijaa(2)-1 + j
+    DO j=1-nhalo+1,ncube+nhalo-1,bloc
+       DO i=1-nhalo+1,ncube+nhalo-1,bloc
+          if (i-bloc<1-nhalo.or.j-bloc<1-nhalo.or.i+bloc>ncube+nhalo.or.j+bloc>ncube+nhalo) then
+             !out of bounds - skip
+          else          
+             aa   = terr_dev_halo(i:i+bloc,j:j+bloc,np)
+             ijaa = MAXLOC( aa )
+             im   = ijaa(1)-1 + i
+             jm   = ijaa(2)-1 + j
              if ( terr_dev_halo(im,jm,np) >= thsh ) terr_max_halo(im,jm,np)= terr_dev_halo(im,jm,np)
           end if
        END DO
@@ -1297,7 +1298,7 @@ end subroutine THINOUT_LIST
          nreconstruction,ntarget, & 
          output_grid,ldevelopment_diags,terr_dev, &
          uniqidC,uniqwgC,anisoC,anglxC,mxdisC,hwdthC,clngtC, & 
-         riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC, &
+         riseqC,fallqC,mxvrxC,mxvryC,nodesC,cwghtC,residHC,residIC, &
          itrgtC )
 !==========================================
 ! Some key inputs
@@ -1329,7 +1330,7 @@ end subroutine THINOUT_LIST
       real(KIND=dbl_kind), & 
            dimension(ncube*ncube*6),            INTENT(IN)  :: riseqC,  fallqC,  mxvrxC,  mxvryC
       real(KIND=dbl_kind), & 
-           dimension(ncube*ncube*6),            INTENT(IN)  :: nodesC,  cwghtC
+           dimension(ncube*ncube*6),            INTENT(IN)  :: nodesC,  cwghtC, residHC, residIC
 
       real(r8):: f(ntarget)
         
@@ -1397,6 +1398,9 @@ end subroutine THINOUT_LIST
     allocate (isovar_target(ntarget),stat=alloc_error )
     if( alloc_error /= 0 ) then; print*,'Program could not allocate space for isovar_target'; stop; endif
     isovar_target = 0.
+    allocate (isowgt_target(ntarget),stat=alloc_error )
+    if( alloc_error /= 0 ) then; print*,'Program could not allocate space for isovar_target'; stop; endif
+    isowgt_target = 0.
 
     itrgtC = 0.
     i_last = -9999
@@ -1503,7 +1507,9 @@ end subroutine THINOUT_LIST
        !
        ii = (ip-1)*ncube*ncube+(iy-1)*ncube+ix
        wt = weights_all(counti,1)
-       isovar_target( i ) = isovar_target( i ) + wt*( (tempC(ii)-terr_dev(ii))**2 )/area_target(i)
+       !isovar_target( i ) = isovar_target( i ) + wt*( (tempC(ii)-terr_dev(ii))**2 )/area_target(i)
+       isovar_target( i ) = isovar_target( i ) + wt*( residHC(ii)**2 )/area_target(i)
+       isowgt_target( i ) = isowgt_target( i ) + wt*( residIC(ii) )/area_target(i)
     end do
     isovar_target = SQRT( isovar_target )
 
@@ -1529,6 +1535,34 @@ end subroutine THINOUT_LIST
        
   end subroutine remapridge2target
    
+!====================================
+   subroutine residual(ncube, terr_dev, rdganaC, residHC, residIC )  
+!==========================================
+! 
+!===========================================
+
+      use shr_kind_mod, only: r8 => shr_kind_r8
+      use remap
+      use reconstruct !, only : EquiangularAllAreas
+      implicit none
+
+      integer, intent(in) :: ncube
+
+      REAL(KIND=dbl_kind), &
+            DIMENSION(ncube*ncube*6),           INTENT(IN)  :: terr_dev, rdganaC
+
+      real(KIND=dbl_kind), & 
+           dimension(ncube*ncube*6),            INTENT(OUT)  :: residHC , residIC
+
+      residhC = terr_dev - rdganaC
+
+      residiC = 0._r8
+
+      where ( residHC > 10._r8 )
+         residIC = 1.0_r8
+      end where
+
+    end subroutine residual
 
 !====================================
    subroutine remapridge2tiles ( ntarget,ncube,jall,nreconstruction,     &

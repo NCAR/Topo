@@ -1,0 +1,7 @@
+###################################
+# Controls for topo generation
+################################### 
+ogrid: fv1x1
+smoothing_scale: 25
+tag: X02
+clean_case: True
