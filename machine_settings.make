@@ -1,8 +1,10 @@
 DEBUG=FALSE
 
-FC = $(shell nc-config --fc)
-LDFLAGS = $(shell nc-config --flibs)
-FFLAGS = -c $(shell nc-config --fflags)
+FC ?= $(shell nf-config --fc)
+# The ? mark sets the compiler to whatever compiler you've chosen in your module environment.
+LDFLAGS = $(shell nf-config --flibs)
+LIBS = $(shell nc-config --libs)
+FFLAGS = -c $(shell nf-config --fflags)
 
 #------------------------------------------------------------------------
 # Gfortran

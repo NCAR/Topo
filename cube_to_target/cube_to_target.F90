@@ -96,6 +96,7 @@ program convterr
   real (r8):: nu_lap = -1
   integer  :: smooth_phis_numcycle=-1
   real (r8):: smoothing_scale=0
+  real (r8):: compute_sgh30_from_sgh_fac=-1
   !
   INTEGER :: UNIT, ioptarg
   
@@ -123,7 +124,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(24)
+  type(option_s):: opts(25)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -152,6 +153,7 @@ program convterr
   opts(22) = option_s( "smooth_phis_numcycle"      ,.true.    , 'l'   ,.false.       ,.false.)
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
+  opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -283,6 +285,11 @@ program convterr
       write(str,*) ioptarg
       command_line_arguments = TRIM(command_line_arguments)//' --jmax_segments '//TRIM(ADJUSTL(str))
       opts(24)%specified = .true.
+   case( '3' )
+      read (optarg, *) compute_sgh30_from_sgh_fac
+      write(str,*) compute_sgh30_from_sgh_fac
+      command_line_arguments = TRIM(command_line_arguments)//' -- compute_sgh30_from_sgh_fac '//TRIM(ADJUSTL(str))
+      opts(25)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
@@ -346,6 +353,7 @@ program convterr
   write(*,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
   write(*,*) "jmax_segments                   = ",jmax_segments
+  write(*,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
 
   !*********************************************************
   
@@ -622,7 +630,6 @@ program convterr
       CALL overlap_weights(weights_lgr_index_all,weights_eul_index_all,weights_all,&
            jall,ncube,ngauss,ntarget,ncorner,jmax_segments,target_corner_lon,target_corner_lat,nreconstruction,ldbg)
     end if
-    deallocate(target_corner_lon,target_corner_lat)
   end if
   ! On exit from overlap_weights 'jall' is the correct number of cells in the exchange grid. 
   !------------------------------------------------------------------------------------------------
@@ -818,30 +825,32 @@ program convterr
         !
         ! max height is higher than Mount Everest
         !
-        write(*,*) "FATAL error: max height is higher than Mount Everest!"
+        write(*,*) "Potential error: max height is higher than Mount Everest!"
         write(*,*) "terr_target",counti,terr_target(counti)
         write(*,*) "(lon,lat) locations of vertices of cell with excessive max height::"
         do i=1,ncorner
           write(*,*) target_corner_lon(i,counti),target_corner_lat(i,counti)
         end do
-        STOP
+!        STOP
       else if (terr_target(counti)<-423.0) then
         !
         ! min height is lower than Dead Sea
         !
-        write(*,*) "FATAL error: min height is lower than Dead Sea!"
+        write(*,*) "Potential error: min height is lower than Dead Sea!"
         write(*,*) "terr_target",counti,terr_target(counti)
         write(*,*) "(lon,lat) locations of vertices of cell with excessive min height::"
+        write(*,*) "counti=",counti,ncorner
         do i=1,ncorner
           write(*,*) target_corner_lon(i,counti),target_corner_lat(i,counti)
         end do
-        STOP
+!        STOP
       else 
         
       end if
     end do
     WRITE(*,*) "Elevation data passed min/max consistency check!"
     WRITE(*,*) " "
+    deallocate(target_corner_lon,target_corner_lat)
     
     
     !
@@ -1034,6 +1043,12 @@ program convterr
     END DO
     sgh30_target = SQRT(sgh30_target)
     sgh_target = SQRT(sgh_target)
+
+    if (compute_sgh30_from_sgh_fac>0.0D0) then
+       write(*,*) "Overwriting SGH30 with SGH*",compute_sgh30_from_sgh_fac
+       sgh30_target = compute_sgh30_from_sgh_fac*sgh_target
+    end if
+
     
     WRITE(*,*) "min/max of terr source                   : ",MINVAL(terr),MAXVAL(terr)
     WRITE(*,*) "min/max of terr_target                   : ",MINVAL(terr_target    ),MAXVAL(terr_target    )
@@ -1239,7 +1254,7 @@ program convterr
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (trim(output_fname), NF_64BIT_OFFSET , foutid)
+    status = nf_create (trim(output_fname), NF_64BIT_DATA, foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output
@@ -2027,7 +2042,7 @@ program convterr
     !  Create NetCDF file for output
     !
     print *,"Create NetCDF file for output"
-    status = nf_create (fout, NF_64BIT_OFFSET , foutid)
+    status = nf_create (fout, NF_64BIT_DATA, foutid)
     if (status .ne. NF_NOERR) call handle_err(status)
     !
     ! Create dimensions for output
@@ -2420,7 +2435,7 @@ program convterr
     if (status .ne. NF_NOERR) call handle_err(status)
     
     str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
-         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-1-2015, 2015.')
+         'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-3975-2015, 2015.')
     status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrt_cesm_meta_data
