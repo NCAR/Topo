@@ -4,8 +4,13 @@ begin
 ;************************************************
   a = addfile(topoFile,"r")
 ;  b = addfile("../regression-test-data/ne30pg3_gmted2010_bedmachine_nc0540_Co012_20220307.nc","r")
-;  PHIS_ref = b->PHIS
-  ;
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc","r")
+;  b = addfile("/glade/campaign/cgd/amp/aherring/TopoCESM3/cube_to_target/output/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117_GRISrough.nc","r")
+
+  if (isvar("b")) then
+    print("Reference data provided - plotting differences")
+  end if
+;
   ; SCRIP file
   ;
   sf =  addfile(scripFile,"r")
@@ -13,22 +18,38 @@ begin
 
   if (isfilevar(a, "PHIS")) then
     PHIS      = a->PHIS
+    if (isvar("b")) then    
+      PHIS_ref  = b->PHIS    
+      PHIS = PHIS-PHIS_ref
+    end if
   end if
   if (isfilevar(a, "SGH")) then
     SGH       = a->SGH
+    if (isvar("b")) then    
+      SGH_ref   = b->SGH
+      SGH = SGH-SGH_ref
+    end if	
   end if
   if (isfilevar(a, "SGH30")) then
     SGH30     = a->SGH30
+    if (isvar("b")) then
+      SGH30_ref     = b->SGH30
+      SGH30 = SGH30-SGH30_ref
+    end if
   end if
 
   if (isfilevar(a, "LANDFRAC")) then
     LANDFRAC_ON_FILE=True
     LANDFRAC = a->LANDFRAC
+    if (isvar("b")) then
+      LANDFRAC_ref = b->LANDFRAC
+      LANDFRAC = LANDFRAC-LANDFRAC_ref
+    end if
   else
     LANDFRAC_ON_FILE=False
   end if
   if (isfilevar(a, "rrfac")) then
-    RRFAC_ON_FILE=True
+    RRFAC_ON_FILE=Truex
     RRFAC = a->rrfac
   else
     RRFAC_ON_FILE=False
