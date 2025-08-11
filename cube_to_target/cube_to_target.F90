@@ -1,4 +1,4 @@
-!#define idealized_test
+! #define idealized_test
 !
 !  DESCRIPTION:  Remap topo data from cubed-sphere grid to target grid using rigorous remapping
 !                (Lauritzen, Nair and Ullrich, 2010, J. Comput. Phys.)
@@ -16,7 +16,7 @@ program convterr
   use shared_vars
   use reconstruct
   use f90getopt
-  
+  use mask
   implicit none
 #     include         <netcdf.inc>
 
@@ -97,6 +97,7 @@ program convterr
   integer  :: smooth_phis_numcycle=-1
   real (r8):: smoothing_scale=0
   real (r8):: compute_sgh30_from_sgh_fac=-1
+  real (r8):: greenlndantarcsgh30_fac=-1
   !
   INTEGER :: UNIT, ioptarg
   
@@ -117,14 +118,14 @@ program convterr
   !
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
   character(len=1024) :: grid_descriptor_fname_gll
-  character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir=''
+  character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir='', greenland_str = ''
   character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
   character(len=8)  :: date
   character(len=10) :: time
 
 
-  type(option_s):: opts(25)
+  type(option_s):: opts(26)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -154,6 +155,7 @@ program convterr
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
   opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
+  opts(26) = option_s( "greenland_sgh30_fac"       ,.true.    , '4'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -288,7 +290,12 @@ program convterr
    case( '3' )
       read (optarg, *) compute_sgh30_from_sgh_fac
       write(str,*) compute_sgh30_from_sgh_fac
-      command_line_arguments = TRIM(command_line_arguments)//' -- compute_sgh30_from_sgh_fac '//TRIM(ADJUSTL(str))
+      command_line_arguments = TRIM(command_line_arguments)//' --compute_sgh30_from_sgh_fac '//TRIM(ADJUSTL(str))
+      opts(25)%specified = .true.
+   case( '4' )
+      read (optarg, *) greenlndantarcsgh30_fac
+      write(str,*) greenlndantarcsgh30_fac
+      command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
       opts(25)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
@@ -354,7 +361,7 @@ program convterr
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
   write(*,*) "jmax_segments                   = ",jmax_segments
   write(*,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
-
+  write(*,*) "greenlndantarcsgh30_fac        = ",greenlndantarcsgh30_fac
   !*********************************************************
   
   call  set_constants
@@ -432,7 +439,7 @@ program convterr
   ! Read in topo data on cubed sphere grid
   !------------------------------------------------------------------------------------------------
 
-  call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
+  call read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,greenlndantarcsgh30_fac>0,ncube,llandfrac)
 
   !
   ! set derived variables - scaling for smoothing
@@ -552,8 +559,16 @@ program convterr
       end if
     endif
   end if
+  if (greenlndantarcsgh30_fac>0) then
+     write(greenland_str,"('greenlndantarcsgh30fac',F4.2)") greenlndantarcsgh30_fac
+     output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//&
+          trim(ofile)//'_'//trim(greenland_str)//'_'//date//'.nc'
+     write(*,*) greenland_str
+  else
+     output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+  endif
   
-  output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
+
   write(*,*) "Writing topo file to ",output_fname
   !*********************************************************
   !
@@ -806,6 +821,26 @@ program convterr
     write(*,*) "MIN/MAX:", MINVAL(landm_coslat_target), MAXVAL(landm_coslat_target)
     
     write(*,*) "Remapping SGH30"
+
+    if (greenlndantarcsgh30_fac>0) then
+       write(*,*) "scale sgh30 over Greenland and Antarctica (CESM2-style hack) on intermediate cubed-sphere grid"
+       greenlndantarcsgh30_fac = greenlndantarcsgh30_fac*greenlndantarcsgh30_fac !we take sqrt after mapping
+       do i=1,num_cells_intermediate_cubed_sphere_1d
+          if (greenland_mask(cube_lat(i),cube_lon(i)).or.antarctica_mask(cube_lat(i),cube_lon(i))) then
+             var30(i) = greenlndantarcsgh30_fac*var30(i)
+          end if
+          !
+          ! latitude scaling of SGH30
+          !
+!          if (ABS(cube_lat(i))<85.0_r8) then
+!             var30(i) = ((min(1.0_r8/cos(deg2rad*cube_lat(i)),greenlndantarcsgh30_fac))**2)*var30(i)
+!          else
+!             var30(i) = (greenlndantarcsgh30_fac**2)*var30(i)
+!          end if
+       end do
+       deallocate(cube_lon,cube_lat)
+    end if
+
     sgh30_target = remap_field(var30,area_target,weights_eul_index_all(1:jall,:),weights_lgr_index_all(1:jall),&
          weights_all(1:jall,:),ncube,jall,nreconstruction,ntarget)
     write(*,*) "MIN/MAX:", MINVAL((sgh30_target)), MAXVAL(sqrt(sgh30_target))
