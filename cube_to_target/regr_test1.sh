@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# low resolution version of CESM3 topography
+#
 
 # Compile the program
 make
@@ -10,6 +13,7 @@ make
                  --smoothing_scale=100.0 \
                  -u 'Peter Hjort Lauritzen, pel@ucar.edu' \
                  -q 'output/' \
+		 --greenlndantarcsgh30_fac=2.5 \ 
                  --grid_descriptor_file_gll='../regression-test-data/ne30np4.nc'
 
 # Find the most recent output file
@@ -19,7 +23,7 @@ file=$(ls -t1 output/*.nc | head -n 1)
 echo "$file"
 
 # Run CPRNC comparison
-/glade/campaign/cesm/cesmdata/cprnc/cprnc -m "$file" ../regression-test-data/ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_20250319.nc
+/glade/campaign/cesm/cesmdata/cprnc/cprnc -m "$file" ../regression-test-data/ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250814.nc
 
 # Optional: Another comparison command (commented out in the original script)
 # /fs/cgd/csm/tools/cprnc/cprnc -m "$file" ../regression-test-data/ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_20250319.nc
