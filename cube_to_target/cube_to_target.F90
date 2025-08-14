@@ -155,7 +155,7 @@ program convterr
   opts(23) = option_s( "smoothing_over_ocean"      ,.false.   , 'm'   ,.false.       ,.false.)
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
   opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
-  opts(26) = option_s( "greenland_sgh30_fac"       ,.true.    , '4'   ,.false.       ,.false.)
+  opts(26) = option_s( "greenlndantarcsgh30_fac"   ,.true.    , '4'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
