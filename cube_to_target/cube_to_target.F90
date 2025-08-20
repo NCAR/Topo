@@ -2548,7 +2548,8 @@ program convterr
   end subroutine wrtncdf_rll
 
   subroutine wrt_cesm_meta_data(foutid,command_line_arguments,str_creator)
-    implicit none    
+    use git_version
+    implicit none
 #     include         <netcdf.inc>
     integer,               intent(in) :: foutid                              ! Output file id
     character(len=1024),   intent(in) :: command_line_arguments, str_creator ! Meta data strings
@@ -2600,6 +2601,19 @@ program convterr
     str = TRIM('Lauritzen, P. H. et al.: NCAR global model topography generation software for unstructured grids, '// &
          'Geosci. Model Dev., 8, 1-12, doi:10.5194/gmd-8-3975-2015, 2015.')
     status = nf_put_att_text (foutid,NF_GLOBAL,'data_reference',LEN(TRIM(str)), TRIM(str))
+    if (status .ne. NF_NOERR) call handle_err(status)
+
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_DESCRIBE',LEN(TRIM(GIT_DESCRIBE)),&
+         TRIM(GIT_DESCRIBE))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_HASH',LEN(TRIM(GIT_DESCRIBE)),&
+         TRIM(GIT_DESCRIBE))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_BRANCH',LEN(TRIM(GIT_DESCRIBE)),&
+         TRIM(GIT_DESCRIBE))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_DATE',LEN(TRIM(GIT_DESCRIBE)),&
+         TRIM(GIT_DATE))
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrt_cesm_meta_data
 
