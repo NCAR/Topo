@@ -3,6 +3,18 @@ EXEDIR = .
 EXENAME = cube_to_target
 RM = rm
 
+GIT_DESCRIBE := $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
+GIT_HASH     := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
+
+git_version.F90:
+	@echo "module git_version"                                 >  $@
+	@echo "  implicit none"                                   >> $@
+	@echo "  character(len=*), parameter :: GIT_DESCRIBE = '$(GIT_DESCRIBE)'" >> $@
+	@echo "  character(len=*), parameter :: GIT_HASH     = '$(GIT_HASH)'"     >> $@
+	@echo "  character(len=*), parameter :: GIT_BRANCH   = '$(GIT_BRANCH)'"   >> $@
+	@echo "end module git_version"                            >> $@
+
 .SUFFIXES:
 .SUFFIXES: .F90 .o
 
