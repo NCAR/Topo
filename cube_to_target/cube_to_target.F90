@@ -174,7 +174,7 @@ program convterr
       exit
     case( 'c' )
       read (optarg, *) smoothing_scale
-      write(str,*) smoothing_scale
+      write(str,'(F12.4)') smoothing_scale
       command_line_arguments = TRIM(command_line_arguments)//' --smoothing_scale '//TRIM(ADJUSTL(str))
       opts(1)%specified = .true.
     case( 'f' )
@@ -294,7 +294,7 @@ program convterr
       opts(25)%specified = .true.
    case( '4' )
       read (optarg, *) greenlndantarcsgh30_fac
-      write(str,*) greenlndantarcsgh30_fac
+      write(str,'(F12.3)') greenlndantarcsgh30_fac
       command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
       opts(25)%specified = .true.
     case default
