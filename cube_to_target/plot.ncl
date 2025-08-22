@@ -4,9 +4,10 @@ begin
 ;************************************************
   a = addfile(topoFile,"r")
 ;  b = addfile("../regression-test-data/ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_20250319.nc","r")
-  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc","r")
+;b = addfile("/glade/campaign/cgd/amp/pel/topo/cesm3/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250814.nc","r")
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc","r")
 ;  b = addfile("/glade/campaign/cgd/amp/aherring/TopoCESM3/cube_to_target/output/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117_GRISrough.nc","r")
-
+  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc","r")
   if (isvar("b")) then
     print("Reference data provided - plotting differences")
   end if
@@ -155,10 +156,10 @@ begin
   if (RRFAC_ON_FILE) then
     plot = gsn_csm_contour_map_ce(wks,RRFAC, res) ; create plot
   end if
-  res@cnLevelSelectionMode = "ManualLevels"	; manually set the contour levels with the following 3 resources
-  res@cnMinLevelValF  = 0.			; set the minimum contour level
-  res@cnMaxLevelValF  = 300.			; set the maximum contour level
-  res@cnLevelSpacingF = 25.			; 
+;  res@cnLevelSelectionMode = "ManualLevels"	; manually set the contour levels with the following 3 resources
+;  res@cnMinLevelValF  = 0.			; set the minimum contour level
+;  res@cnMaxLevelValF  = 300.			; set the maximum contour level
+;  res@cnLevelSpacingF = 25.			; 
   plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
   plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
 end

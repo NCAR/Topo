@@ -361,7 +361,8 @@ program convterr
   write(*,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
   write(*,*) "jmax_segments                   = ",jmax_segments
   write(*,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
-  write(*,*) "greenlndantarcsgh30_fac        = ",greenlndantarcsgh30_fac
+  write(*,*) "greenlndantarcsgh30_fac         = ",greenlndantarcsgh30_fac
+  write(*,*) "grid_descriptor_fname_gll       = ",grid_descriptor_fname_gll
   !*********************************************************
   
   call  set_constants
