@@ -296,7 +296,7 @@ program convterr
       read (optarg, *) greenlndantarcsgh30_fac
       write(str,'(F12.3)') greenlndantarcsgh30_fac
       command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
-      opts(25)%specified = .true.
+      opts(26)%specified = .true.
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop
