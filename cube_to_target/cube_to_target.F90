@@ -297,6 +297,9 @@ program convterr
       write(str,'(F12.3)') greenlndantarcsgh30_fac
       command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
       opts(26)%specified = .true.
+    case ('?')
+      write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
+      stop 2
     case default
       write(*,*) "Option unknown: ",char(0)        
       stop

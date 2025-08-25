@@ -54,98 +54,123 @@ contains
 
 
     ! ----------------------------------------
-    character function getopt( optstring, longopts )
-        ! arguments
-        character(len=*), intent(in):: optstring
-        type(option_s),   intent(in), optional:: longopts(:)
+character function getopt(optstring, opts) result(c)
+  ! Minimal changes per user requirements:
+  ! - Return '?' on any positional token (positionals not allowed).
+  ! - End-of-args returns char(0).
+  ! - Long opts via process_long; short via process_short.
+  implicit none
+  character(len=*), intent(in) :: optstring
+  type(option_s),    intent(inout) :: opts(:)
+  character(len=256) :: arg
+  integer :: argc
 
-        ! local variables
-        character(len=80):: arg
+  c      = achar(0)
+  optarg = ''
+  argc   = command_argument_count()
 
-        optarg = ''
-        if ( optind > command_argument_count()) then
-            getopt = char(0)
-        endif
+  if (optind > argc) then
+    c = char(0)
+    return
+  end if
 
-        call get_command_argument( optind, arg )
-        if ( present( longopts ) .and. arg(1:2) == '--' ) then
-            getopt = process_long( longopts, arg )
-        elseif ( arg(1:1) == '-' ) then
-            getopt = process_short( optstring, arg )
-        else
-            getopt = char(0)
-        endif
-    end function getopt
+  call get_command_argument(optind, arg)
 
+  if (len_trim(arg) == 0) then
+    optind = optind + 1
+    c = char(0)
+    return
+  end if
+
+  if (arg(1:1) == '-') then
+    if (len_trim(arg) >= 2 .and. arg(2:2) == '-') then
+      c = process_long(opts, arg)   ! may consume an extra value token internally
+      optind = optind + 1           ! consume the option token itself
+    else
+      c = process_short(optstring, arg)
+      optind = optind + 1           ! consume the option token itself
+    end if
+  else
+    ! Positional args are NOT allowed
+    optarg = trim(arg)
+    optind = optind + 1             ! make progress
+    c = '?'
+  end if
+end function getopt
 
     ! ----------------------------------------
-    character function process_long( longopts, arg )
-        ! arguments
-        type(option_s),   intent(in):: longopts(:)
-        character(len=*), intent(in):: arg
+character function process_long(longopts, arg) result(c_lng)
+  ! Minimal changes per user requirements:
+  ! - Unknown long option => '?' with optarg=arg
+  ! - If has_arg=.false. but user gives "--flag=value" => '?' (malformed)
+  ! - If has_arg=.true. accept both "--opt=value" and "--opt value"
+  implicit none
+  type(option_s), intent(in) :: longopts(:)
+  character(len=*), intent(in) :: arg
 
-        ! local variables
-        integer :: i = 0
-        integer :: j = 0
-        integer :: len_arg = 0             ! length of arg
-        logical :: has_equalsign = .false. ! arg contains equal sign?
+  character(len=:), allocatable :: name
+  integer :: eqpos, i, argc
+  character(len=256) :: nextval
 
-        len_arg = len_trim(arg)
+  c_lng  = '?'
+  optarg = ''
 
-        ! search for equal sign in arg and set flag "has_equalsign" and
-        ! length of arg (till equal sign)
-        do j=1, len_arg
-            if (arg(j:j) == "=") then
-                has_equalsign = .true.
-                len_arg = j-1
-                exit
-            endif
-        enddo
+  ! Split "--name[=value]"
+  eqpos = index(arg, "=")
+  if (eqpos > 0) then
+    name = trim(arg(3:eqpos-1))
+  else
+    name = trim(arg(3:))
+  end if
 
-        ! search for matching long option
+  ! Find the long option by name
+  do i = 1, size(longopts)
+    if (trim(longopts(i)%name) == name) then
+      if (longopts(i)%has_arg) then
+        ! Needs a value
+        if (eqpos > 0) then
+          optarg = trim(arg(eqpos+1:))        ! --opt=value
+          if (len_trim(optarg) == 0) then
+            optarg = trim(arg)
+            c_lng = '?'
+            return
+          end if
+        else
+          ! --opt value  (value must be the next token)
+          argc = command_argument_count()
+          if (optind+1 <= argc) then
+            call get_command_argument(optind+1, nextval)
+            if (len_trim(nextval) == 0) then
+              optarg = trim(arg)
+              c_lng = '?'
+              return
+            end if
+            optarg = trim(nextval)
+            optind = optind + 1               ! consume the value token
+          else
+            optarg = trim(arg)
+            c_lng = '?'
+            return
+          end if
+        end if
+      else
+        ! Flag (no value) — must NOT appear as "--flag=value"
+        if (eqpos > 0) then
+          optarg = trim(arg)                  ! malformed: value given to flag
+          c_lng  = '?'
+          return
+        end if
+      end if
 
-        if (.not. has_equalsign) then
-            optind = optind + 1
-        endif
+      c_lng = longopts(i)%short
+      return
+    end if
+  end do
 
-        do i = 1, size(longopts)
-            if ( arg(3:len_arg) == longopts(i)%name ) then
-                optopt = longopts(i)%short
-                process_long = optopt
-                if ( longopts(i)%has_arg ) then
-                    if (has_equalsign) then ! long option has equal sign between value and option
-                        if (arg(len_arg+2:) == '') then ! no value (len_arg+2 value after "="
-                            write(stderr, '(a,a,a)') "ERROR: Option '", trim(arg), "' requires a value"
-                            process_long=char(0) ! Option not valid
-                            stop
-                        else
-                            call get_command_argument(optind, optarg)
-                            optarg = optarg(len_arg+2:)
-                            optind = optind + 1
-                        endif
-                    else ! long option has no equal sign between value and option
-                        if ( optind <= command_argument_count()) then
-                            call get_command_argument( optind, optarg )
-                            optind = optind + 1
-                        elseif ( opterr ) then
-                            write(stderr, '(a,a,a)') "ERROR: Option '", trim(arg), "' requires a value"
-                            process_long=char(0) ! Option not valid
-                            stop
-                        endif
-                    endif
-                endif
-                return
-            endif
-        end do
-        ! else not found
-        process_long = char(0)
-        optopt='?'
-        if ( opterr ) then
-            write(stderr, '(a,a,a)') "ERROR: Unrecognized option '", arg(1:len_arg), "'"
-        endif
-        return
-    end function process_long
-
+  ! Not found → unknown long option
+  optarg = trim(arg)
+  c_lng = '?'
+end function process_long
 
     ! ----------------------------------------
     character function process_short( optstring, arg )
