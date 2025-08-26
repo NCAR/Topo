@@ -7,8 +7,11 @@ begin
 ;b = addfile("/glade/campaign/cgd/amp/pel/topo/cesm3/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250814.nc","r")
 ;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc","r")
 ;  b = addfile("/glade/campaign/cgd/amp/aherring/TopoCESM3/cube_to_target/output/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117_GRISrough.nc","r")
-  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc","r")
-  if (isvar("b")) then
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc","r")
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace02;00_20230202.nc","r")
+
+  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg2_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc","r")
+if (isvar("b")) then
     print("Reference data provided - plotting differences")
   end if
 ;
