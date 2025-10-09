@@ -3,9 +3,18 @@ begin
 ; open netCDF file
 ;************************************************
   a = addfile(topoFile,"r")
-;  b = addfile("../regression-test-data/ne30pg3_gmted2010_bedmachine_nc0540_Co012_20220307.nc","r")
-;  PHIS_ref = b->PHIS
-  ;
+;  b = addfile("../regression-test-data/ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_20250319.nc","r")
+;b = addfile("/glade/campaign/cgd/amp/pel/topo/cesm3/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20250814.nc","r")
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240720.nc","r")
+;  b = addfile("/glade/campaign/cgd/amp/aherring/TopoCESM3/cube_to_target/output/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_20240117_GRISrough.nc","r")
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30np4_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171020.nc","r")
+;  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne16pg3_gmted2010_modis_bedmachine_nc3000_Laplace02;00_20230202.nc","r")
+
+  b = addfile("/glade/campaign/cesm/cesmdata/inputdata/atm/cam/topo/se/ne30pg2_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20171014.nc","r")
+if (isvar("b")) then
+    print("Reference data provided - plotting differences")
+  end if
+;
   ; SCRIP file
   ;
   sf =  addfile(scripFile,"r")
@@ -13,22 +22,38 @@ begin
 
   if (isfilevar(a, "PHIS")) then
     PHIS      = a->PHIS
+    if (isvar("b")) then    
+      PHIS_ref  = b->PHIS    
+      PHIS = PHIS-PHIS_ref
+    end if
   end if
   if (isfilevar(a, "SGH")) then
     SGH       = a->SGH
+    if (isvar("b")) then    
+      SGH_ref   = b->SGH
+      SGH = SGH-SGH_ref
+    end if	
   end if
   if (isfilevar(a, "SGH30")) then
     SGH30     = a->SGH30
+    if (isvar("b")) then
+      SGH30_ref     = b->SGH30
+      SGH30 = SGH30-SGH30_ref
+    end if
   end if
 
   if (isfilevar(a, "LANDFRAC")) then
     LANDFRAC_ON_FILE=True
     LANDFRAC = a->LANDFRAC
+    if (isvar("b")) then
+      LANDFRAC_ref = b->LANDFRAC
+      LANDFRAC = LANDFRAC-LANDFRAC_ref
+    end if
   else
     LANDFRAC_ON_FILE=False
   end if
   if (isfilevar(a, "rrfac")) then
-    RRFAC_ON_FILE=True
+    RRFAC_ON_FILE=Truex
     RRFAC = a->rrfac
   else
     RRFAC_ON_FILE=False
@@ -135,9 +160,9 @@ begin
     plot = gsn_csm_contour_map_ce(wks,RRFAC, res) ; create plot
   end if
 ;  res@cnLevelSelectionMode = "ManualLevels"	; manually set the contour levels with the following 3 resources
-;  res@cnMinLevelValF  = -30.			; set the minimum contour level
-;  res@cnMaxLevelValF  = 70.			; set the maximum contour level
-;  res@cnLevelSpacingF = 10.			; 
+;  res@cnMinLevelValF  = 0.			; set the minimum contour level
+;  res@cnMaxLevelValF  = 300.			; set the maximum contour level
+;  res@cnLevelSpacingF = 25.			; 
   plot = gsn_csm_contour_map_ce(wks,SGH, res) ; create plot
   plot = gsn_csm_contour_map_ce(wks,SGH30, res) ; create plot
 end

@@ -4,6 +4,8 @@ MODULE shared_vars
 !---ARH
 !+++ARH
   real(r8), allocatable, dimension(:) :: landm_coslat, landfrac, terr, var30, refine_l
+  real(r8), allocatable, dimension(:) :: cube_lon, cube_lat
+  integer :: num_cells_intermediate_cubed_sphere_1d
   !real(r8), allocatable, dimension(:) :: landm_coslat, terr, var30, refine_l
 !---ARH
   integer,  allocatable, dimension(:) :: refine_li
@@ -176,10 +178,11 @@ subroutine allocate_target_vars(ntarget)
 end subroutine allocate_target_vars
 
 
-subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,ncube,llandfrac)
+subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,get_cube_coords,ncube,llandfrac)
   implicit none
 #     include         <netcdf.inc>
   character(len=1024), intent(in) :: intermediate_cubed_sphere_fname
+  logical, intent(in)             :: get_cube_coords
   integer, intent(out) :: ncube
   logical, intent(out) :: llandfrac
   integer :: ncid,status, dimid, alloc_error, landid,n
@@ -290,6 +293,7 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   ! cubed sphere cell (in meters) 
   !
   allocate ( var30(n),stat=alloc_error )
+  num_cells_intermediate_cubed_sphere_1d = n
   if( alloc_error /= 0 ) then
     print*,'Program could not allocate space for var30'
     stop
@@ -301,10 +305,37 @@ subroutine read_intermediate_cubed_sphere_grid(intermediate_cubed_sphere_fname,n
   status = NF_GET_VAR_DOUBLE(ncid, landid,var30)
   IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
   WRITE(*,*) "min/max of sgh30",MINVAL(SQRT(var30)),MAXVAL(SQRT(var30))
+
+  if (get_cube_coords) then
+     allocate ( cube_lon(n),stat=alloc_error )
+     if( alloc_error /= 0 ) then
+        print*,'Program could not allocate space for cube_lon'
+        stop
+     end if
+     status = NF_INQ_VARID(ncid,'lon', landid)
+     write(*,*) "statis",status
+     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+
+     status = NF_GET_VAR_DOUBLE(ncid, landid,cube_lon)
+     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+     WRITE(*,*) "min/max of cube_lon",MINVAL(cube_lon),MAXVAL(cube_lon)
+     allocate ( cube_lat(n),stat=alloc_error )
+     if( alloc_error /= 0 ) then
+        print*,'Program could not allocate space for cube_lat'
+        stop
+     end if
+     status = NF_INQ_VARID(ncid,'lat', landid)
+     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+     status = NF_GET_VAR_DOUBLE(ncid, landid,cube_lat)
+     IF (status .NE. NF_NOERR) CALL HANDLE_ERR(status)
+     WRITE(*,*) "min/max of cube_lat",MINVAL(cube_lat),MAXVAL(cube_lat)
+  end if
+
   print *,"close file"
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)
-  
+
+
   WRITE(*,*) 'done reading in data from netCDF file'
 
 end subroutine read_intermediate_cubed_sphere_grid
