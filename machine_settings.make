@@ -13,6 +13,10 @@ ifeq ($(findstring gfortran, $(FC)),gfortran)
     ifneq ($(findstring pgfortran, $(FC)),pgfortran)
       ifeq ($(DEBUG),TRUE)
         FFLAGS += -Wall -fbacktrace -fbounds-check -fno-range-check
+	FFLAGS +=-g -O0 -fcheck=all -Wall -Wextra -Wpedantic -fbacktrace \
+         -ffpe-trap=invalid,zero,overflow,underflow,denormal \
+         -finit-real=nan -finit-integer=-99999999 \
+         -finit-derived -finit-logical=false
       else
         FFLAGS += -O
     endif

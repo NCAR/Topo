@@ -112,7 +112,6 @@ program convterr
   real(r8), allocatable, dimension(:) :: residHC, residIC
   integer,  allocatable, dimension(:) :: itrgtC
   !--JTB
-
   !
   ! namelist filenames
   !
@@ -125,7 +124,8 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(26)
+  type(option_s):: opts(27)
+  call  set_constants
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -156,7 +156,7 @@ program convterr
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
   opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
   opts(26) = option_s( "greenlndantarcsgh30_fac"   ,.true.    , '4'   ,.false.       ,.false.)
-  
+  opts(27) = option_s( "gravity"                   ,.true.    , '5'   ,.false.       ,.false.)
   ! END longopts
   ! If no options were committed
   if (command_argument_count() .eq. 0 ) call print_help
@@ -169,7 +169,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:", opts ) ) ! opts is optional (for longopts only)
+     select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj3:4:5:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -235,7 +235,6 @@ program convterr
     case( 't' )
       smooth_topo_fname = optarg
       write(str,*) TRIM(optarg)
-      write(*,*) str
       command_line_arguments = TRIM(command_line_arguments)//' --smooth_topo_file '//TRIM(ADJUSTL(str))
       opts(14)%specified = .true.
     case( 'd' )
@@ -252,7 +251,7 @@ program convterr
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' --source_data_identifier '//TRIM(ADJUSTL(str))
       opts(17)%specified = .true.
-    case( 'q' )
+   case( 'q' )
       str_dir = optarg
       write(str,*) TRIM(optarg)
       command_line_arguments = TRIM(command_line_arguments)//' --output_data_directory '//TRIM(ADJUSTL(str))
@@ -274,7 +273,6 @@ program convterr
     case( 'l' )
       read (optarg, '(i5)') smooth_phis_numcycle
       write(str,*) smooth_phis_numcycle
-      write(*,*) trim(str)
       command_line_arguments = TRIM(command_line_arguments)//' --smooth_phis_numcycle '//TRIM(ADJUSTL(str))
       opts(22)%specified = .true.
     case( 'm' )
@@ -297,6 +295,11 @@ program convterr
       write(str,'(F12.3)') greenlndantarcsgh30_fac
       command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
       opts(26)%specified = .true.
+   case( '5' )
+      read (optarg, *) gravity
+      write(str,'(F12.3)') gravity
+      command_line_arguments = TRIM(command_line_arguments)//' --gravity '//TRIM(ADJUSTL(str))
+      opts(27)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -365,11 +368,10 @@ program convterr
   write(*,*) "jmax_segments                   = ",jmax_segments
   write(*,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
   write(*,*) "greenlndantarcsgh30_fac         = ",greenlndantarcsgh30_fac
-  write(*,*) "grid_descriptor_fname_gll       = ",grid_descriptor_fname_gll
+  write(*,*) "grid_descriptor_fname_gll       = ",trim(grid_descriptor_fname_gll)
+  write(*,*) "gravity                         = ",gravity
+
   !*********************************************************
-  
-  call  set_constants
-  
   ! Read in target grid
   !------------------------------------------------------------------------------------------------
   if (.not.lstop_after_smoothing) then
@@ -459,7 +461,7 @@ program convterr
       smooth_phis_numcycle= (nu_lap/20.0E7)*60*(real(ncube)/540.0)**2
       write(*,*) "smooth_phis_numcycle = ",smooth_phis_numcycle
     end if
-  end if
+ end if
   !
   ! calculate some defaults
   !
@@ -474,13 +476,12 @@ program convterr
         write(*,*) "setting nwindow_halfwidth=4"
         nwindow_halfwidth = 4
       end if
-    end if
+   end if
     if (ncube_sph_smooth_coarse<5) then
        write(*,*) "SHOULD NOT try to find ridges when ncube_sph_smooth_coarse<5"
        write(*,*) "but going ahead anyway ... ... "
     end if
   end if
-
   if (ncube_sph_smooth_fine > 0) then 
     luse_prefilter=.TRUE.
   else
@@ -496,7 +497,6 @@ program convterr
     write(*,*) "ABORT"
     stop
   end if
-
 #ifdef idealized_test
   call idealized(terr,ncube)
 #endif
@@ -571,7 +571,6 @@ program convterr
   else
      output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//trim(ofile)//'_'//date//'.nc'
   endif
-  
 
   write(*,*) "Writing topo file to ",output_fname
   !*********************************************************
@@ -1238,7 +1237,7 @@ program convterr
        output_fname,lfind_ridges,command_line_arguments,&
        lwrite_rrfac_to_topo_file,rrfac_target,str_creator,area_target,llandfrac)
     !---ARH
-    use shared_vars, only : rad2deg
+    use shared_vars, only : rad2deg, gravity
     use shr_kind_mod, only: r8 => shr_kind_r8
     use shared_vars, only : terr_uf_target, sgh_uf_target
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
@@ -1628,7 +1627,7 @@ program convterr
 #ifdef idealized_test
     status = nf_put_var_double (foutid, terrid, terr)
 #else
-    status = nf_put_var_double (foutid, terrid, terr*9.80616)
+    status = nf_put_var_double (foutid, terrid, terr*gravity)
 #endif
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
@@ -1757,7 +1756,7 @@ program convterr
  
   subroutine wrtncdf_unstructured_append_phis(n,terr,lon,lat,output_fname)
     !---ARH
-    use shared_vars, only : rad2deg
+    use shared_vars, only : rad2deg, gravity
     use shr_kind_mod, only: r8 => shr_kind_r8
     implicit none
     
@@ -1849,7 +1848,7 @@ program convterr
     ! Write variable for output
     !
     print*,"writing terrain data",MINVAL(terr),MAXVAL(terr)
-    status = nf_put_var_double (foutid, terrid, terr*9.80616)
+        status = nf_put_var_double (foutid, terrid, terr*gravity)
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
 
@@ -1898,7 +1897,7 @@ program convterr
          anglx_target, aniso_target, anixy_target, hwdth_target, wghts_target, & 
          clngt_target, cwght_target, count_target,riseq_target,grid_length_scale, &
          fallq_target, isovar_target, isowgt_target    
-    use shared_vars, only : terr_uf_target, sgh_uf_target, rad2deg
+    use shared_vars, only : terr_uf_target, sgh_uf_target, rad2deg, gravity
     use shr_kind_mod, only: r8 => shr_kind_r8
     implicit none
     
@@ -2395,7 +2394,7 @@ program convterr
     ! Write variable for output
     !
     print*,"writing terrain data",MINVAL(terr),MAXVAL(terr)
-    status = nf_put_var_double (foutid, terrid, terr*9.80616)
+    status = nf_put_var_double (foutid, terrid, terr*gravity)
 
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
@@ -3059,7 +3058,6 @@ program convterr
       REAL (r8)   :: dbg1 !DBG
       !#endif
       
-      
       pi = 4.D0*DATAN(1.D0)
       piq = pi/4.D0
       ! Recall that we are using equi-angular spherical gridding
@@ -3067,15 +3065,13 @@ program convterr
       DO k = 1, icube+1
         gp(k) = -piq + (pi/DBLE(2*(icube))) * DBLE(k-1)
       ENDDO
-      
       DO k2=1,icube+1
         DO k1=1,icube+1
           ang(k1,k2) =ACOS(-SIN(gp(k1)) * SIN(gp(k2)))
         ENDDO
       ENDDO
-      
       DO k2=1,icube
-        DO k1=1,icube
+         DO k1=1,icube
           a1 =      ang(k1  , k2  )
           a2 = pi - ang(k1+1, k2  )
           a3 = pi - ang(k1  , k2+1)
@@ -3084,7 +3080,6 @@ program convterr
           DA(k1,k2) = -2.D0*pi+a1+a2+a3+a4
         ENDDO
       ENDDO
-      
       !#ifdef DBG 
       ! Only for debugging - test consistency
       dbg1 = 0.0                           !DBG

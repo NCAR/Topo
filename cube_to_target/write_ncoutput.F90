@@ -13,7 +13,7 @@ contains
 subroutine wrtnc2_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output_fname,lfind_ridges,command_line_arguments, &
            lwrite_rrfac_to_topo_file,rrfac_target,str_creator)
     !---ARH
-    use shared_vars, only : rad2deg
+    use shared_vars, only : rad2deg, gravity
     use shr_kind_mod, only: r8 => shr_kind_r8
     use shared_vars, only : terr_uf_target, sgh_uf_target, area_target
     use ridge_ana, only: nsubr, mxdis_target, mxvrx_target, mxvry_target, ang22_target, &
@@ -418,7 +418,7 @@ subroutine wrtnc2_unstructured(n,terr,sgh,sgh30,landm_coslat,lon,lat,area,output
     ! Write variable for output
     !
     print*,"writing terrain data",MINVAL(terr),MAXVAL(terr)
-    status = nf_put_var_double (foutid, terrid, terr*9.80616)
+    status = nf_put_var_double (foutid, terrid, terr*9.80616)!xxxgravity)
     if (status .ne. NF_NOERR) call handle_err(status)
     print*,"done writing terrain data"
 

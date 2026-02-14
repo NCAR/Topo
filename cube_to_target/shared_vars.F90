@@ -22,8 +22,7 @@ MODULE shared_vars
 
   real(r8) , allocatable, dimension(:,:,:) :: terr_sm, terr_dev
 
-  REAL    (r8):: pi, piq, pih, deg2rad, rad2deg, rotate_cube
-
+  REAL    (r8):: pi, piq, pih, deg2rad, rad2deg, rotate_cube, gravity
   contains 
     subroutine set_constants
       implicit none
@@ -33,6 +32,7 @@ MODULE shared_vars
       deg2rad     = pi/180.0
       rad2deg     = 180.0/pi
       rotate_cube = 0.0D0 !default is 0
+      gravity     = 9.80616_r8 
     end subroutine set_constants
 
     subroutine progress_bar(txt, n, x)
@@ -90,7 +90,7 @@ MODULE shared_vars
           ! overwrite terr_target with smoothed version
           !
           status = NF_GET_VAR_DOUBLE(ncid, phisid,terr_target)
-          terr_target = terr_target/9.80616
+          terr_target = terr_target/gravity
         ELSE
           !
           ! read in smoothed lat-lon topography
@@ -114,7 +114,7 @@ MODULE shared_vars
           ii=1
           DO j=1,nlat
             DO i=1,nlon
-              terr_target(ii) = terr_smooth(i,j)/9.80616                  
+              terr_target(ii) = terr_smooth(i,j)/gravity
               ii=ii+1
             END DO
           END DO
@@ -554,6 +554,7 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     ! allocate target_rrfac anyway since it may be invoked
     ! if rrfac write is requested
     allocate ( target_rrfac(ntarget),stat=alloc_error)
+    target_rrfac = 1.0_r8
   else
     lregional_refinement = .true.
     allocate ( target_rrfac(ntarget),stat=alloc_error)

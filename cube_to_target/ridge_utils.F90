@@ -387,10 +387,14 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_prof
 
     do j=1,nnodes-1
        do i=xnodes_s(j),xnodes_s(j+1)
-          ridge(i) = hnodes(j) + &
-                     ( i - xnodes_s(j))* &
-                     ( hnodes(j+1) - hnodes(j) ) / &
-                     ( xnodes(j+1) - xnodes(j) ) 
+          if (ABS(xnodes(j+1) - xnodes(j))>1E-12) then
+             ridge(i) = hnodes(j) + &
+                  ( i - xnodes_s(j))* &
+                  ( hnodes(j+1) - hnodes(j) ) / &
+                  ( xnodes(j+1) - xnodes(j) )
+          else
+             ridge(i)=0.
+          end if
        end do
     end do
 
