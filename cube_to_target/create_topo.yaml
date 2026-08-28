@@ -1,7 +1,7 @@
 ###################################
 # Controls for topo generation
 ################################### 
-ogrid: fv1x1
-smoothing_scale: 25
-tag: X02
+ogrid: ne30pg3
+smoothing_scale: 100
+tag: small_rdgs
 clean_case: True

@@ -99,7 +99,7 @@ program convterr
   real (r8):: compute_sgh30_from_sgh_fac=-1
   real (r8):: greenlndantarcsgh30_fac=-1
   !
-  INTEGER :: UNIT, ioptarg
+  INTEGER :: UNIT, ioptarg, nml_log
   
   INTEGER :: NSCL_f, NSCL_c, nhalo,nsw
 
@@ -637,6 +637,40 @@ program convterr
     end if
     
 
+  open(newunit=nml_log, file="namelist_settings.txt", status="replace", action="write")
+
+  write(nml_log,*) "This is where calculations actually start "
+  write(nml_log,*) " "
+  write(nml_log,*) "Final Namelist settings"
+  write(nml_log,*) "================="
+  write(nml_log,*)
+  write(nml_log,*) "smoothing_scale                 = ",smoothing_scale
+  write(nml_log,*) "nwindow_halfwidth               = ",nwindow_halfwidth
+  write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
+  write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
+  write(nml_log,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
+  write(nml_log,*) "output_grid                     = ",trim(output_grid)
+  write(nml_log,*) "luse_prefilter                  = ",luse_prefilter
+  write(nml_log,*) "lfind_ridges                    = ",lfind_ridges
+  write(nml_log,*) "rrfac_max                       = ",rrfac_max
+  write(nml_log,*) "ldevelopment_diags              = ",ldevelopment_diags
+  write(nml_log,*) "lridgetiles                     = ",lridgetiles
+  write(nml_log,*) "smooth_topo_fname               = ",trim(smooth_topo_fname)
+  write(nml_log,*) "lwrite_rrfac_to_topo_file       = ",lwrite_rrfac_to_topo_file
+  write(nml_log,*) "str_source                      = ",trim(str_source)
+  write(nml_log,*) "interpolate_phis                = ",linterp_phis
+  write(nml_log,*) "ldistance_weighted_smoother     = ",ldistance_weighted_smoother
+  write(nml_log,*) "smooth_phis_numcycle            = ",smooth_phis_numcycle
+  write(nml_log,*) "smoothing_over_ocean            = ",lsmoothing_over_ocean
+  write(nml_log,*) "jmax_segments                   = ",jmax_segments
+  write(nml_log,*) "compute_sgh30_from_sgh_fac      = ",compute_sgh30_from_sgh_fac
+  write(nml_log,*) "greenlndantarcsgh30_fac         = ",greenlndantarcsgh30_fac
+  write(nml_log,*) "grid_descriptor_fname_gll       = ",trim(grid_descriptor_fname_gll)
+
+  close(nml_log)
+  !*********************************************************
+  
+  
     
     nreconstruction = 1
     allocate (weights_all(jall_anticipated,nreconstruction),stat=alloc_error )
@@ -696,6 +730,8 @@ program convterr
   allocate( terr_dev(ncube,ncube,6) )
   allocate( terr_2(ncube,ncube,6)  )
   terr_2 = reshape( terr,    (/ncube,ncube,6/) )
+
+
   
   write(*,*) " SMOOTHING on CUBED SPHERE 10/7/15 "
   

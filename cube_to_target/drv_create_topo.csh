@@ -4,7 +4,7 @@
 ### Charging account
 #PBS -A P93300042 
 ### Request one chunk of resources with N CPU and M GB of memory
-#PBS -l select=1:ncpus=1:mem=16GB
+#PBS -l select=1:ncpus=1:mem=128GB
 ### 
 #PBS -l walltime=04:00:00
 ### Route the job to the casper queue
@@ -20,4 +20,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.py --ogrid=ne120pg3 --smoothing_scale=25 --tag=X02
+./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --tag=default_rdgs
