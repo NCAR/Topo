@@ -976,7 +976,7 @@ end function paint_sg_field
               xeul   = xgno(jx_eul+xsgn1)
 !              IF (ldbgr) WRITE(*,*) " crossing longitude",jx_eul+xsgn1
               IF (ABS(x(2)-x(1))<fuzzy_width) THEN
-                ycross = 0.5*(y(2)-y(1))
+                ycross = 0.5*(y(1)+y(2)) !midpoint of (near-)vertical segment
                 !                IF (ldbgr) WRITE(*,*) "fuzzy crossing"
               ELSE
                 slope  = (y(2)-y(1))/(x(2)-x(1))
@@ -1021,7 +1021,7 @@ end function paint_sg_field
               
               slope  = (y(2)-y(1))/(x(2)-x(1))
               IF (ABS(x(2)-x(1))<fuzzy_width) THEN
-                ycross = 0.5*(y(2)-y(1))
+                ycross = 0.5*(y(1)+y(2)) !midpoint of (near-)vertical segment
               ELSE
                 ycross = y_cross_eul_lon(x(1),y(1),xeul,slope)
               END IF
@@ -1560,7 +1560,7 @@ end subroutine gauss_points
 
     IF (x > fuzzy_width) THEN
       signum_fuzzy = 1.0D0
-    ELSEIF (x < fuzzy_width) THEN
+    ELSEIF (x < -fuzzy_width) THEN
       signum_fuzzy = -1.0D0
     ELSE
       signum_fuzzy = 0.0D0
