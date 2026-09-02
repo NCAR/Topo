@@ -3,5 +3,5 @@
 ################################### 
 ogrid: ne30pg3
 smoothing_scale: 100
-tag: small_rdgs
+tag: small_rdgs_w_tiles
 clean_case: True

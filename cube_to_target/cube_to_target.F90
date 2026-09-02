@@ -83,6 +83,11 @@ program convterr
   !                             Not used, 0 here for naming
   integer :: nridge_subsample = 0 !
   !
+  !                             Scale factor applied to the default
+  !                             ridge-analysis window half-width.
+  !                             1.0 reproduces the historical setting.
+  real(r8) :: ridge_window_ratio = 1.0_r8
+  !
   logical :: lridgetiles = .FALSE.
   
   logical :: lregional_refinement = .FALSE. !set in read_target_grid if rrfac is on file
@@ -125,7 +130,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(26)
+  type(option_s):: opts(27)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -156,6 +161,7 @@ program convterr
   opts(24) = option_s( "jmax_segments"             ,.true.    , 'j'   ,.false.       ,.false.)
   opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
   opts(26) = option_s( "greenlndantarcsgh30_fac"   ,.true.    , '4'   ,.false.       ,.false.)
+  opts(27) = option_s( "ridge_window_ratio"        ,.true.    , 'w'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -169,7 +175,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -297,6 +303,11 @@ program convterr
       write(str,'(F12.3)') greenlndantarcsgh30_fac
       command_line_arguments = TRIM(command_line_arguments)//' --greenlndantarcsgh30_fac '//TRIM(ADJUSTL(str))
       opts(26)%specified = .true.
+   case( 'w' )
+      read (optarg, *) ridge_window_ratio
+      write(str,'(F12.4)') ridge_window_ratio
+      command_line_arguments = TRIM(command_line_arguments)//' --ridge_window_ratio '//TRIM(ADJUSTL(str))
+      opts(27)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -346,6 +357,7 @@ program convterr
   write(*,*)
   write(*,*) "smoothing_scale                 = ",smoothing_scale
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
+  write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(*,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
@@ -464,11 +476,17 @@ program convterr
   ! calculate some defaults
   !
   if (lfind_ridges) then
+    if (ridge_window_ratio<=0.0_r8) then
+      write(*,*) "ridge_window_ratio must be > 0, got ",ridge_window_ratio
+      stop
+    end if
     if (nwindow_halfwidth<=0) then
-      nwindow_halfwidth = floor(real(ncube_sph_smooth_coarse)/sqrt(2.))
+      nwindow_halfwidth = floor(ridge_window_ratio*real(ncube_sph_smooth_coarse)/sqrt(2.))
+      !nwindow_halfwidth = floor(0.25*real(ncube_sph_smooth_coarse)/sqrt(2.))
       !
       ! nwindow_halfwidth does NOT actually have to be even (JTB Mar 2022)
       !
+      write(*,*) "nwindow_halfwidth before clamp  = ",nwindow_halfwidth
       if (nwindow_halfwidth<5) then
         write(*,*) "nwindow_halfwidth can not be < 4"
         write(*,*) "setting nwindow_halfwidth=4"
@@ -563,6 +581,15 @@ program convterr
       end if
     endif
   end if
+  !
+  ! Tag the file name when a non-default ridge window is used, so that a sweep
+  ! over ridge_window_ratio does not overwrite itself. Ratio 1.0 reproduces the
+  ! historical file names exactly.
+  !
+  if (lfind_ridges.and.ABS(ridge_window_ratio-1.0_r8)>1.0e-6_r8) then
+     write( str, "('_Rw',i0.3)" ) NINT(100.0_r8*ridge_window_ratio)
+     ofile = TRIM(ofile)//TRIM(str)
+  end if
   if (greenlndantarcsgh30_fac>0) then
      write(greenland_str,"('greenlndantarcsgh30fac',F4.2)") greenlndantarcsgh30_fac
      output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//&
@@ -646,6 +673,7 @@ program convterr
   write(nml_log,*)
   write(nml_log,*) "smoothing_scale                 = ",smoothing_scale
   write(nml_log,*) "nwindow_halfwidth               = ",nwindow_halfwidth
+  write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(nml_log,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
@@ -1248,6 +1276,8 @@ program convterr
     write (6,*) "   MISCELLANEOUS OPTIONS"
     write (6,*) " "
     write (6,*) "-r, --no_ridges                                 -> do not compute sub-grid-scale ridges"
+    write (6,*) "-w, --ridge_window_ratio=<real>                 -> scale factor on default ridge-analysis"
+    write (6,*) "                                                   window half-width (default 1.0)"
     write (6,*) "-x, --stop_after_smooth                         -> stop after smoothing"
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) "-z, --development_diags                         -> enable development diagnostics (for developers)"

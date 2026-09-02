@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
+import math
 import shutil
 import subprocess
 import glob
@@ -11,6 +12,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Generate topo cases.")
     parser.add_argument("--ogrid", type=str, help="Output grid, e.g., ne30pg3")
     parser.add_argument("--smoothing_scale", type=int, help="Smoothing scale")
+    parser.add_argument("--ridge_window_ratio", type=float, default=None,
+                        help="Scale factor on the ridge-analysis window half-width (default 1.0)")
     parser.add_argument("--tag", type=str, help="Tag for case identification")
     parser.add_argument("--config", type=str, default="create_topo.yaml", help="Path to YAML configuration file (default: create_topo.yaml)")
     parser.add_argument("--clean_case", action="store_true", help="Delete existing case directory if it exists")
@@ -19,6 +22,27 @@ def parse_arguments():
 def load_config(config_path):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
+
+def ridge_window_tag(ridge_window_ratio):
+    """
+    Build the '_Rw###' name fragment for a non-default ridge window ratio,
+    or '' when the ratio is the default 1.0.
+
+    This must stay byte-identical to the tag cube_to_target.F90 appends to
+    the output file name:
+
+        if (lfind_ridges.and.ABS(ridge_window_ratio-1.0_r8)>1.0e-6_r8) then
+           write( str, "('_Rw',i0.3)" ) NINT(100.0_r8*ridge_window_ratio)
+
+    Note floor(x+0.5) rather than round(): Python's round() is banker's
+    rounding (round(12.5) == 12) while Fortran NINT rounds half away from
+    zero (NINT(12.5) == 13). They differ on exact halves, e.g. a ratio of
+    0.125, which would otherwise put the case directory and the netCDF file
+    name out of step.
+    """
+    if ridge_window_ratio is None or abs(ridge_window_ratio - 1.0) <= 1.0e-6:
+        return ""
+    return f"_Rw{int(math.floor(100.0 * ridge_window_ratio + 0.5)):03d}"
 
 def clean_case_directory(case_dir):
     if os.path.exists(case_dir):
@@ -77,7 +101,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -126,6 +150,22 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
         raise ValueError("smoothing scale is required but was not provided.")
 
     command.append(f"--fine_radius=0")
+
+    #------------------------------------------------------------
+    # Ridge-analysis window scale factor. Note this one is tested
+    # with 'is not None' rather than truthiness: 0.0 is falsy, and
+    # we want an explicit 0 to reach the validation below instead
+    # of being silently dropped.
+    #------------------------------------------------------------
+    if ridge_window_ratio is not None:
+        if ridge_window_ratio <= 0:
+            raise ValueError(f"ridge_window_ratio must be > 0, got {ridge_window_ratio}")
+        command.append(f"--ridge_window_ratio={ridge_window_ratio}")
+
+    # Hard wired for now -
+    #command.append(f"--smooth_topo_file=/glade/work/juliob/Topo/NCARTopoJTB/cases/ne30pg3_Sco100_small_rdgs/output/topo_smooth_gmted2010_modis_bedmachine_nc3000_Co060.nc")
+    # Hard wired for now -
+    command.append(f"--ridge2tiles")
     # Hard wired for now --greenlndantarcsgh30_fac
     command.append(f"--greenlndantarcsgh30_fac=2.5")
 
@@ -159,6 +199,14 @@ def main():
     ogrid = args.ogrid or config.get("ogrid")
     smoothing_scale = args.smoothing_scale or config.get("smoothing_scale")
     tag = args.tag or config.get("tag")
+    #----------------------------------------------------------------
+    # 'is not None' rather than 'or' here: a YAML/CLI value of 0.0 is
+    # falsy and would otherwise be silently replaced by the default.
+    #----------------------------------------------------------------
+    if args.ridge_window_ratio is not None:
+        ridge_window_ratio = args.ridge_window_ratio
+    else:
+        ridge_window_ratio = config.get("ridge_window_ratio", 1.0)
     #clean_case = args.clean_case or config.get("clean_case")
     clean_case = args.clean_case if args.clean_case else config.get("clean_case", False)
 
@@ -168,9 +216,16 @@ def main():
 
     print(f"Ogrid: {ogrid}")
     print(f"Smoothing Scale: {smoothing_scale}")
+    print(f"Ridge Window Ratio: {ridge_window_ratio}")
     print(f"Tag: {tag}")
 
-    case = f"{ogrid}_Sco{smoothing_scale}_{tag}"
+    #------------------------------------------------------------------
+    # The _Rw tag matches the one cube_to_target.F90 puts on the netCDF
+    # file name, so a sweep over ridge_window_ratio gets its own case
+    # directory instead of recompiling over the previous run. At the
+    # default ratio of 1.0 the tag is empty and case names are unchanged.
+    #------------------------------------------------------------------
+    case = f"{ogrid}_Sco{smoothing_scale}{ridge_window_tag(ridge_window_ratio)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -234,11 +289,13 @@ def main():
                              cstopo=cstopo, 
                              smoothing_scale=smoothing_scale, 
                              scrip=scrip, 
-                             scrip_gll=scrip_gll, 
+                             scrip_gll=None,   #scrip_gll, 
                              yfac=yfac, 
-                             development_diags=True )
+                             development_diags=True,
+                             ridge_window_ratio=ridge_window_ratio )
         
     subprocess.run(command, check=True)
-
+    #print( f" Did not run, but here is command \n {' '.join(command)}" )
+    
 if __name__ == "__main__":
     main()

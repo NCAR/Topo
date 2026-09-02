@@ -20,4 +20,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --tag=default_rdgs
+./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --ridge_window_ratio=0.25 --tag=v6_test

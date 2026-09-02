@@ -67,7 +67,7 @@ public peak_type
     INTEGER (KIND=int_kind),allocatable :: UQRID(:) 
 
   real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
-  real(r8), allocatable, dimension(:,:) :: clngt_tiles
+  real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -123,6 +123,7 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
        INTEGER (KIND=int_kind), INTENT(IN)  :: iopt_ridge_seed
        INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,nhigher,npeaks
        INTEGER (KIND=int_kind) :: ipk,nblock,ijaa(2),im,jm,bloc,ivar1,ivar2,ii,jj
+       INTEGER (KIND=int_kind) :: np0,np1
 
     REAL(KIND=dbl_kind), &
             DIMENSION(ncube,ncube,6)  :: terr_max , terr_sm
@@ -278,13 +279,13 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
     end do
 
      
-
-    npeaks = count(  (terr_max > thsh) )
+    np0 = 1 ; np1 = 6  ! set to 4,4 for single-panel debugging
+    npeaks = count(  (terr_max(:,:,np0:np1) > thsh) )
 
     allocate( peaks( npeaks ) )
 
     ipk=1
-    DO np = 1, 6
+    DO np = np0,np1
     DO j=1,ncube
     DO i=1,ncube
        if (terr_max(i,j,np) > thsh ) then
@@ -297,11 +298,16 @@ subroutine find_local_maxes ( terr_dev, ncube, nhalo, nsw, iopt_ridge_seed )
        endif
     end do
     end do
-write(*,*) ' PANEL = ',NP
+    write(*,*) ' PANEL = ',NP
     end do
 
-write(*,*) " two sizes of peaks ", npeaks, ipk-1
-write(*,*) " SHAPE ", shape( peaks%i )
+    if ( ipk-1 /= npeaks ) then
+       write(*,*) 'find_local_maxes: filled ',ipk-1,' peaks but allocated ',npeaks
+       stop 1
+    end if
+
+    write(*,*) " two sizes of peaks ", npeaks, ipk-1
+    write(*,*) " SHAPE ", shape( peaks%i )
 
 
  end subroutine find_local_maxes
@@ -1573,7 +1579,9 @@ end subroutine THINOUT_LIST
       use shr_kind_mod, only: r8 => shr_kind_r8
       use remap
       use reconstruct
+      use ridge_angles_mod, only: ridge_anglx_to_latlon
 
+      
       implicit none
       real(r8),           intent(in) :: weights_all(jall,nreconstruction)
       integer ,           intent(in) :: weights_eul_index_all(jall,3),weights_lgr_index_all(jall)
@@ -1620,6 +1628,8 @@ end subroutine THINOUT_LIST
       character(len=8)  :: date
       character(len=10) :: time
 
+      write(*,*) "Using Claude's mod"
+      
       CALL EquiangularAllAreas(ncube, dA)
       write(*,*) "Max target grid area   ",maxval( area_target )
       write(*,*) "Min cubetopo grid area ",maxval( dA )
@@ -1868,7 +1878,7 @@ end subroutine THINOUT_LIST
                 anglx_tiles(ntarget,maxtiles ), hwdth_tiles(ntarget,maxtiles ), &  
                 clngt_tiles(ntarget,maxtiles ), lonc_tiles(ntarget,maxtiles ) , &
                 latc_tiles(ntarget,maxtiles ) , lonw_tiles(ntarget,maxtiles ) , &
-                latw_tiles(ntarget,maxtiles ) )
+                latw_tiles(ntarget,maxtiles ) , angll_tiles(ntarget,maxtiles ) )
 
       latc_tiles(:,:)  =-9999._r8 
       lonc_tiles(:,:)  =-9999._r8  
@@ -1876,6 +1886,7 @@ end subroutine THINOUT_LIST
       lonw_tiles(:,:)  =-9999._r8  
       aniso_tiles(:,:) =-9999._r8  
       anglx_tiles(:,:) =-9999._r8  
+      angll_tiles(:,:) =-9999._r8  
       mxdis_tiles(:,:) =-9999._r8  
       hwdth_tiles(:,:) =-9999._r8  
       clngt_tiles(:,:) =-9999._r8  
@@ -1926,6 +1937,14 @@ end subroutine THINOUT_LIST
        end do
 #endif
 
+       ! Get ANGLL from ANGLX
+       !-------------------------------------------------------------------------------
+       call ridge_anglx_to_latlon( ntarget, maxtiles, lonc_tiles, &
+                                   latc_tiles, anglx_tiles, angll_tiles, &
+                                   latlon_in_degrees=.True. )
+
+
+       
 ! Logging ....
       write(*,*)" "
       write(*,*)"  max (NumObjects) ",maxtiles
@@ -1959,6 +1978,7 @@ end subroutine THINOUT_LIST
       write(911) latw_tiles
       write(911) aniso_tiles
       write(911) anglx_tiles
+      write(911) angll_tiles
       write(911) mxdis_tiles
       write(911) hwdth_tiles
       write(911) clngt_tiles
