@@ -31,7 +31,9 @@ public isovar_target,isowgt_target
 public mxdis_tiles,aniso_tiles,anglx_tiles,angll_tiles
 public hwdth_tiles,clngt_tiles
 public anixy_tiles,wghts_tiles,riseq_tiles,fallq_tiles
+public latc_tiles,lonc_tiles
 public ntiles_out
+public lsort_tiles
 
 public peak_type
 
@@ -78,6 +80,11 @@ public peak_type
   real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
   real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
   integer                               :: ntiles_out = -1
+  !
+  ! Sort ridge objects within each target cell by importance (mxdis*clngt,
+  ! descending) before writing. Set .FALSE. to keep the raw MyObject ID order.
+  !
+  logical                               :: lsort_tiles = .TRUE.
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -1612,6 +1619,8 @@ end subroutine THINOUT_LIST
       integer :: i,ix,iy,ip,ii,counti,norx,nory,i_last,isubr,iip,j,ipk,ir
       integer :: nswx,nrs_junk,ig,nalloc,n,ird,ThisRidge,k,nf1,nf2,IdxMin,IdxMax
       real(r8):: wt,wght
+      real(r8),allocatable, dimension(:)             :: tkey
+      integer, allocatable, dimension(:)             :: iperm
       integer,             dimension(ncube*ncube*6) :: xcoord,ycoord,pcoord
       real(KIND=dbl_kind), dimension(ncube*ncube)   :: dA     
       real(KIND=dbl_kind), dimension(ncube,ncube,6) :: tempC
@@ -1865,18 +1874,18 @@ end subroutine THINOUT_LIST
             ThisRidge = MyObject(j,ir)  !
             xpack = pack( xcoordMap, (uniqwgMap == ThisRidge) ) 
             ypack = pack( ycoordMap, (uniqwgMap == ThisRidge) )
-            hpack = pack( wedgoMap,  (uniqwgMap == ThisRidge) )
+            hpack = pack( MAX(wedgoMap,0._r8), (uniqwgMap == ThisRidge) )
             npack = size(xpack)
-            if (npack > 0) then 
+            if ( sum(hpack) > 0) then 
                xwoid_tiles(j,ir) = sum( xpack *hpack )/ sum(hpack) !npack
                ywoid_tiles(j,ir) = sum( ypack *hpack )/ sum(hpack) !npack
             end if
             xpack = pack( xcoordMap, (uniqidMap == ThisRidge) )
             ypack = pack( ycoordMap, (uniqidMap == ThisRidge) )
             npack = size(xpack)
-            if (npack > 0) then 
-               xloid_tiles(j,ir) = sum( xpack )/ npack
-               yloid_tiles(j,ir) = sum( ypack )/ npack
+            if (npack > 0) then
+               xloid_tiles(j,ir) = REAL( sum(xpack), r8 ) / REAL( npack, r8 )
+               yloid_tiles(j,ir) = REAL( sum(ypack), r8 ) / REAL( npack, r8 )
                clext_tiles(j,ir) = sqrt( 1.*(maxval(xpack)-minval(xpack))**2 &
                                        + 1.*(maxval(ypack)-minval(ypack))**2 )
             end if
@@ -1973,8 +1982,87 @@ end subroutine THINOUT_LIST
                                    latc_tiles, anglx_tiles, angll_tiles, &
                                    latlon_in_degrees=.True. )
 
+      !-------------------------------------------------------------------------
+      ! Sort the ridge objects in each target cell by importance, descending.
+      !
+      ! Objects arrive in MyObject ID order, which is arbitrary -- it reflects
+      ! the order peaks were found while scanning the cubed sphere. The
+      ! *_target arrays are sorted by importancesort so that ridge 1 is the
+      ! dominant one; this does the same for tiles so the two representations
+      ! have consistent semantics, and so that truncating nrdg keeps the
+      ! largest ridges rather than arbitrary ones.
+      !
+      ! Key is mxdis*clngt, matching importancesort. clngt is still in
+      ! cube-cell units here (the km conversion happens in the writer), but
+      ! that is a constant factor and does not affect the ordering.
+      !
+      ! Only the first NumObjects(i) entries are permuted, so -9999 fills stay
+      ! at the end. Every per-tile array is permuted together, including the
+      ! ones written to Ridge_tile_map.dat, so that file stays self-consistent.
+      !-------------------------------------------------------------------------
+      if (lsort_tiles) then
+         write(*,*) " "
+         write(*,*) " Sorting tiles by importance (mxdis*clngt, descending) "
 
-       
+         allocate( tkey(maxtiles), iperm(maxtiles) )
+
+         do i=1,ntarget
+            n = NumObjects(i)
+            if (n <= 1) cycle
+
+            do k=1,n
+               tkey(k)  = mxdis_tiles(i,k) * clngt_tiles(i,k)
+               iperm(k) = k
+            end do
+            !
+            ! Selection sort, descending. Same algorithm as importancesort;
+            ! n is at most a few dozen so this is not worth improving.
+            !
+            do k=1,n-1
+               do ii=k+1,n
+                  if ( tkey(k) < tkey(ii) ) then
+                     wt        = tkey(k)
+                     tkey(k)   = tkey(ii)
+                     tkey(ii)  = wt
+                     ird       = iperm(k)
+                     iperm(k)  = iperm(ii)
+                     iperm(ii) = ird
+                  end if
+               end do
+            end do
+
+            ! Arrays consumed by wrtncdf_ridge_tiles
+            call permute_row_r8( mxdis_tiles, i, n, iperm )
+            call permute_row_r8( aniso_tiles, i, n, iperm )
+            call permute_row_r8( anglx_tiles, i, n, iperm )
+            call permute_row_r8( angll_tiles, i, n, iperm )
+            call permute_row_r8( hwdth_tiles, i, n, iperm )
+            call permute_row_r8( clngt_tiles, i, n, iperm )
+            call permute_row_r8( anixy_tiles, i, n, iperm )
+            call permute_row_r8( wghts_tiles, i, n, iperm )
+            call permute_row_r8( riseq_tiles, i, n, iperm )
+            call permute_row_r8( fallq_tiles, i, n, iperm )
+
+            ! Arrays written to Ridge_tile_map.dat, kept aligned
+            call permute_row_i4( MyObject   , i, n, iperm )
+            call permute_row_i4( panel_tiles, i, n, iperm )
+            call permute_row_r8( WtObject   , i, n, iperm )
+            call permute_row_r8( LnObject   , i, n, iperm )
+            call permute_row_r8( xwoid_tiles, i, n, iperm )
+            call permute_row_r8( ywoid_tiles, i, n, iperm )
+            call permute_row_r8( xloid_tiles, i, n, iperm )
+            call permute_row_r8( yloid_tiles, i, n, iperm )
+            call permute_row_r8( lonc_tiles , i, n, iperm )
+            call permute_row_r8( latc_tiles , i, n, iperm )
+            call permute_row_r8( lonw_tiles , i, n, iperm )
+            call permute_row_r8( latw_tiles , i, n, iperm )
+            call permute_row_r8( clext_tiles, i, n, iperm )
+         end do
+
+         deallocate( tkey, iperm )
+         write(*,*) " Done sorting tiles "
+      end if
+
 ! Logging ....
       write(*,*)" "
       write(*,*)"  max (NumObjects) ",maxtiles
@@ -2385,6 +2473,7 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
 ! for "painting"
 !================================
   axc  =  0.
+  bxc  =  0.
 
   do ip=1,6
   do j=1,ncube
@@ -2857,5 +2946,33 @@ end subroutine alloc_ridge_qs
 !==================================================================
 
 
+
+!==================================================================
+! Reorder the first n entries of row i of a per-tile array according
+! to the permutation iperm, i.e. new(:,k) = old(:,iperm(k)).
+!
+! Entries beyond n are untouched, so -9999 fills stay where they are.
+! The second dimension of `a` only has to be at least n; MyObject,
+! WtObject and LnObject are dimensioned nalloc rather than maxtiles
+! and are handled correctly for that reason.
+!==================================================================
+  subroutine permute_row_r8( a, i, n, iperm )
+    real(r8), intent(inout) :: a(:,:)
+    integer,  intent(in)    :: i, n, iperm(:)
+    real(r8) :: tmp(n)
+    tmp        = a(i,1:n)
+    a(i,1:n)   = tmp(iperm(1:n))
+  end subroutine permute_row_r8
+
+!==================================================================
+  subroutine permute_row_i4( a, i, n, iperm )
+    integer, intent(inout) :: a(:,:)
+    integer, intent(in)    :: i, n, iperm(:)
+    integer :: tmp(n)
+    tmp        = a(i,1:n)
+    a(i,1:n)   = tmp(iperm(1:n))
+  end subroutine permute_row_i4
+
+!==================================================================
 
 end module ridge_ana

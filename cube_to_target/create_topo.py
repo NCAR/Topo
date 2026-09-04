@@ -14,6 +14,9 @@ def parse_arguments():
     parser.add_argument("--smoothing_scale", type=int, help="Smoothing scale")
     parser.add_argument("--ridge_window_ratio", type=float, default=None,
                         help="Scale factor on the ridge-analysis window half-width (default 1.0)")
+    parser.add_argument("--fine_smoothing_scale", type=float, default=None,
+                        help="Band-pass: additionally low-pass terr_dev at this scale in km. "
+                             "Must be < smoothing_scale. Omit to disable.")
     parser.add_argument("--tag", type=str, help="Tag for case identification")
     parser.add_argument("--config", type=str, default="create_topo.yaml", help="Path to YAML configuration file (default: create_topo.yaml)")
     parser.add_argument("--clean_case", action="store_true", help="Delete existing case directory if it exists")
@@ -43,6 +46,22 @@ def ridge_window_tag(ridge_window_ratio):
     if ridge_window_ratio is None or abs(ridge_window_ratio - 1.0) <= 1.0e-6:
         return ""
     return f"_Rw{int(math.floor(100.0 * ridge_window_ratio + 0.5)):03d}"
+
+def fine_smoothing_tag(fine_smoothing_scale):
+    """
+    Build the '_Sfi##' case-name fragment for band-pass smoothing, or '' when
+    band-pass is off.
+
+    Formatted to match the existing '_Sco##' fragment, which uses the bare
+    value with no zero padding. A whole number renders as an integer
+    (25.0 -> '_Sfi25'); a fractional scale uses 'p' for the decimal point
+    (12.5 -> '_Sfi12p5') to keep the directory name free of dots.
+    """
+    if fine_smoothing_scale is None or fine_smoothing_scale <= 0:
+        return ""
+    if float(fine_smoothing_scale).is_integer():
+        return f"_Sfi{int(fine_smoothing_scale)}"
+    return f"_Sfi{fine_smoothing_scale:g}".replace(".", "p")
 
 def clean_case_directory(case_dir):
     if os.path.exists(case_dir):
@@ -101,7 +120,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -162,6 +181,17 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
             raise ValueError(f"ridge_window_ratio must be > 0, got {ridge_window_ratio}")
         command.append(f"--ridge_window_ratio={ridge_window_ratio}")
 
+    #------------------------------------------------------------
+    # Band-pass fine smoothing scale (km). Omitted entirely when not
+    # requested, so cube_to_target skips the band-pass.
+    #------------------------------------------------------------
+    if fine_smoothing_scale is not None and fine_smoothing_scale > 0:
+        if smoothing_scale is not None and fine_smoothing_scale >= smoothing_scale:
+            raise ValueError(
+                f"fine_smoothing_scale ({fine_smoothing_scale}) must be < "
+                f"smoothing_scale ({smoothing_scale})")
+        command.append(f"--fine_smoothing_scale={fine_smoothing_scale}")
+
     # Hard wired for now -
     #command.append(f"--smooth_topo_file=/glade/work/juliob/Topo/NCARTopoJTB/cases/ne30pg3_Sco100_small_rdgs/output/topo_smooth_gmted2010_modis_bedmachine_nc3000_Co060.nc")
     # Hard wired for now -
@@ -207,6 +237,10 @@ def main():
         ridge_window_ratio = args.ridge_window_ratio
     else:
         ridge_window_ratio = config.get("ridge_window_ratio", 1.0)
+    if args.fine_smoothing_scale is not None:
+        fine_smoothing_scale = args.fine_smoothing_scale
+    else:
+        fine_smoothing_scale = config.get("fine_smoothing_scale", None)
     #clean_case = args.clean_case or config.get("clean_case")
     clean_case = args.clean_case if args.clean_case else config.get("clean_case", False)
 
@@ -217,6 +251,7 @@ def main():
     print(f"Ogrid: {ogrid}")
     print(f"Smoothing Scale: {smoothing_scale}")
     print(f"Ridge Window Ratio: {ridge_window_ratio}")
+    print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
 
     #------------------------------------------------------------------
@@ -225,7 +260,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}{ridge_window_tag(ridge_window_ratio)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -292,7 +327,8 @@ def main():
                              scrip_gll=None,   #scrip_gll, 
                              yfac=yfac, 
                              development_diags=True,
-                             ridge_window_ratio=ridge_window_ratio )
+                             ridge_window_ratio=ridge_window_ratio,
+                             fine_smoothing_scale=fine_smoothing_scale )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )

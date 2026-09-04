@@ -34,7 +34,8 @@ CONTAINS
                                     , str_dir, str_source, ogrid& 
                                     , nu_lap, smooth_phis_numcycle,landfrac&
                                     , lsmoothing_over_ocean,lsmooth_rrfac&
-                                    , smooth_topo_fname)
+                                    , smooth_topo_fname &
+                                    , nu_lap_fine, smooth_phis_numcycle_fine)
 
     use shared_vars, only: progress_bar
     implicit none
@@ -58,6 +59,12 @@ CONTAINS
     real(r8), DIMENSION(ncube,ncube,6), INTENT(IN) :: landfrac
     logical, intent(in)                          :: lsmoothing_over_ocean, lsmooth_rrfac
     CHARACTER(len=1024), INTENT(IN   ), optional :: smooth_topo_fname
+    !
+    ! Optional band-pass filtering of terr_dev (Laplacian smoother only).
+    ! nu_lap_fine <= 0 or absent disables it.
+    !
+    real(r8), INTENT(IN), optional :: nu_lap_fine
+    integer,  INTENT(IN), optional :: smooth_phis_numcycle_fine
 
 
     integer, INTENT(IN)  :: rrfac_max
@@ -85,6 +92,9 @@ CONTAINS
     real(r8)            :: nu_lap_unit_sphere,dt
     real(r8)            :: min_terr, max_terr   !to check if Laplacian smoother is stable
     real(r8)            :: min_rrfac, max_rrfac !to check if Laplacian smoother is stable
+    logical             :: lbandpass
+    integer             :: ncycle_fine
+    real(r8)            :: nu_lap_fine_unit_sphere, min_dev, max_dev
     !read_in_precomputed = .FALSE.
     read_in_precomputed = lread_smooth_topofile  !.TRUE.
     use_prefilter = luse_prefilter 
@@ -286,6 +296,81 @@ CONTAINS
           terr_sm   =  terr_sm00
           terr_dev  =  terr_dev00
         end where
+      end if
+
+      !-----------------------------------------------------------------------
+      ! OPTIONAL BAND-PASS FILTER ON terr_dev
+      !
+      ! terr_dev = terr - terr_sm is a HIGH-pass field: everything the coarse
+      ! Laplacian removed. Applying a WEAKER Laplacian to terr_dev low-passes
+      ! it at a finer scale, leaving only scales between the two. That is a
+      ! band-pass, and it is the Laplacian-smoother analogue of what
+      ! use_prefilter/NSCL_f does for the distance-weighted smoother.
+      !
+      ! IMPORTANT: the cutoff is set by nu_lap_fine ALONE. Because
+      ! dt = 16/numcycle and the loop runs numcycle times, the total applied
+      ! diffusion is 16*nu regardless of numcycle -- the iteration count
+      ! controls stability only, not how much smoothing happens. Since nu
+      ! scales as length squared, a band-pass at a fraction f of the coarse
+      ! scale means nu_lap_fine = f**2 * nu_lap.
+      !
+      ! Land masking is deliberately not applied: terr_dev is a deviation
+      ! field and the coastline constraint has already done its work on
+      ! terr_sm.
+      !
+      ! NOTE: after this, terr_sm + terr_dev /= terr. That is the intent, but
+      ! it means SGH (computed from terr_dev in the main program) no longer
+      ! represents the full sub-grid variance.
+      !-----------------------------------------------------------------------
+      lbandpass = .false.
+      if (present(nu_lap_fine)) then
+        if (nu_lap_fine > 0.0_r8) lbandpass = .true.
+      end if
+
+      if (lbandpass) then
+        if (ldistance_weighted_smoother) then
+          write(*,*) "Band-pass via nu_lap_fine applies to the Laplacian smoother only."
+          write(*,*) "The distance-weighted smoother has its own prefilter (NSCL_f)."
+          write(*,*) "ABORT"
+          stop
+        end if
+
+        ncycle_fine = smooth_phis_numcycle
+        if (present(smooth_phis_numcycle_fine)) then
+          if (smooth_phis_numcycle_fine > 0) ncycle_fine = smooth_phis_numcycle_fine
+        end if
+        ncycle_fine = MAX(1,ncycle_fine)
+
+        nu_lap_fine_unit_sphere = nu_lap_fine/(rearth*rearth)
+
+        min_dev = MINVAL(terr_dev)
+        max_dev = MAXVAL(terr_dev)
+
+        write(*,*) " "
+        write(*,*) "Band-pass: low-pass filtering terr_dev"
+        write(*,*) "   nu_lap      (coarse) = ",nu_lap
+        write(*,*) "   nu_lap_fine          = ",nu_lap_fine
+        write(*,*) "   nu_fine/nu_coarse    = ",nu_lap_fine/nu_lap
+        write(*,*) "   implied length ratio = ",SQRT(nu_lap_fine/nu_lap)
+        write(*,*) "   subcycles            = ",ncycle_fine
+        write(*,*) "   terr_dev range before= ",min_dev,max_dev
+
+        landfrac_local = 1.0_r8
+        dt = 16.0/real(ncycle_fine)
+        do iter = 1,ncycle_fine
+          call progress_bar("# ", iter, DBLE(100*iter)/DBLE(ncycle_fine))
+          call laplacian(terr_dev, ncube, lap, landfrac_local, .true.)
+          terr_dev = terr_dev+lap*dt*nu_lap_fine_unit_sphere*rrfac_sm
+          if (MAXVAL(terr_dev)>1.2*max_dev.or.MINVAL(terr_dev)<1.2*min_dev) then
+            write(*,*) " "
+            write(*,*) "Band-pass Laplace iteration seems to be unstable:", &
+                 MINVAL(terr_dev),MAXVAL(terr_dev)
+            write(*,*) "Reduce nu_lap_fine, or raise smooth_phis_numcycle_fine."
+            stop
+          end if
+        end do
+        write(*,*) " "
+        write(*,*) "   terr_dev range after = ",MINVAL(terr_dev),MAXVAL(terr_dev)
       end if
 
 

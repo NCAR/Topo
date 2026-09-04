@@ -99,6 +99,13 @@ program convterr
   logical :: ldistance_weighted_smoother = .FALSE.!use distance weighted smoother instead of Laplacian smoother
 
   real (r8):: nu_lap = -1
+  !
+  ! Band-pass: fine cutoff scale in km for the Laplacian smoother.
+  ! <=0 disables. Must be smaller than smoothing_scale.
+  !
+  real (r8):: fine_smoothing_scale = -1
+  real (r8):: nu_lap_fine = -1
+  integer  :: smooth_phis_numcycle_fine = -1
   integer  :: smooth_phis_numcycle=-1
   real (r8):: smoothing_scale=0
   real (r8):: compute_sgh30_from_sgh_fac=-1
@@ -130,7 +137,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(27)
+  type(option_s):: opts(28)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -162,6 +169,7 @@ program convterr
   opts(25) = option_s( "compute_sgh30_from_sgh_fac",.true.    , '3'   ,.false.       ,.false.)
   opts(26) = option_s( "greenlndantarcsgh30_fac"   ,.true.    , '4'   ,.false.       ,.false.)
   opts(27) = option_s( "ridge_window_ratio"        ,.true.    , 'w'   ,.false.       ,.false.)
+  opts(28) = option_s( "fine_smoothing_scale"      ,.true.    , 'e'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -175,7 +183,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -308,6 +316,11 @@ program convterr
       write(str,'(F12.4)') ridge_window_ratio
       command_line_arguments = TRIM(command_line_arguments)//' --ridge_window_ratio '//TRIM(ADJUSTL(str))
       opts(27)%specified = .true.
+   case( 'e' )
+      read (optarg, *) fine_smoothing_scale
+      write(str,'(F12.4)') fine_smoothing_scale
+      command_line_arguments = TRIM(command_line_arguments)//' --fine_smoothing_scale '//TRIM(ADJUSTL(str))
+      opts(28)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -358,6 +371,7 @@ program convterr
   write(*,*) "smoothing_scale                 = ",smoothing_scale
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
+  write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(*,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
@@ -464,6 +478,30 @@ program convterr
   nu_lap                  = 20.0E7*(smoothing_scale/100.0)**2
   write(*,*) "ncube_sph_smooth_coarse=",ncube_sph_smooth_coarse
   write(*,*) "nu_lap                  =",nu_lap
+  !
+  ! Band-pass hyperviscosity. nu scales as length squared, so a cutoff at
+  ! fine_smoothing_scale km uses the same formula as the coarse nu_lap.
+  ! The subcycle count is scaled the same way, which keeps the per-step
+  ! increment (and therefore the stability margin) identical to the coarse
+  ! smoother.
+  !
+  if (fine_smoothing_scale > 0.0_r8) then
+    if (fine_smoothing_scale >= smoothing_scale) then
+      write(*,*) "fine_smoothing_scale must be < smoothing_scale"
+      write(*,*) "  fine_smoothing_scale = ",fine_smoothing_scale
+      write(*,*) "  smoothing_scale      = ",smoothing_scale
+      stop
+    end if
+    if (ldistance_weighted_smoother) then
+      write(*,*) "fine_smoothing_scale applies to the Laplacian smoother only."
+      write(*,*) "The distance-weighted smoother uses --fine_radius instead. ABORT"
+      stop
+    end if
+    nu_lap_fine = 20.0E7*(fine_smoothing_scale/100.0)**2
+    smooth_phis_numcycle_fine = MAX(1, NINT((nu_lap_fine/20.0E7)*60*(real(ncube)/540.0)**2))
+    write(*,*) "nu_lap_fine             =",nu_lap_fine
+    write(*,*) "smooth_phis_numcycle_fine=",smooth_phis_numcycle_fine
+  end if
 
   if (.not.ldistance_weighted_smoother) then
     if (smooth_phis_numcycle<0) then
@@ -674,6 +712,7 @@ program convterr
   write(nml_log,*) "smoothing_scale                 = ",smoothing_scale
   write(nml_log,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
+  write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
   write(nml_log,*) "intermediate_cubed_sphere_fname = ",trim(intermediate_cubed_sphere_fname)
@@ -795,7 +834,9 @@ program convterr
          output_grid,&
          nu_lap, smooth_phis_numcycle,landfrac,&
          lsmoothing_over_ocean,lrrfac_manipulation,&
-         smooth_topo_fname=smooth_topo_fname&
+         smooth_topo_fname=smooth_topo_fname,&
+         nu_lap_fine=nu_lap_fine, &
+         smooth_phis_numcycle_fine=smooth_phis_numcycle_fine&
          )
     
   else
@@ -1284,6 +1325,8 @@ program convterr
     write (6,*) "   LAPLACIAN SMOOTHER OPTIONS"
     write (6,*) " "
     write (6,*) "-m, --smoothing_over_ocean                      -> do not restrict smoother to only smooth over land"
+    write (6,*) "-e, --fine_smoothing_scale=<real> (in km)       -> band-pass: additionally low-pass terr_dev at this"
+    write (6,*) "                                                   scale. Must be < smoothing_scale. <=0 disables."
     write (6,*) "-l, --smooth_phis_numcycle                      -> number of subcycles for Laplacian smoother (for stability)"
     write (6,*) " "
     write (6,*) "   MISCELLANEOUS OPTIONS"
@@ -1868,7 +1911,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   use shared_vars,  only: rad2deg
   use ridge_ana,    only: mxdis_tiles, aniso_tiles, anglx_tiles, angll_tiles, &
                           hwdth_tiles, clngt_tiles, anixy_tiles, wghts_tiles, &
-                          riseq_tiles, fallq_tiles,                           &
+                          riseq_tiles, fallq_tiles, latc_tiles, lonc_tiles,   &
                           isovar_target, isowgt_target, grid_length_scale
 
   implicit none
@@ -1895,6 +1938,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   integer :: latvid, lonvid, isovarid, isowgtid, gbxarid
   integer :: mxdisid, ang22id, anglxid, anisoid, anixyid
   integer :: hwdthid, clngtid, wghtsid, riseqid, fallqid
+  integer :: latcid,  loncid
   integer :: status
 
   real(r8), allocatable :: tmp(:,:)
@@ -1953,6 +1997,8 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call defvar('WGHTS',2,wghtsid)
   call defvar('RISEQ',2,riseqid)
   call defvar('FALLQ',2,fallqid)
+  call defvar('latc', 2,latcid)
+  call defvar('lonc', 2,loncid)
   !
   ! Attributes
   !
@@ -1978,6 +2024,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put_atts(wghtsid,'Area of target cell covered by ridge wedge','m+2')
   call put_atts(riseqid,'Rise to peak from left (ridge_finding)','m')
   call put_atts(fallqid,'Fall from peak toward right (ridge_finding)','m')
+  !
+  call put_atts(latcid ,'crest cen. latitude','degrees_north')
+  call put_atts(loncid ,'crest cen. longitude','degrees_east')
   !
   ! Record that this file uses tile-based ridges, so it can be told apart
   ! from a file written by wrtncdf_unstructured.
@@ -2027,6 +2076,8 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put2d(wghtsid,'WGHTS',clean(wghts_tiles))
   call put2d(riseqid,'RISEQ',clean(riseq_tiles))
   call put2d(fallqid,'FALLQ',clean(fallq_tiles))
+  call put2d(latcid, 'latc', clean(latc_tiles))
+  call put2d(loncid, 'lonc', clean(lonc_tiles))
 
   deallocate( tmp )
 
