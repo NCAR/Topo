@@ -26,6 +26,13 @@ public ang22_target,anixy_target,clngt_target,cwght_target,count_target
 public nsubr,grid_length_scale,fallq_target,isoht_target,isowd_target
 public isovar_target,isowgt_target
 
+! Tile-based ridge quantities, produced by remapridge2tiles and consumed by
+! wrtncdf_ridge_tiles. Dimensioned (ntarget,maxtiles); ntiles_out = maxtiles.
+public mxdis_tiles,aniso_tiles,anglx_tiles,angll_tiles
+public hwdth_tiles,clngt_tiles
+public anixy_tiles,wghts_tiles,riseq_tiles,fallq_tiles
+public ntiles_out
+
 public peak_type
 
 !===============================================================================
@@ -68,6 +75,9 @@ public peak_type
 
   real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
   real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
+  real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
+  real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
+  integer                               :: ntiles_out = -1
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -1891,6 +1901,13 @@ end subroutine THINOUT_LIST
       hwdth_tiles(:,:) =-9999._r8  
       clngt_tiles(:,:) =-9999._r8  
 
+      allocate( anixy_tiles(ntarget,maxtiles), wghts_tiles(ntarget,maxtiles), &
+                riseq_tiles(ntarget,maxtiles), fallq_tiles(ntarget,maxtiles) )
+      anixy_tiles(:,:) =-9999._r8
+      riseq_tiles(:,:) =-9999._r8
+      fallq_tiles(:,:) =-9999._r8
+      wghts_tiles(:,:) =    0._r8
+
       write(*,*) ' '
 
 
@@ -1905,6 +1922,19 @@ end subroutine THINOUT_LIST
             anglx_tiles(i,ir) = anglx(ThisRidge)
             hwdth_tiles(i,ir) = hwdth(ThisRidge)
             clngt_tiles(i,ir) = clngth(ThisRidge)
+            riseq_tiles(i,ir) = riseq(ThisRidge)
+            fallq_tiles(i,ir) = fallq(ThisRidge)
+            anixy_tiles(i,ir) = mxvrx(ThisRidge) &
+                              / ( mxvrx(ThisRidge) + mxvry(ThisRidge) + 0.0001_r8 )
+            !
+            ! WGHTS analogue for tiles. WtObject counts cube cells in this
+            ! object's wedge, idcoun counts all cube cells in the target cell,
+            ! so the ratio is the covered fraction. Scaling by area_target puts
+            ! it in the same units as wghts_target, which is a sum of overlap
+            ! weights in steradians.
+            !
+            wghts_tiles(i,ir) = area_target(i) * WtObject(i,ir) &
+                              / REAL( MAX(1,idcoun(i)), r8 )
             clngt2(ThisRidge) = clngt2(ThisRidge)+clext_tiles(i,ir)
          end do
          !write(*,903,advance='no') achar(13), i,ntarget
@@ -1958,6 +1988,9 @@ end subroutine THINOUT_LIST
 ! -------------------------------------
 
       npeaks = size(clngt2 )
+
+      ! Publish the tile count so wrtncdf_ridge_tiles knows the nrdg dimension.
+      ntiles_out = maxtiles
 
       ofile="output/Ridge_tile_map.dat"
       OPEN (unit = 911, file= trim(ofile) ,form="UNFORMATTED" )
