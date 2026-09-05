@@ -80,6 +80,7 @@ public peak_type
   real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
   real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
   real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
+  real(r8), allocatable, dimension(:,:) :: latc_tiles,lonc_tiles
   integer                               :: ntiles_out = -1
   !
   ! Sort ridge objects within each target cell by importance (mxdis*clngt,
