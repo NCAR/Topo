@@ -24,6 +24,7 @@ public anglx_target,aniso_target,mxdis_target,hwdth_target
 public mxvrx_target,mxvry_target,bsvar_target,wghts_target,riseq_target
 public ang22_target,anixy_target,clngt_target,cwght_target,count_target
 public nsubr,grid_length_scale,fallq_target,isoht_target,isowd_target
+public paint_reach_crest,paint_reach_wedge
 public isovar_target,isowgt_target
 
 ! Tile-based ridge quantities, produced by remapridge2tiles and consumed by
@@ -79,7 +80,6 @@ public peak_type
   real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
   real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
   real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
-  real(r8), allocatable, dimension(:,:) :: latc_tiles,lonc_tiles
   integer                               :: ntiles_out = -1
   !
   ! Sort ridge objects within each target cell by importance (mxdis*clngt,
@@ -94,6 +94,25 @@ public peak_type
     REAL(RPX), allocatable :: agnom(:),bgnom(:)
 
     REAL(r8) :: grid_length_scale
+
+    !-------------------------------------------------------------------------
+    ! Fraction of the brush half-width NSWx that is actually stamped onto the
+    ! cubed sphere. The painting loops run over -NSWx_lim:NSWx_lim where
+    !
+    !     NSWx_lim = MAX( 1, MIN( nsw, INT(paint_reach*NSWx + tiny) ) )
+    !
+    ! so no setting can index outside suba/subdis, which are (-nsw:nsw,-nsw:nsw).
+    !
+    ! 0.5 reproduces the historical -NSWx/2:NSWx/2 behaviour exactly.
+    ! 1.0 stamps the full brush, roughly 4x the cells and 4x the cost.
+    !
+    ! Crest and wedge are separate knobs because they mean different things:
+    ! the crest is a line whose paintable length caps CLNGT and LnObject, while
+    ! the wedge is a footprint whose extent sets WGHTS. Lengthening crests
+    ! without redistributing WGHTS means raising only paint_reach_crest.
+    !-------------------------------------------------------------------------
+    REAL(r8) :: paint_reach_crest = 0.5_r8   ! paintridge2cube
+    REAL(r8) :: paint_reach_wedge = 0.5_r8   ! fleshout_block/profi, color_on_profi
 
     REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -2332,7 +2351,7 @@ function fleshout_block ( ncube,nhalo,nsw,mxdisC,hwdthC,anglxC,rrfac ) result( a
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
        real(rpx), dimension(-nsw:nsw)          :: xq,yq
        real(RPX) :: rotangl,dsq,ssq
-       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
+       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx,NSWx_lim
 !---------------------------------------------------
 
 
@@ -2348,6 +2367,7 @@ write(*,*) " in fleshout_block "
   do i=1,ncube
      if(mxdisC(i,j,ip)>=1.0) then
        nswx = NINT( nsw / rrfac(i,j,ip) )
+       NSWx_lim = MAX( 1, MIN( nsw, INT(paint_reach_wedge*NSWx + 1.0e-9_r8) ) )
        suba(:,:) = 0.
        subr(:,:) = 0.
        nhw  = MIN( INT(hwdthC(i,j,ip)/2) , nswx/2 )
@@ -2363,8 +2383,8 @@ write(*,*) " in fleshout_block "
 
                 ! Reconstruct 
                 !------------------------
-                do jj = -NSWx/2,NSWx/2
-                do ii = -NSWx/2,NSWx/2
+                do jj = -NSWx_lim,NSWx_lim
+                do ii = -NSWx_lim,NSWx_lim
                     x0 = i ! INT( xspk(ipk) ) + 1
                     y0 = j ! INT( yspk(ipk) ) + 1
                     if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+jj>=1-nhalo).and.(Y0+jj<=ncube+nhalo) ) then
@@ -2396,7 +2416,7 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) 
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
        real(rpx), dimension(-nsw:nsw)          :: xq,yq
        real(RPX) :: rotangl,dsq,ssq
-       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
+       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx,NSWx_lim
 !---------------------------------------------------
 
 !===============================
@@ -2410,6 +2430,7 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) 
   do i=1,ncube
      if(mxdisC(i,j,ip)>=1.0) then
        nswx = NINT( nsw / rrfac(i,j,ip) )
+       NSWx_lim = MAX( 1, MIN( nsw, INT(paint_reach_wedge*NSWx + 1.0e-9_r8) ) )
        ipk  = INT( uniqidC ( i,j,ip ) )
        suba(:,:) = 0.
        subr(:,:) = 0.
@@ -2425,8 +2446,8 @@ function fleshout_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x ) 
        end where
                 ! Reconstruct 
                 !------------------------
-                do jj = -NSWx/2,NSWx/2
-                do ii = -NSWx/2,NSWx/2
+                do jj = -NSWx_lim,NSWx_lim
+                do ii = -NSWx_lim,NSWx_lim
                     x0 = i ! INT( xspk(ipk) ) + 1
                     y0 = j ! INT( yspk(ipk) ) + 1
                     if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+jj>=1-nhalo).and.(Y0+jj<=ncube+nhalo) ) then
@@ -2464,7 +2485,7 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis,subcolo
        real(rpx), dimension(-nsw:nsw)          :: xq,yq
        real(RPX) :: rotangl,dsq,ssq
-       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx
+       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,idx1,nswx,NSWx_lim
 !---------------------------------------------------
 
  
@@ -2481,6 +2502,7 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
   do i=1,ncube
      if(mxdisC(i,j,ip)>=1.0) then
        nswx = NINT( nsw / rrfac(i,j,ip) )
+       NSWx_lim = MAX( 1, MIN( nsw, INT(paint_reach_wedge*NSWx + 1.0e-9_r8) ) )
        ipk  = INT( uniqidC ( i,j,ip ) )
        suba(:,:) = 0.
        subr(:,:) = 0.
@@ -2500,8 +2522,8 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
        end where
                 ! Reconstruct 
                 !------------------------
-                do jj = -NSWx/2,NSWx/2
-                do ii = -NSWx/2,NSWx/2
+                do jj = -NSWx_lim,NSWx_lim
+                do ii = -NSWx_lim,NSWx_lim
                     x0 = i ! INT( xspk(ipk) ) + 1
                     y0 = j ! INT( yspk(ipk) ) + 1
                     if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+jj>=1-nhalo).and.(Y0+jj<=ncube+nhalo) ) then
@@ -2546,7 +2568,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subblk,subblk0
        real(rpx), dimension(-nsw:nsw)          :: xq,yq
        real(RPX) :: rotangl,dsq,ssq
-       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx
+       integer :: i,j,x0,x1,y0,y1,ip,ns0,ns1,ii,jj,norx,nory,nql,ncl,nhw,ipk,npeaks,jw,iw,nswx,NSWx_lim
        logical :: lcrestln,lcrestwt,lblockfl,lprofifl,lbumpfl,allpixels
 !---------------------------------------------------
 
@@ -2650,21 +2672,21 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
  
             if(Lcrestwt) then
                suba(:,:) = 0.
-               ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+               ncl  = MIN( INT(clngth(ipk)/2) , nsw   )
                suba( 0 , -ncl:ncl ) = 1.        
                rotangl = - anglx(ipk) 
                subr = rotbyx( suba , 2*nsw+1, rotangl )
                subdis = subr 
              else if(Lcrestln) then
                suba(:,:) = 0.
-               ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+               ncl  = MIN( INT(clngth(ipk)/2) , nsw   )
                suba( 0 , -ncl:ncl ) = 1.        
                rotangl = - anglx(ipk) 
                subr = rotbyx( suba , 2*nsw+1, rotangl )
                subdis = subr * axr(ipk)
              else            
                suba(:,:) = 0.
-               ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+               ncl  = MIN( INT(clngth(ipk)/2) , nsw   )
                suba( 0 , -ncl:ncl ) = 1.        
                rotangl = - anglx(ipk) 
                subr = rotbyx( suba , 2*nsw+1, rotangl )
@@ -2683,6 +2705,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              NSWx = NSW / RefFac(ipk)
              !++jtb 05/26/24: Protection against too-small nswx
              NSWx = MAX( 4 , NSWx )
+             NSWx_lim = MAX( 1, MIN( nsw, INT(paint_reach_crest*NSWx + 1.0e-9_r8) ) )
 
              if (.NOT.(allpixels)) then
 #if 0
@@ -2698,8 +2721,8 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              !======================================================
              dsq    = 1.0 - SQRT( (xs(ipk)-xspk(ipk))**2 + (ys(ipk)-yspk(ipk))**2 )/nsw
              subq   = sub1 * dsq
-             do jj = -NSWx/2,NSWx/2
-             do ii = -NSWx/2,NSWx/2
+             do jj = -NSWx_lim,NSWx_lim
+             do ii = -NSWx_lim,NSWx_lim
                 ip = peaks(ipk)%ip
                 x0 = INT( xspk(ipk) ) + 1  ! original, original has +1
                 y0 = INT( yspk(ipk) ) + 1  ! original, original has +1
@@ -2718,7 +2741,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              !------------------------------------------------------------
              rotangl = - anglx(ipk) 
              subblk0(:,:)=0.
-             ncl  = MIN( INT(clngth(ipk)/2) , nsw/2 )
+             ncl  = MIN( INT(clngth(ipk)/2) , nsw   )
 
 !++tune
 !   For now make opt='_h2' the default. Compromise
@@ -2749,8 +2772,8 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              subblk0 = rotbyx( subblk0 , 2*nsw+1, rotangl )
              subblk  = subblk0 * mxdis(ipk) 
 
-             do jj = -NSWx/2,NSWx/2
-             do ii = -NSWx/2,NSWx/2
+             do jj = -NSWx_lim,NSWx_lim
+             do ii = -NSWx_lim,NSWx_lim
                 ip = peaks(ipk)%ip
                 !x0 = INT( xspk(ipk) )      ! do we need +1 
                 !y0 = INT( yspk(ipk) )  
@@ -2766,8 +2789,8 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              else
              ! allpixels reconstruction/reconcilaition
              !----------------------------------------
-             do jj = -NSWx/2,NSWx/2
-             do ii = -NSWx/2,NSWx/2
+             do jj = -NSWx_lim,NSWx_lim
+             do ii = -NSWx_lim,NSWx_lim
                 ip = peaks(ipk)%ip
                 x0 = INT( xspk(ipk) )
                 y0 = INT( yspk(ipk) )
