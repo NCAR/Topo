@@ -1655,7 +1655,7 @@ end subroutine THINOUT_LIST
       real(r8),allocatable, dimension(:)             :: hpack
       real(r8),allocatable, dimension(:,:)           :: xlext_tiles,ylext_tiles,clext_tiles
       real(r8),allocatable, dimension(:,:)           :: xwoid_tiles,ywoid_tiles,xloid_tiles,yloid_tiles
-      real(r8),allocatable, dimension(:,:)           :: lonc_tiles,latc_tiles
+      !real(r8),allocatable, dimension(:,:)           :: lonc_tiles,latc_tiles
       real(r8),allocatable, dimension(:,:)           :: lonw_tiles,latw_tiles
 
       integer, allocatable, dimension(:)             :: uniqwgMap,uniqidMap,xcoordMap,ycoordMap
