@@ -32,6 +32,7 @@ public isovar_target,isowgt_target
 public mxdis_tiles,aniso_tiles,anglx_tiles,angll_tiles
 public hwdth_tiles,clngt_tiles
 public anixy_tiles,wghts_tiles,riseq_tiles,fallq_tiles
+public clnin_tiles
 public latc_tiles,lonc_tiles
 public ntiles_out
 public lsort_tiles
@@ -78,6 +79,11 @@ public peak_type
 
   real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
   real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
+  ! In-column crest length, km. LnObject (cube cells of this ridge's crest
+  ! inside this target cell) converted to km and corrected for rasterization,
+  ! exactly as clngt_target is built in remapridge2target. This is what CAM
+  ! wants for CLNGT; clngt_tiles holds the whole-ridge length instead.
+  real(r8), allocatable, dimension(:,:) :: clnin_tiles
   real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
   real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
   real(r8), allocatable, dimension(:,:) :: latc_tiles,lonc_tiles
@@ -112,8 +118,8 @@ public peak_type
     ! the wedge is a footprint whose extent sets WGHTS. Lengthening crests
     ! without redistributing WGHTS means raising only paint_reach_crest.
     !-------------------------------------------------------------------------
-    REAL(r8) :: paint_reach_crest = 0.5_r8   ! paintridge2cube
-    REAL(r8) :: paint_reach_wedge = 0.5_r8   ! fleshout_block/profi, color_on_profi
+    REAL(r8) :: paint_reach_crest = 1.0_r8 ! 0.5_r8   ! paintridge2cube
+    REAL(r8) :: paint_reach_wedge = 1.0_r8 ! 0.5_r8   ! fleshout_block/profi, color_on_profi
 
     REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -1704,7 +1710,10 @@ end subroutine THINOUT_LIST
       NumCrests = 0
       MyCrests  = 0
       LnCrests  = 0._r8
-
+      MyObject  = 0
+      WtObject  = 0._r8
+      LnObject  = 0._r8
+      
       do counti=1,jall
          i   = weights_lgr_index_all(counti)
          ix  = weights_eul_index_all(counti,1)
@@ -1932,11 +1941,13 @@ end subroutine THINOUT_LIST
       clngt_tiles(:,:) =-9999._r8  
 
       allocate( anixy_tiles(ntarget,maxtiles), wghts_tiles(ntarget,maxtiles), &
-                riseq_tiles(ntarget,maxtiles), fallq_tiles(ntarget,maxtiles) )
+                riseq_tiles(ntarget,maxtiles), fallq_tiles(ntarget,maxtiles), &
+                clnin_tiles(ntarget,maxtiles) )
       anixy_tiles(:,:) =-9999._r8
       riseq_tiles(:,:) =-9999._r8
       fallq_tiles(:,:) =-9999._r8
       wghts_tiles(:,:) =    0._r8
+      clnin_tiles(:,:) =    0._r8
 
       write(*,*) ' '
 
@@ -1965,6 +1976,23 @@ end subroutine THINOUT_LIST
             !
             wghts_tiles(i,ir) = area_target(i) * WtObject(i,ir) &
                               / REAL( MAX(1,idcoun(i)), r8 )
+            !
+            ! In-column crest length, km. LnObject counts the cube cells of
+            ! this ridge's crest that lie in this target cell; grid_length_scale
+            ! converts cells to km; length_in_square corrects for the fact that
+            ! a rasterized line touches fewer cells than its true length
+            ! (1 axis-aligned, sqrt(2) at 45 deg). Same construction as
+            ! clngt_target in remapridge2target.
+            !
+            ! length_in_square leaves its result undefined outside
+            ! (-pi/4, 9pi/4], so guard against fill angles.
+            !
+            if ( anglx_tiles(i,ir) > -900._r8 ) then
+               clnin_tiles(i,ir) = LnObject(i,ir) * grid_length_scale &
+                                 * length_in_square( anglx_tiles(i,ir) )
+            else
+               clnin_tiles(i,ir) = 0._r8
+            end if
             clngt2(ThisRidge) = clngt2(ThisRidge)+clext_tiles(i,ir)
          end do
          !write(*,903,advance='no') achar(13), i,ntarget
@@ -2059,6 +2087,7 @@ end subroutine THINOUT_LIST
             call permute_row_r8( angll_tiles, i, n, iperm )
             call permute_row_r8( hwdth_tiles, i, n, iperm )
             call permute_row_r8( clngt_tiles, i, n, iperm )
+            call permute_row_r8( clnin_tiles, i, n, iperm )
             call permute_row_r8( anixy_tiles, i, n, iperm )
             call permute_row_r8( wghts_tiles, i, n, iperm )
             call permute_row_r8( riseq_tiles, i, n, iperm )

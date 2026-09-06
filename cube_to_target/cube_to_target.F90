@@ -1892,9 +1892,10 @@ program convterr
 ! Two corrections are applied here rather than in ridge_ana, so that
 ! Ridge_tile_map.dat keeps its native units:
 !
-!   1. HWDTH and CLNGT are scaled by grid_length_scale to convert from
-!      cube-cell counts to km, matching what remapridge2target does for
-!      hwdth_target/clngt_target.
+!   1. HWDTH is scaled by grid_length_scale to convert cube-cell counts to km.
+!      CLNGT is NOT: it comes from clnin_tiles, the IN-COLUMN crest length that
+!      remapridge2tiles already builds in km from LnObject. The whole-ridge
+!      length is written separately as CLNGT_RDG.
 !   2. Unused tile slots hold -9999 and are zeroed, so that CAM never sees a
 !      fill value as an obstacle height.
 !
@@ -1910,7 +1911,8 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   use shr_kind_mod, only: r8 => shr_kind_r8
   use shared_vars,  only: rad2deg
   use ridge_ana,    only: mxdis_tiles, aniso_tiles, anglx_tiles, angll_tiles, &
-                          hwdth_tiles, clngt_tiles, anixy_tiles, wghts_tiles, &
+                          hwdth_tiles, clngt_tiles, clnin_tiles,             &
+                          anixy_tiles, wghts_tiles,                          &
                           riseq_tiles, fallq_tiles, latc_tiles, lonc_tiles,   &
                           isovar_target, isowgt_target, grid_length_scale
 
@@ -1937,7 +1939,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   integer :: terrid, landfracid, sghid, sgh30id, landm_coslatid, areaid
   integer :: latvid, lonvid, isovarid, isowgtid, gbxarid
   integer :: mxdisid, ang22id, anglxid, anisoid, anixyid
-  integer :: hwdthid, clngtid, wghtsid, riseqid, fallqid
+  integer :: hwdthid, clngtid, clngrid, wghtsid, riseqid, fallqid
   integer :: latcid,  loncid
   integer :: status
 
@@ -1994,6 +1996,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call defvar('ANIXY',2,anixyid)
   call defvar('HWDTH',2,hwdthid)
   call defvar('CLNGT',2,clngtid)
+  call defvar('CLNGT_RDG',2,clngrid)
   call defvar('WGHTS',2,wghtsid)
   call defvar('RISEQ',2,riseqid)
   call defvar('FALLQ',2,fallqid)
@@ -2020,7 +2023,8 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put_atts(anisoid,'Variance fraction explained by ridge','1')
   call put_atts(anixyid,'Variance ratio: cross/(cross+length) -wise','1')
   call put_atts(hwdthid,'Estimated Ridge width','km')
-  call put_atts(clngtid,'Estimated Ridge length along crest','km')
+  call put_atts(clngtid,'Crest length of this ridge within this column','km')
+  call put_atts(clngrid,'Estimated Ridge length along crest (whole ridge)','km')
   call put_atts(wghtsid,'Area of target cell covered by ridge wedge','m+2')
   call put_atts(riseqid,'Rise to peak from left (ridge_finding)','m')
   call put_atts(fallqid,'Fall from peak toward right (ridge_finding)','m')
@@ -2072,7 +2076,11 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put2d(anisoid,'ANISO',clean(aniso_tiles))
   call put2d(anixyid,'ANIXY',clean(anixy_tiles))
   call put2d(hwdthid,'HWDTH',clean(hwdth_tiles)*grid_length_scale)
-  call put2d(clngtid,'CLNGT',clean(clngt_tiles)*grid_length_scale)
+  ! CLNGT is the IN-COLUMN crest length (clnin_tiles), already in km, to match
+  ! the clngt_target definition CAM's ridge scheme expects. clngt_tiles holds
+  ! the whole-ridge length and is written as CLNGT_RDG for diagnostics.
+  call put2d(clngtid,'CLNGT',clean(clnin_tiles))
+  call put2d(clngrid,'CLNGT_RDG',clean(clngt_tiles)*grid_length_scale)
   call put2d(wghtsid,'WGHTS',clean(wghts_tiles))
   call put2d(riseqid,'RISEQ',clean(riseq_tiles))
   call put2d(fallqid,'FALLQ',clean(fallq_tiles))
