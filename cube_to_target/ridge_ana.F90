@@ -2041,9 +2041,23 @@ end subroutine THINOUT_LIST
       ! have consistent semantics, and so that truncating nrdg keeps the
       ! largest ridges rather than arbitrary ones.
       !
-      ! Key is mxdis*clngt, matching importancesort. clngt is still in
-      ! cube-cell units here (the km conversion happens in the writer), but
-      ! that is a constant factor and does not affect the ordering.
+      ! Key is mxdis*clnin: obstacle height times the IN-COLUMN crest length,
+      ! which is what this column actually contains. clngt_tiles is the
+      ! whole-ridge length and would rank a ridge on crest lying in other
+      ! columns.
+      !
+      ! Linear in mxdis, not squared. Tracing a ridge's contribution through
+      ! gw_rdg_calc, the width cancels between effgw ~ hwdth*clngt/gbxar and
+      ! kwvrdg ~ 1/hwdth, leaving
+      !
+      !    unblocked (mxdis < U/N):  drag ~ clngt * mxdis**2
+      !    blocked   (mxdis > U/N):  drag ~ clngt * mxdis
+      !
+      ! because in the blocked regime the wave displacement saturates at
+      ! Fr*U/N and the low-level term  Cd*rho*U**2*(tlb-z)  takes over, with
+      ! tlb -> mxdis. The sort matters mainly for deciding which ridges
+      ! survive truncation at n_rdg, and those are the tall, blocked ones,
+      ! so the linear form is the appropriate one.
       !
       ! Only the first NumObjects(i) entries are permuted, so -9999 fills stay
       ! at the end. Every per-tile array is permuted together, including the
@@ -2060,7 +2074,7 @@ end subroutine THINOUT_LIST
             if (n <= 1) cycle
 
             do k=1,n
-               tkey(k)  = mxdis_tiles(i,k) * clngt_tiles(i,k)
+               tkey(k)  = mxdis_tiles(i,k) * clnin_tiles(i,k)
                iperm(k) = k
             end do
             !
