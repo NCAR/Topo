@@ -1,6 +1,6 @@
 #define ROTATEBRUSH
 #define DETGDEP
-#undef DEBUGOUTPUT
+#define DEBUGOUTPUT
 module ridge_ana
 
 use rotation, only : rotbyx => rotby4
@@ -50,6 +50,31 @@ public peak_type
   REAL(RPX), allocatable  :: rdg_profiles(:,:) , crst_profiles(:,:), crst_silhous(:,:)
   INTEGER, allocatable ::  MyPanel(:), NSWx_diag(:)
   REAL(RPX), allocatable  :: rt_diag(:,:,:), suba_diag(:,:,:),rdg_profiles_x(:,:)
+#ifdef DEBUGOUTPUT
+  !--------------------------------------------------------------------------
+  ! DEBUGOUTPUT sub-window.
+  !
+  ! rt_diag/suba_diag are (2*PSW+1, 2*PSW+1, N). Storing EVERY peak costs
+  ! ~34.5 GB each at ncube=3000 / nsw=42 / npeaks~287000, i.e. ~69 GB of
+  ! memory and the same again on disk. They are therefore stored only for
+  ! peaks inside the box below.
+  !
+  ! Defaults cover southern CONUS on panel 4, which contains both the
+  ! San Gabriel Mts (ix~567, iy~2757) and Gatlinburg (ix~1717, iy~2696).
+  ! Note CONUS straddles panels 4 and 6: north of roughly 45N in the west
+  ! lies on panel 6 and will NOT be captured here.
+  !
+  ! idiag_of(ipk) is the storage slot for peak ipk, or 0 if not stored;
+  ! idiag_list(n) is the peak id held in slot n. The peak id is written into
+  ! the output file explicitly, so the join to Ridge_list is by ID and not by
+  ! record position.
+  !--------------------------------------------------------------------------
+  integer, parameter   :: idiag_panel = 4
+  integer, parameter   :: idiag_i0    =  300, idiag_i1 = 1900
+  integer, parameter   :: idiag_j0    = 2300, idiag_j1 = 3000
+  integer              :: ndiag = 0
+  integer, allocatable :: idiag_list(:), idiag_of(:)
+#endif
 
   REAL(RPX), allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:),xs01(:),ys01(:)
   REAL(RPX), allocatable  :: RefFac(:)
@@ -391,6 +416,9 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! Local variables
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
+#ifdef DEBUGOUTPUT
+    INTEGER (KIND=int_kind) :: idg
+#endif
     INTEGER (KIND=int_kind) :: ispk,jspk
     INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
 
@@ -654,12 +682,16 @@ write(*,*) " SHAPE ", shape( peaks%i )
       
       OPEN (unit = 32, file= trim(ofile) ,form="UNFORMATTED" )
       
-      write(32) npeaks  , PSW
-      do ipk=1,npeaks
-        write(32) xs(ipk),ys(ipk)  , MyPanel(ipk),xspk(ipk),yspk(ipk)
-        write(32) rt_diag(:,:,ipk)
-        write(32) suba_diag(:,:,ipk)
+      ! ndiag records follow, NOT npeaks. Each carries its peak id so that
+      ! the join to the Ridge_list file is by ID, not by record position.
+      write(32) ndiag , PSW , npeaks
+      do idg = 1, ndiag
+        ipk = idiag_list(idg)
+        write(32) ipk, xs(ipk),ys(ipk)  , MyPanel(ipk),xspk(ipk),yspk(ipk)
+        write(32) rt_diag(:,:,idg)
+        write(32) suba_diag(:,:,idg)
       end do
+      write(*,*) " DEBUGOUTPUT: wrote ",ndiag," peak windows to ",trim(ofile)
       
       close(32)
 #endif
@@ -989,9 +1021,11 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
 
 
 #ifdef DEBUGOUTPUT  
-             rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk) )
-             rt_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk)   = rt(:,:)
-             suba_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, ipk) = suba(:,:)
+             if ( idiag_of(ipk) > 0 ) then
+                rt  = rotbyx( suba, 2*nsw+1 , anglx(ipk) )
+                rt_diag  ( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, idiag_of(ipk) ) = rt(:,:)
+                suba_diag( PSW+1-nsw:PSW+1+nsw, PSW+1-nsw:PSW+1+nsw, idiag_of(ipk) ) = suba(:,:)
+             end if
 #endif
 
 end subroutine ANISO_ANA_2
@@ -2856,6 +2890,9 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 
   integer, intent(in) :: npeaks
   integer, intent(in) :: NSW
+#ifdef DEBUGOUTPUT
+  integer :: ipk_d
+#endif
 
   allocate( xs(npeaks) )
   allocate( ys(npeaks) )
@@ -3003,9 +3040,35 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 
 
 #ifdef DEBUGOUTPUT
-  allocate( rt_diag( 2*PSW+1, 2*PSW+1, npeaks ) )
+  !--- select the peaks whose analysis windows will be retained ---
+  allocate( idiag_of(npeaks) )
+  idiag_of = 0
+  ndiag    = 0
+  do ipk_d = 1, npeaks
+     if ( peaks(ipk_d)%ip == idiag_panel                              .and. &
+          peaks(ipk_d)%i  >= idiag_i0 .and. peaks(ipk_d)%i <= idiag_i1 .and. &
+          peaks(ipk_d)%j  >= idiag_j0 .and. peaks(ipk_d)%j <= idiag_j1 ) then
+        ndiag            = ndiag + 1
+        idiag_of(ipk_d)  = ndiag
+     end if
+  end do
+  allocate( idiag_list( MAX(ndiag,1) ) )
+  idiag_list = -1
+  do ipk_d = 1, npeaks
+     if ( idiag_of(ipk_d) > 0 ) idiag_list( idiag_of(ipk_d) ) = ipk_d
+  end do
+
+  write(*,*) " "
+  write(*,*) " DEBUGOUTPUT: retaining analysis windows for ",ndiag," of ",npeaks," peaks"
+  write(*,*) "    panel ",idiag_panel,"   i ",idiag_i0,":",idiag_i1, &
+             "   j ",idiag_j0,":",idiag_j1
+  write(*,*) "    window ",2*PSW+1,"x",2*PSW+1,"   memory ", &
+             2.0*((2.0*PSW+1.0)**2)*ndiag*8.0/(1024.0**3)," GB"
+  write(*,*) " "
+
+  allocate( rt_diag( 2*PSW+1, 2*PSW+1, MAX(ndiag,1) ) )
        rt_diag(:,:,:)=0.d+0
-  allocate( suba_diag( 2*PSW+1, 2*PSW+1, npeaks ) )
+  allocate( suba_diag( 2*PSW+1, 2*PSW+1, MAX(ndiag,1) ) )
        suba_diag(:,:,:)=0.d+0
 #endif
 
