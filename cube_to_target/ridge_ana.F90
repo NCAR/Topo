@@ -1,6 +1,6 @@
 #define ROTATEBRUSH
 #define DETGDEP
-#define DEBUGOUTPUT
+#undef DEBUGOUTPUT
 module ridge_ana
 
 use rotation, only : rotbyx => rotby4
