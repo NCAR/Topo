@@ -11,6 +11,7 @@ private
 public ridgeshift
 public ridgescales
 public rnodes
+public rnodes_v2
 public rebuild_nodes
 public length_in_square
 public repaint
@@ -205,16 +206,18 @@ contains
     
 
     ! local
-    integer    :: picos(nsw+1),vails(nsw+1),kinks(nsw+1),mesas(nsw+1)
+    integer   :: picos(nsw+1),vails(nsw+1),kinks(nsw+1),mesas(nsw+1)
     integer   :: xpico(nsw+1),xvail(nsw+1),xnode(nsw+1),xkink(nsw+1)
-    integer   :: ncntrpk,xcntrpk(nsw+1)
-    real(RPX) :: ldh,rdh,hq1,tol,ahq,ihq,dhn
+    integer   :: ncntrpk,xcntrpk(nsw+1),xlim(2)
+    real(RPX) :: ldh,rdh,hq1,tol,ahq,ihq,dhn,rms
     integer   :: i,j,k,nkink,ns2
+    logical   :: lok,lnew_wedge_calc
 
     !real(RPX)   :: hwedge(3)
     !integer :: xwedge(3)
     integer   :: xwdg0,xwdg1,xwdg2,inode_c
 
+    lnew_wedge_calc = .true.
     ns2=nsw/2
 
     hnodes(:)=0.
@@ -317,39 +320,171 @@ contains
     do i=1,nnode
        if (xnodes(i) == xcntrpk(1)) inode_c=i
     end do
-    if ((inode_c > 1).AND.(inode_c < nnode) ) then
-       xwdg1 = xnodes( inode_c )
-       do i=inode_c,2,-1
-          ahq = sum(  hnodes(1:i-1) ) / ( i -1 )
-          dhn = hnodes(i)-hnodes(i-1)
-          !if (hnodes(i) < ahq ) then
-          if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
-             xwdg0 = xnodes(i)
-             exit
-          end if
-       end do
-       if (xwdg0<0) xwdg0=1
-
-       do i=inode_c,nnode-1
-          ahq = sum(  hnodes(i+1:nnode) ) / ( nnode - i  )
-          dhn = hnodes(i)-hnodes(i+1)
-          !if (hnodes(i) < ahq ) then
-          if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
-             xwdg2 = xnodes(i)
-             exit
-          end if
-       end do
-       if (xwdg2<0) xwdg2=nsw+1
-    
-       xwedge = (/ xwdg0,         xwdg1,         xwdg2        /)
-       hwedge = (/ ridge(xwdg0),  ridge(xwdg1),  ridge(xwdg2) /)
-
+    if (lnew_wedge_calc) then
+       call rnodes_v2( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
     else
-       xwedge = 0
-       hwedge = 0. 
-    end if
+       if ((inode_c > 1).AND.(inode_c < nnode) ) then
+          xwdg1 = xnodes( inode_c )
+          do i=inode_c,2,-1
+             ahq = sum(  hnodes(1:i-1) ) / ( i -1 )
+             dhn = hnodes(i)-hnodes(i-1)
+             !if (hnodes(i) < ahq ) then
+             if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
+                xwdg0 = xnodes(i)
+                exit
+             end if
+          end do
+          if (xwdg0<0) xwdg0=1
 
+          do i=inode_c,nnode-1
+             ahq = sum(  hnodes(i+1:nnode) ) / ( nnode - i  )
+             dhn = hnodes(i)-hnodes(i+1)
+             !if (hnodes(i) < ahq ) then
+             if ((hnodes(i) < ahq ).and.( dhn < tol ))  then
+                xwdg2 = xnodes(i)
+                exit
+             end if
+          end do
+          if (xwdg2<0) xwdg2=nsw+1
+
+          xwedge = (/ xwdg0,         xwdg1,         xwdg2        /)
+          hwedge = (/ ridge(xwdg0),  ridge(xwdg1),  ridge(xwdg2) /)
+
+       else
+          xwedge = 0
+          hwedge = 0. 
+       end if
+    end if
+       
 end subroutine rnodes
+!==================================================
+!==================================================
+subroutine rnodes_v2( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
+!--------------------------------------------------------------------
+! Version-2 wedge: best-fit 5-point wedge on the ridge profile itself,
+! returned as the 3-point wedge [x_0, x_c, x_1] (+ limits [x_L, x_R]).
+!
+! Algorithm (J. Bacmeister, Nov 2026; Python reference rnodes_v2.py
+! with xnodes = 1..nsw+1, hnodes = ridge, bound_at_higher = .TRUE.):
+!
+!  1) x_c = local maximum of ridge closest to the window centre ns2=nsw/2
+!     (strict: higher than both neighbours; tie on distance -> higher).
+!  2) Active window: from x_c step outward on each side while the point
+!     is lower than h_c and not the edge.  The first point NOT lower than
+!     h_c, or the edge, is the limit x_L (x_R).
+!  3) For every x_0 in (x_L,x_c) and x_1 in (x_c,x_R) build the polyline
+!     [x_L,h_L]-[x_0,h_0]-[x_c,h_c]-[x_1,h_1]-[x_R,h_R], evaluate it at
+!     every integer x in [x_L,x_R], and take the pair with minimum rms
+!     against ridge.  A side with no interior point uses x_0=x_L (x_1=x_R).
+!
+! Positions are 1-based indices into ridge(1:nsw+1), like rnodes.
+! lok = .FALSE. (and everything 0, rms=-1) when there is no interior peak;
+! callers may then keep the existing (0,0,0) / -444 handling.
+!--------------------------------------------------------------------
+    integer,   intent(in )  :: nsw
+    real(RPX), intent(in )  :: ridge(nsw+1)
+    integer,   intent(out)  :: xwedge(3), xlim(2)
+    real(RPX), intent(out)  :: hwedge(3), rms
+    logical,   intent(out)  :: lok
+
+    integer   :: n, ns2, i, j, ic, iL, iR, i0, i1, dmin, d
+    integer   :: xp(5)
+    real(RPX) :: hc, hp(5), fit, err, best
+    logical   :: first
+
+    n   = nsw + 1
+    ns2 = nsw / 2
+
+    xwedge = 0 ; hwedge = 0._RPX ; xlim = 0 ; rms = -1._RPX ; lok = .FALSE.
+
+    !---- 1) central peak -----------------------------------------------
+    ic   = 0
+    dmin = huge(1)
+    do i = 2, n-1
+       if ( ridge(i) > ridge(i-1) .and. ridge(i) > ridge(i+1) ) then
+          d = abs( i - ns2 )
+          if ( d < dmin ) then
+             dmin = d ; ic = i
+          else if ( d == dmin .and. ridge(i) > ridge(ic) ) then
+             ic = i
+          end if
+       end if
+    end do
+    if ( ic == 0 ) return
+    hc = ridge(ic)
+
+    !---- 2) active window ----------------------------------------------
+    i = ic
+    do
+       if ( i == 1 ) then
+          iL = 1 ; exit
+       end if
+       j = i - 1
+       if ( ridge(j) < hc ) then
+          i = j ; cycle
+       end if
+       iL = j ; exit                ! first point not lower than h_c
+    end do
+
+    i = ic
+    do
+       if ( i == n ) then
+          iR = n ; exit
+       end if
+       j = i + 1
+       if ( ridge(j) < hc ) then
+          i = j ; cycle
+       end if
+       iR = j ; exit
+    end do
+
+    !---- 3) best 5-point wedge -----------------------------------------
+    best  = huge(1._RPX)
+    first = .TRUE.
+    do i0 = merge( iL, iL+1, iL+1 > ic-1 ), merge( iL, ic-1, iL+1 > ic-1 )
+       do i1 = merge( iR, ic+1, ic+1 > iR-1 ), merge( iR, iR-1, ic+1 > iR-1 )
+          xp = (/ iL, i0, ic, i1, iR /)
+          hp = (/ ridge(iL), ridge(i0), ridge(ic), ridge(i1), ridge(iR) /)
+          err = 0._RPX
+          do i = iL, iR
+             fit = polyline5( xp, hp, i )
+             err = err + ( fit - ridge(i) )**2
+          end do
+          err = sqrt( err / real( iR-iL+1, RPX ) )
+          if ( first .or. err < best ) then
+             best = err ; first = .FALSE.
+             xwedge = (/ i0, ic, i1 /)
+             hwedge = (/ ridge(i0), ridge(ic), ridge(i1) /)
+          end if
+       end do
+    end do
+
+    xlim = (/ iL, iR /)
+    rms  = best
+    lok  = .TRUE.
+
+contains
+
+    pure function polyline5( xp, hp, x ) result( y )
+    ! piecewise-linear interpolation of the 5-point polyline at integer x.
+    ! Duplicate abscissae (x_0 = x_L or x_1 = x_R) carry equal heights, so
+    ! they are simply skipped.
+       integer,   intent(in) :: xp(5), x
+       real(RPX), intent(in) :: hp(5)
+       real(RPX)             :: y
+       integer :: k
+       y = hp(1)
+       do k = 1, 4
+          if ( xp(k+1) == xp(k) ) cycle
+          if ( x >= xp(k) .and. x <= xp(k+1) ) then
+             y = hp(k) + ( hp(k+1) - hp(k) ) * real( x - xp(k), RPX ) / real( xp(k+1) - xp(k), RPX )
+             return
+          end if
+       end do
+       if ( x >= xp(5) ) y = hp(5)
+    end function polyline5
+
+end subroutine rnodes_v2
 !==================================================
 subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_profiles )
     integer ,  intent(in   )  :: nsw,psw,nnodes
@@ -387,10 +522,14 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_prof
 
     do j=1,nnodes-1
        do i=xnodes_s(j),xnodes_s(j+1)
-          ridge(i) = hnodes(j) + &
-                     ( i - xnodes_s(j))* &
-                     ( hnodes(j+1) - hnodes(j) ) / &
-                     ( xnodes(j+1) - xnodes(j) ) 
+          if (ABS(xnodes(j+1) - xnodes(j))>1E-12) then
+             ridge(i) = hnodes(j) + &
+                  ( i - xnodes_s(j))* &
+                  ( hnodes(j+1) - hnodes(j) ) / &
+                  ( xnodes(j+1) - xnodes(j) )
+          else
+             ridge(i)=0.
+          end if
        end do
     end do
 
