@@ -11,7 +11,7 @@ private
 public ridgeshift
 public ridgescales
 public rnodes
-public rnodes_v2
+public rms_wedge
 public rebuild_nodes
 public length_in_square
 public repaint
@@ -321,7 +321,7 @@ contains
        if (xnodes(i) == xcntrpk(1)) inode_c=i
     end do
     if (lnew_wedge_calc) then
-       call rnodes_v2( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
+       call rms_wedge( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
     else
        if ((inode_c > 1).AND.(inode_c < nnode) ) then
           xwdg1 = xnodes( inode_c )
@@ -359,12 +359,12 @@ contains
 end subroutine rnodes
 !==================================================
 !==================================================
-subroutine rnodes_v2( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
+subroutine rms_wedge( nsw, ridge, xwedge, hwedge, xlim, rms, lok )
 !--------------------------------------------------------------------
 ! Version-2 wedge: best-fit 5-point wedge on the ridge profile itself,
 ! returned as the 3-point wedge [x_0, x_c, x_1] (+ limits [x_L, x_R]).
 !
-! Algorithm (J. Bacmeister, Nov 2026; Python reference rnodes_v2.py
+! Algorithm (J. Bacmeister, Nov 2026; Python reference rms_wedge.py
 ! with xnodes = 1..nsw+1, hnodes = ridge, bound_at_higher = .TRUE.):
 !
 !  1) x_c = local maximum of ridge closest to the window centre ns2=nsw/2
@@ -484,7 +484,7 @@ contains
        if ( x >= xp(5) ) y = hp(5)
     end function polyline5
 
-end subroutine rnodes_v2
+end subroutine rms_wedge
 !==================================================
 subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_profiles )
     integer ,  intent(in   )  :: nsw,psw,nnodes
