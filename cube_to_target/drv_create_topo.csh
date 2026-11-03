@@ -20,4 +20,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --ridge_window_ratio=0.50 --tag=v204_ndguard_e01
+./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --ridge_window_ratio=0.50 --tag=v205_new_wedge_e01

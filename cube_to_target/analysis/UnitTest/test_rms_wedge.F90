@@ -1,9 +1,9 @@
-program test_rnodes_v2
+program test_rms_wedge
   ! Reads profiles.txt (line 1: nprof nsw ; then one profile per line),
-  ! runs rnodes (old) and rnodes_v2 (new) on each, writes results to
+  ! runs rnodes (old) and rms_wedge (new) on each, writes results to
   ! wedges_f90.txt :  ip  old(3)  new(3)  xlim(2)  rms  lok
   use shr_kind_mod, only: rpx => shr_kind_r8
-  use ridge_utils,  only: rnodes, rnodes_v2
+  use ridge_utils,  only: rnodes, rms_wedge
   implicit none
   integer :: nprof, nsw, ip, iu, io
   real(rpx), allocatable :: ridge(:), hnodes(:)
@@ -19,9 +19,9 @@ program test_rnodes_v2
   do ip = 1, nprof
      read(iu,*) ridge
      call rnodes   ( nsw, ridge, xnodes, hnodes, dcenter, xw_old, hw_old, npeak, nvail, nnode )
-     call rnodes_v2( nsw, ridge, xw_new, hw_new, xlim, rms, lok )
+     call rms_wedge( nsw, ridge, xw_new, hw_new, xlim, rms, lok )
      write(io,'(i6,3i4,2x,3i4,2x,2i4,f12.5,l3)') ip, xw_old, xw_new, xlim, rms, lok
   end do
   close(iu); close(io)
   print *, 'wrote wedges_f90.txt for', nprof, 'profiles, nsw =', nsw
-end program test_rnodes_v2
+end program test_rms_wedge

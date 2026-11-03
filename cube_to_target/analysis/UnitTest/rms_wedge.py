@@ -1,11 +1,11 @@
 """
-rnodes_v2.py  --  nodes -> wedge, version 2 (5-point best-fit wedge)
+rms_wedge.py  --  nodes -> wedge, version 2 (5-point best-fit wedge)
 
     from rnodes import rnodes
-    from rnodes_v2 import rnodes_v2
+    from rms_wedge import rms_wedge
 
     o  = rnodes(ridge)                      # existing node finder (port of Fortran RNODES)
-    w  = rnodes_v2(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=len(ridge)//2)
+    w  = rms_wedge(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=len(ridge)//2)
 
     w['xwedge'], w['hwedge']     # npts=5 (default): [x_L, x_0, x_c, x_1, x_R]
                                  # npts=3          : [x_0, x_c, x_1]
@@ -43,7 +43,7 @@ Positions are 1-based throughout, consistent with rnodes.py and the Fortran.
 """
 import numpy as np
 
-__all__ = ["rnodes_v2"]
+__all__ = ["rms_wedge"]
 
 
 def _central_peak(xn, hn, ns2, strict=True):
@@ -98,7 +98,7 @@ def _active_window(xn, hn, ic, bound_at_higher=True):
     return iL, iR
 
 
-def rnodes_v2(xnodes, hnodes, nnode=None, ns2=None, ridge=None,
+def rms_wedge(xnodes, hnodes, nnode=None, ns2=None, ridge=None,
               bound_at_higher=True, fit_on='nodes', strict_peak=True,
               npts=5):
     """
@@ -183,8 +183,8 @@ if __name__ == '__main__':
     for name, ridge in profiles.items():
         o = rnodes(ridge)
         nsw = len(ridge) - 1
-        w = rnodes_v2(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=nsw // 2)
-        wp = rnodes_v2(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=nsw // 2,
+        w = rms_wedge(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=nsw // 2)
+        wp = rms_wedge(o['xnodes'], o['hnodes'], nnode=o['nnode'], ns2=nsw // 2,
                        fit_on='profile', ridge=ridge)
         print(f"{name}")
         print(f"   nodes      x={o['xnodes'][:o['nnode']]}  h={np.round(o['hnodes'][:o['nnode']])}")

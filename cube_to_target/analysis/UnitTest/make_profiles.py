@@ -1,4 +1,4 @@
-"""Write profiles.txt for test_rnodes_v2.  Either synthetic (default) or from a
+"""Write profiles.txt for test_rms_wedge.  Either synthetic (default) or from a
 Ridge_list via rdridgelist:   python make_profiles.py            -> 504 synthetic
                               python make_profiles.py LISTFILE NSW -> real rdg_profiles(:nsw+1)
 """
