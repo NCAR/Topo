@@ -1,6 +1,6 @@
 #define ROTATEBRUSH
 #define DETGDEP
-#undef DEBUGOUTPUT
+#define DEBUGOUTPUT
 module ridge_ana
 
 use rotation, only : rotbyx => rotby4
@@ -91,6 +91,8 @@ public peak_type
 
     real(r8), allocatable ::  ALP0(:),BET0(:),LAT0(:),LON0(:)
     real(r8), allocatable ::  ALP1(:),BET1(:),LAT1(:),LON1(:)
+    ! ++jtb Nov 2026: geographic location of the diagnosed crest point x_c
+    real(r8), allocatable ::  ALPC(:),BETC(:),LATC(:),LONC(:)
 
   real(r8), allocatable, dimension(:,:) :: anglx_target,aniso_target,mxdis_target,hwdth_target
   real(r8), allocatable, dimension(:,:) :: mxvrx_target,mxvry_target,bsvar_target,wghts_target 
@@ -420,6 +422,9 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     INTEGER (KIND=int_kind) :: idg
 #endif
     INTEGER (KIND=int_kind) :: ispk,jspk
+    ! ++jtb Nov 2026: locals for wedge lon/lat
+    INTEGER   :: iw
+    REAL(r8)  :: ang00, dxr, xwg, ywg, awg, bwg, lwg, pwg
     INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
 
 
@@ -568,6 +573,34 @@ write(*,*) " SHAPE ", shape( peaks%i )
         jspk = NINT(1.*yspk(ipk) )
         suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
         call ANISO_ANA_2( SUBA,NSWx,IPK )
+
+        !----------------------------------------------------------------
+        ! ++jtb Nov 2026: geographic (lon,lat) of the 3-point wedge.
+        ! Wedge index k (1..nswx+1) lives on the Y-averaged profile of the
+        ! rotated window rt(ns0:ns1-1,...) centred on cell (ispk,jspk);
+        ! its cross-ridge offset from that centre, in cube cells, is
+        !     dxr = k - (nswx - nswx/2) - 1        (integer nswx/2)
+        ! and the cross-ridge direction in (x,y) cube indices is
+        !     (cos anglx, -sin anglx)              (same as ridgeshift).
+        ! Cube index -> (alpha,beta) uses the 'SW corner' convention
+        ! (xv(i)=i) as everywhere else in this module.  lon/lat in RADIANS.
+        !----------------------------------------------------------------
+        if ( xwedge_list(2,ipk) > 0 ) then
+           ang00 = anglx(ipk) * (pi/180.)
+           do iw = 1, 3
+              dxr  = REAL( xwedge_list(iw,ipk) - (nswx - nswx/2) - 1 , r8 )
+              xwg  = REAL( ispk, r8 ) + dxr * COS( ang00 )
+              ywg  = REAL( jspk, r8 ) - dxr * SIN( ang00 )
+              awg  = ( xwg - 0.5_r8 - ncube/2 ) * (pi/2._r8) / ncube
+              bwg  = ( ywg - 0.5_r8 - ncube/2 ) * (pi/2._r8) / ncube
+              call CubedSphereRLLFromABP( awg, bwg, np, lwg, pwg )
+              select case (iw)
+              case (1) ; ALP0(ipk)=awg ; BET0(ipk)=bwg ; LON0(ipk)=lwg ; LAT0(ipk)=pwg
+              case (2) ; ALPC(ipk)=awg ; BETC(ipk)=bwg ; LONC(ipk)=lwg ; LATC(ipk)=pwg
+              case (3) ; ALP1(ipk)=awg ; BET1(ipk)=bwg ; LON1(ipk)=lwg ; LAT1(ipk)=pwg
+              end select
+           end do
+        end if
   
         deallocate( suba, subarw, subx, suby )
 #if 0
@@ -665,6 +698,9 @@ write(*,*) " SHAPE ", shape( peaks%i )
       write(31) hnodes_x
       write(31) hwedge_o
       write(31) hnodes_o
+      ! ++jtb Nov 2026: crest-point lon/lat (radians); ends are in lon0/lat0, lon1/lat1 above
+      write(31) lonc
+      write(31) latc
 
       CLOSE(31)
 
@@ -2979,6 +3015,14 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
              LON1  = -9999.d+0
           allocate( LAT1(npeaks))
               LAT1  = -9999.d+0
+          allocate( ALPC(npeaks))
+              ALPC  = -9999.d+0
+          allocate( BETC(npeaks))
+              BETC  = -9999.d+0
+          allocate( LONC(npeaks))
+              LONC  = -9999.d+0
+          allocate( LATC(npeaks))
+              LATC  = -9999.d+0
 
   ! Set for original fixed NSW ridge-finding 
   !PSW = nsw
