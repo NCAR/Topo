@@ -1914,6 +1914,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
                           hwdth_tiles, clngt_tiles, clnin_tiles,             &
                           anixy_tiles, wghts_tiles,                          &
                           riseq_tiles, fallq_tiles, latc_tiles, lonc_tiles,   &
+                          uniqid_tiles,                                        &
                           isovar_target, isowgt_target, grid_length_scale
 
   implicit none
@@ -1940,7 +1941,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   integer :: latvid, lonvid, isovarid, isowgtid, gbxarid
   integer :: mxdisid, ang22id, anglxid, anisoid, anixyid
   integer :: hwdthid, clngtid, clngrid, wghtsid, riseqid, fallqid
-  integer :: latcid,  loncid
+  integer :: latcid,  loncid, uniqidid
   integer :: status
 
   real(r8), allocatable :: tmp(:,:)
@@ -2002,6 +2003,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call defvar('FALLQ',2,fallqid)
   call defvar('latc', 2,latcid)
   call defvar('lonc', 2,loncid)
+  call defvar_int('UNIQID',2,uniqidid)
   !
   ! Attributes
   !
@@ -2031,6 +2033,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   !
   call put_atts(latcid ,'crest cen. latitude','degrees_north')
   call put_atts(loncid ,'crest cen. longitude','degrees_east')
+  status = nf_put_att_text(foutid, uniqidid, 'long_name', 55, &
+           'ridge unique ID = peak index ipk in Ridge_list (0=none)')
+  status = nf_put_att_text(foutid, uniqidid, 'units', 1, '1')
   !
   ! Record that this file uses tile-based ridges, so it can be told apart
   ! from a file written by wrtncdf_unstructured.
@@ -2086,6 +2091,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put2d(fallqid,'FALLQ',clean(fallq_tiles))
   call put2d(latcid, 'latc', clean(latc_tiles))
   call put2d(loncid, 'lonc', clean(lonc_tiles))
+  call put2d_int(uniqidid,'UNIQID',uniqid_tiles)
 
   deallocate( tmp )
 
@@ -2107,6 +2113,33 @@ contains
        call handle_err(st)
     end if
   end subroutine defvar
+
+  !-----------------------------------------------------------------------
+  subroutine defvar_int(name,ndims,vid)
+    character(len=*), intent(in)  :: name
+    integer,          intent(in)  :: ndims
+    integer,          intent(out) :: vid
+    integer :: st
+    st = nf_def_var (foutid, name, NF_INT, ndims, nid(1:ndims), vid)
+    if (st .ne. NF_NOERR) then
+       write(*,*) "wrtncdf_ridge_tiles: nf_def_var failed for ",TRIM(name)
+       call handle_err(st)
+    end if
+  end subroutine defvar_int
+
+  !-----------------------------------------------------------------------
+  subroutine put2d_int(vid,name,vals)
+    integer,          intent(in) :: vid
+    character(len=*), intent(in) :: name
+    integer,          intent(in) :: vals(n,nrdg)
+    integer :: st
+    write(*,*) "  writing ",TRIM(name),MINVAL(vals),MAXVAL(vals)
+    st = nf_put_var_int (foutid, vid, vals)
+    if (st .ne. NF_NOERR) then
+       write(*,*) "wrtncdf_ridge_tiles: write failed for ",TRIM(name)
+       call handle_err(st)
+    end if
+  end subroutine put2d_int
 
   !-----------------------------------------------------------------------
   subroutine put_atts(vid,long_name,units)

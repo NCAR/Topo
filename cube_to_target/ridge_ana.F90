@@ -34,6 +34,7 @@ public hwdth_tiles,clngt_tiles
 public anixy_tiles,wghts_tiles,riseq_tiles,fallq_tiles
 public clnin_tiles
 public latc_tiles,lonc_tiles
+public uniqid_tiles
 public ntiles_out
 public lsort_tiles
 
@@ -111,6 +112,8 @@ public peak_type
   ! exactly as clngt_target is built in remapridge2target. This is what CAM
   ! wants for CLNGT; clngt_tiles holds the whole-ridge length instead.
   real(r8), allocatable, dimension(:,:) :: clnin_tiles
+  ! ++jtb Nov 2026: ridge unique ID (= peak index ipk in Ridge_list) per tile
+  integer,  allocatable, dimension(:,:) :: uniqid_tiles
   real(r8), allocatable, dimension(:,:) :: anixy_tiles,wghts_tiles
   real(r8), allocatable, dimension(:,:) :: riseq_tiles,fallq_tiles
   real(r8), allocatable, dimension(:,:) :: latc_tiles,lonc_tiles
@@ -2196,6 +2199,12 @@ end subroutine THINOUT_LIST
          deallocate( tkey, iperm )
          write(*,*) " Done sorting tiles "
       end if
+
+      ! ++jtb Nov 2026: capture ridge IDs per tile AFTER the importance sort so
+      ! slot ir matches mxdis_tiles etc.  MyObject(i,ir) = ipk = uniqid(ipk);
+      ! 0 marks an empty slot.
+      allocate( uniqid_tiles(ntarget,maxtiles) )
+      uniqid_tiles(:,:) = MyObject(:,1:maxtiles)
 
 ! Logging ....
       write(*,*)" "
