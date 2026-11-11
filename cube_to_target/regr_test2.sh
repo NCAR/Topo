@@ -19,7 +19,7 @@ file=$(ls -t1 output/*.nc | head -n 1)
 echo "$file"
 
 # Run CPRNC comparison
-/glade/campaign/cesm/cesmdata/cprnc/cprnc -m "$file" ../regression-test-data/ne0_15x2_SA_gmted2010_modis_bedmachine_nc0540_Laplace0200_noleak_20260213.nc
+/glade/campaign/cesm/cesmdata/cprnc/cprnc -m "$file" ../regression-test-data/ne0_15x2_SA_gmted2010_modis_bedmachine_nc0540_Laplace0200_noleak_20261111.nc
 
 # Optional: Another comparison command (commented out in the original script)
 # /fs/cgd/csm/tools/cprnc/cprnc -m "$file" ../regression-test-data/ne0_15x2_SA_gmted2010_modis_bedmachine_nc0540_Laplace0200_noleak_20250319.nc
