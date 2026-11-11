@@ -1,1 +1,1 @@
- ncl plot.ncl 'topoFile="output//ne30pg3_gmted2010_modis_bedmachine_nc0540_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20260214.nc"' 'scripFile="../regression-test-data/ne30pg3.nc"'
+ ncl plot.ncl 'topoFile="output/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_noleak_greenlndantarcsgh30fac2.50_20261111.nc"' 'scripFile="/glade/campaign/cesm/cesmdata/inputdata/share/meshes/mpasa120z32_ESMFmesh_cdf5_c20210120.nc"'
