@@ -27,7 +27,10 @@ reconstruct.o: remap.o
 remap.o      : shr_kind_mod.o
 shared_vars.o: shr_kind_mod.o
 ridge_ana.o: ridge_utils.o
-git_version.F90:
+# Regenerate on every make (FORCE) so the embedded git info never goes stale,
+# but only touch the file when its content changed to avoid needless recompiles.
+.PHONY: FORCE
+git_version.F90: FORCE
 	@{ \
 	  GIT_DESCRIBE="$$(git describe --tags --always --dirty 2>/dev/null || echo unknown)"; \
 	  GIT_HASH="$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"; \
@@ -40,5 +43,6 @@ git_version.F90:
 	  echo "  character(len=*), parameter :: GIT_BRANCH   = '$$GIT_BRANCH'"; \
 	  echo "  character(len=*), parameter :: GIT_DATE     = '$$GIT_DATE'"; \
 	  echo "end module git_version"; \
-	} > $@
+	} > $@.tmp; \
+	if cmp -s $@.tmp $@ 2>/dev/null; then rm -f $@.tmp; else mv $@.tmp $@; fi
 

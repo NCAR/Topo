@@ -2611,13 +2611,13 @@ program convterr
     status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_DESCRIBE',LEN(TRIM(GIT_DESCRIBE)),&
          TRIM(GIT_DESCRIBE))
     if (status .ne. NF_NOERR) call handle_err(status)
-    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_HASH',LEN(TRIM(GIT_DESCRIBE)),&
-         TRIM(GIT_DESCRIBE))
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_HASH',LEN(TRIM(GIT_HASH)),&
+         TRIM(GIT_HASH))
     if (status .ne. NF_NOERR) call handle_err(status)
-    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_BRANCH',LEN(TRIM(GIT_DESCRIBE)),&
-         TRIM(GIT_DESCRIBE))
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_BRANCH',LEN(TRIM(GIT_BRANCH)),&
+         TRIM(GIT_BRANCH))
     if (status .ne. NF_NOERR) call handle_err(status)
-    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_DATE',LEN(TRIM(GIT_DESCRIBE)),&
+    status = nf_put_att_text (foutid,NF_GLOBAL,'GIT_DATE',LEN(TRIM(GIT_DATE)),&
          TRIM(GIT_DATE))
     if (status .ne. NF_NOERR) call handle_err(status)
   end subroutine wrt_cesm_meta_data
