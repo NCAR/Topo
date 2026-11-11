@@ -563,9 +563,14 @@ subroutine read_target_grid(grid_descriptor_fname,lregional_refinement,ltarget_l
     write(*,*) "rrfac on file; setting lregional_refinement = .true."
   end if
 
+  target_area = 0.0_r8 !zero signals "not on file" to the jmax_segments estimate
   status = NF_INQ_VARID(ncid, TRIM(str_area(esmf_file)), latid)
-  status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
-  
+  if (status .ne. NF_NOERR) then
+    write(*,*) "cell areas ("//TRIM(str_area(esmf_file))//") not on grid descriptor file"
+  else
+    status = NF_GET_VAR_DOUBLE(ncid, latid,target_area)
+  end if
+
   status = nf_close (ncid)
   if (status .ne. NF_NOERR) call handle_err(status)          
   end subroutine read_target_grid

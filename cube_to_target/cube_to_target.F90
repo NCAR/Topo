@@ -10,7 +10,7 @@
 ! ex: ./cube_to_target --help to get list of long and short option names.
 !
 program convterr
-  use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: r8 => shr_kind_r8, i8 => shr_kind_i8
   use smooth_topo_cube_sph
   use ridge_ana
   use shared_vars
@@ -55,7 +55,8 @@ program convterr
   !
   real(r8), allocatable, dimension(:,:) :: da, terr_2(:,:,:),rrfac(:,:,:)
   integer  :: nreconstruction
-  real(r8) :: da_min_ncube, da_min_target ! used to compute jmax_segments
+  real(r8) :: da_min_ncube, da_max_target, sum_target_area, seg_ratio ! used to compute jmax_segments
+  integer(i8) :: nfine8, jall_est8 ! 64-bit estimate of total number of overlaps
   real(r8) :: volterr, volterr_sm  
   !
   ! namelist variables
@@ -594,46 +595,47 @@ program convterr
   allocate( rrfac(ncube,ncube,6)  )
   rrfac = 0.0
   
-  if (.not.lstop_after_smoothing) then    
-    if (nrank == 1) then
-      da_min_ncube  = 4.0*pi/(6.0*DBLE(ncube*ncube))
-      da_min_target = MAXVAL(target_area)
-      if (da_min_target==0) then !bug with MPAS files
-        write(*,*) "ERROR: da_min_target =",da_min_target
-        stop
+  if (.not.lstop_after_smoothing) then
+    da_min_ncube    = 4.0*pi/(6.0*DBLE(ncube*ncube))
+    da_max_target   = MAXVAL(target_area)
+    sum_target_area = SUM(target_area)
+    if (jmax_segments<0) then
+      if (da_max_target>0.0_r8.and.da_max_target<=sum_target_area) then
+        !
+        ! max number of overlaps for a single target cell: number of fine cubed-sphere
+        ! cells covered by the largest target cell (area term) plus fine cells crossed
+        ! by its perimeter (sqrt term), with generous safety margins (factor 4 and
+        ! constant term); cell areas are normalized to sum to the area of the sphere
+        ! since grid descriptor files may use non-steradian units (e.g. MPAS ESMF
+        ! mesh files store elementArea in m^2)
+        !
+        seg_ratio     = da_max_target*(4.0_r8*pi/sum_target_area)/da_min_ncube
+        jmax_segments = NINT(4.0_r8*seg_ratio+16.0_r8*SQRT(seg_ratio)+100.0_r8)
+        write(*,*) "using dynamic estimate for jmax_segments = ",jmax_segments
       else
-        if (jmax_segments<0) then
-           write(*,*) "using dynamic estimate for jmax_segments " 
-           !++ jtb : Increased by 4x. Needed for c1440 FV3
-           !jmax_segments = 10 * ncorner*NINT(da_min_target/da_min_ncube)!phl - FAILS for MPAS ~3km
-           jmax_segments = 4 * ncorner*NINT(da_min_target/da_min_ncube)
-           jmax_segments = MIN( jmax_segments, 10000 )
-        else
-           write(*,*) "jmax_segments set by user = ",jmax_segments
-        end if
+        jmax_segments = 100000 !target cell areas not available on grid descriptor file
+        write(*,*) "target_area not available; using conservative jmax_segments = ",jmax_segments
       end if
-      write(*,*) "ncorner, da_min_target, da_min_ncube =", ncorner, da_min_target, da_min_ncube
-      write(*,*) "jmax_segments",jmax_segments,da_min_target,da_min_ncube
     else
-      if (jmax_segments<0) then
-         jmax_segments = 100000   !can be tweaked
-      else
-         write(*,*) "jmax_segments set by user = ",jmax_segments
-      end if
+      write(*,*) "jmax_segments set by user = ",jmax_segments
     end if
-    if (real(ntarget)*real(jmax_segments)>huge(real(jall_anticipated))) then
-      jall_anticipated = 1080000000 !huge(jmax_segments) !anticipated number of weights (can be tweaked)
-      write(*,*) "truncating jall_anticipated to ",jall_anticipated
-    else
-      jall_anticipated = ntarget*jmax_segments !anticipated number of weights (can be tweaked)
-    end if
-    if (jall_anticipated<0) then
-      write(*,*) "anticipated number of overlaps likely not representable: jall_anticipated=", jall_anticipated
-      jall_anticipated = 1080000000
-      write(*,*) "setting to large value = ",jall_anticipated
-    else
-      write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
-    end if
+    write(*,*) "ncorner, da_max_target, da_min_ncube =", ncorner, da_max_target, da_min_ncube
+    !
+    ! anticipated total number of overlaps (exchange grid size): every overlap is an
+    ! intersection of a fine cubed-sphere cell with a target cell; interior fine cells
+    ! contribute one overlap each (6*ncube^2 in total) and fine cells crossed by target
+    ! cell edges contribute one extra overlap per crossing; the total target grid edge
+    ! length is bounded by ~2*sqrt(4*pi*ntarget) (equality for a uniform mesh) and a
+    ! fine cell has width ~sqrt(4*pi/(6*ncube^2)), giving an edge term of
+    ! ~4*sqrt(ntarget*6*ncube^2); factor 2 and the ntarget term are safety margins
+    ! (computed in 64-bit integers to avoid overflow)
+    !
+    nfine8    = 6_i8*INT(ncube,i8)*INT(ncube,i8)
+    jall_est8 = 2_i8*nfine8+INT(8.0_r8*SQRT(DBLE(ntarget)*DBLE(nfine8)),i8)+8_i8*INT(ntarget,i8)
+    jall_est8 = MIN(jall_est8,INT(ntarget,i8)*INT(jmax_segments,i8)) !at most jmax_segments overlaps per target cell
+    jall_est8 = MIN(jall_est8,INT(HUGE(jall_anticipated),i8))       !largest representable 32-bit value
+    jall_anticipated = INT(jall_est8)
+    write(*,*) "anticipated number of overlaps jall_anticipated=", jall_anticipated
     
 
     
@@ -2832,21 +2834,21 @@ program convterr
              ngauss,gauss_weights,abscissae,weights,weights_eul_index,jcollect,jmax_segments,&
              ncube,0,ncorner_this_cell,ldbg,i)
         
+        IF (jall+jcollect-1>jall_anticipated) THEN !check BEFORE writing to avoid out-of-bounds access
+          WRITE(*,*) "more weights than anticipated"
+          WRITE(*,*) "increase jall (e.g., set jmax_segments explicitly with -j)"
+          STOP
+        END IF
         weights_all(jall:jall+jcollect-1,1:nreconstruction)  = weights(1:jcollect,1:nreconstruction)
-        
-        
+
+
         !weights_eul_index_all(jall:jall+jcollect-1,1:2) = weights_eul_index(1:jcollect,:)
         weights_eul_index_all(jall:jall+jcollect-1,  1) = weights_eul_index(1:jcollect,1)
         weights_eul_index_all(jall:jall+jcollect-1,  2) = weights_eul_index(1:jcollect,2)
         weights_eul_index_all(jall:jall+jcollect-1,  3) = ipanel
         weights_lgr_index_all(jall:jall+jcollect-1    ) = i
-        
+
         jall = jall+jcollect
-        IF (jall>jall_anticipated) THEN
-          WRITE(*,*) "more weights than anticipated"
-          WRITE(*,*) "increase jall"
-          STOP
-        END IF
         IF (ldbg) WRITE(*,*) "jcollect",jcollect
       END DO
     END DO
