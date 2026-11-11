@@ -1,0 +1,13 @@
+# compiler build artifacts
+*.o
+*.mod
+*__genmod.f90
+*__genmod.mod
+
+# generated at build time
+cube_to_target/git_version.F90
+cube_to_target/git_version.F90.tmp
+
+# built executables
+cube_to_target/cube_to_target
+bin_to_cube/bin_to_cube
