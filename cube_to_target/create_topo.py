@@ -14,6 +14,9 @@ def parse_arguments():
     parser.add_argument("--smoothing_scale", type=int, help="Smoothing scale")
     parser.add_argument("--ridge_window_ratio", type=float, default=None,
                         help="Scale factor on the ridge-analysis window half-width (default 1.0)")
+    parser.add_argument("--ridge_iter", type=int, default=None,
+                        help="Max passes of the per-peak ridge analysis, re-centred on the "
+                             "crest each pass (default 1 = single pass, as before)")
     parser.add_argument("--fine_smoothing_scale", type=float, default=None,
                         help="Band-pass: additionally low-pass terr_dev at this scale in km. "
                              "Must be < smoothing_scale. Omit to disable.")
@@ -49,6 +52,18 @@ def ridge_window_tag(ridge_window_ratio):
     if ridge_window_ratio is None or abs(ridge_window_ratio - 1.0) <= 1.0e-6:
         return ""
     return f"_Rw{int(math.floor(100.0 * ridge_window_ratio + 0.5)):03d}"
+
+def ridge_iter_tag(ridge_iter):
+    """
+    Build the '_It##' name fragment for ridge_iter > 1, or '' for the default
+    single pass. Must stay identical to the tag cube_to_target.F90 appends:
+
+        if (lfind_ridges.and.ridge_iter>1) then
+           write( str, "('_It',i0.2)" ) ridge_iter
+    """
+    if ridge_iter is None or ridge_iter <= 1:
+        return ""
+    return f"_It{int(ridge_iter):02d}"
 
 def fine_smoothing_tag(fine_smoothing_scale):
     """
@@ -123,7 +138,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -185,6 +200,16 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
         command.append(f"--ridge_window_ratio={ridge_window_ratio}")
 
     #------------------------------------------------------------
+    # Ridge iteration. Passed only when > 1, so a default run has
+    # exactly the same command line (and output) as before.
+    #------------------------------------------------------------
+    if ridge_iter is not None:
+        if ridge_iter < 1:
+            raise ValueError(f"ridge_iter must be >= 1, got {ridge_iter}")
+        if ridge_iter > 1:
+            command.append(f"--ridge_iter={ridge_iter}")
+
+    #------------------------------------------------------------
     # Band-pass fine smoothing scale (km). Omitted entirely when not
     # requested, so cube_to_target skips the band-pass.
     #------------------------------------------------------------
@@ -240,6 +265,10 @@ def main():
         ridge_window_ratio = args.ridge_window_ratio
     else:
         ridge_window_ratio = config.get("ridge_window_ratio", 1.0)
+    if args.ridge_iter is not None:
+        ridge_iter = args.ridge_iter
+    else:
+        ridge_iter = config.get("ridge_iter", 1)
     if args.fine_smoothing_scale is not None:
         fine_smoothing_scale = args.fine_smoothing_scale
     else:
@@ -255,6 +284,7 @@ def main():
     print(f"Ogrid: {ogrid}")
     print(f"Smoothing Scale: {smoothing_scale}")
     print(f"Ridge Window Ratio: {ridge_window_ratio}")
+    print(f"Ridge Iterations: {ridge_iter}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
     print(f"Setup only: {setup_only}")
@@ -265,7 +295,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -347,7 +377,8 @@ def main():
                              yfac=yfac, 
                              development_diags=True,
                              ridge_window_ratio=ridge_window_ratio,
-                             fine_smoothing_scale=fine_smoothing_scale )
+                             fine_smoothing_scale=fine_smoothing_scale,
+                             ridge_iter=ridge_iter )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )

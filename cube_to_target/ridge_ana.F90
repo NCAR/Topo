@@ -37,6 +37,7 @@ public latc_tiles,lonc_tiles
 public uniqid_tiles
 public ntiles_out
 public lsort_tiles
+public ridge_iter
 
 public peak_type
 
@@ -78,6 +79,15 @@ public peak_type
 #endif
 
   REAL(RPX), allocatable  :: UNIQID(:),ISOHT(:),ISOWD(:),ISOBS(:),xs01(:),ys01(:)
+  ! ++jtb Nov 2026: diagnostics of the optional seed->crest iteration (ridge_iter>1)
+  !   niter_rdg(ipk) : passes actually done (1..ridge_iter)
+  !   istop_rdg(ipk) : 0 single pass (ridge_iter=1), 1 converged, 2 cap reached,
+  !                    3 stopped because the next centre would leave the panel,
+  !                    4 stopped in a 2-cycle (next centre = centre two passes back)
+  !   xseed, yseed   : original seed cell (peaks%i, peaks%j); xs, ys hold the
+  !                    centre of the LAST pass
+  INTEGER, allocatable  :: niter_rdg(:), istop_rdg(:)
+  REAL(RPX), allocatable  :: xseed(:), yseed(:)
   REAL(RPX), allocatable  :: RefFac(:)
   REAL(RPX), allocatable  :: hnodes_list(:,:)
   INTEGER, allocatable  :: xnodes_list(:,:), dcenter_list(:), nnodes_list(:)
@@ -123,6 +133,18 @@ public peak_type
   ! descending) before writing. Set .FALSE. to keep the raw MyObject ID order.
   !
   logical                               :: lsort_tiles = .TRUE.
+  !
+  ! ++jtb Nov 2026: maximum number of passes of the per-peak ridge analysis
+  ! (ANISO_ANA + ANISO_ANA_2). Pass 1 is centred on the seed from
+  ! find_local_maxes, exactly as before. Each further pass is re-centred on
+  ! NINT(xspk,yspk) from the previous pass and redoes everything, including
+  ! the angle search. A peak stops early when the centre no longer moves
+  ! (converged), when it hops back to the centre of two passes before
+  ! (2-cycle), or when the next centre would leave its panel. nswx is kept
+  ! at its seed value. 1 (default) reproduces the single-pass results and
+  ! output files exactly. Set from cube_to_target (--ridge_iter).
+  !
+  integer                               :: ridge_iter = 1
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -429,7 +451,8 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     INTEGER   :: iw
     REAL(r8)  :: ang00, dxr, xwg, ywg, awg, bwg, lwg, pwg
     INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
-
+    ! ++jtb Nov 2026: window centre of the current / next pass (ridge_iter>1)
+    INTEGER (KIND=int_kind) :: icen,jcen,icnx,jcnx,iprv,jprv
 
     REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
@@ -566,16 +589,65 @@ write(*,*) " SHAPE ", shape( peaks%i )
              allocate( subx( 2*nswx+1  ) )
              allocate( suby( 2*nswx+1  ) )
 
-        suba    = terr_dev_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
-        subarw  = terr_halo_r4( i-nswx:i+nswx , j-nswx:j+nswx, np )
-        subx    = xv(i-nswx:i+nswx )
-        suby    = yv(j-nswx:j+nswx )
+        !----------------------------------------------------------------
+        ! ++jtb Nov 2026: optional iteration (ridge_iter>1). Pass 1 is the
+        ! original single pass, centred on the seed (i,j). Pass k>1 is
+        ! centred on NINT(xspk,yspk) from pass k-1 and redoes ANISO_ANA
+        ! (angle search + across-crest shift) and ANISO_ANA_2 (profile,
+        ! wedge, scales, along-crest shift). A pass depends only on its
+        ! integer centre, so when NINT(xspk,yspk) comes back equal to that
+        ! centre a further pass would repeat it exactly: converged. A peak
+        ! hopping between two neighbouring centres (common on flat crests)
+        ! is stopped when the next centre equals the one two passes back.
+        ! Passes also stop before a centre outside 1..ncube, which keeps
+        ! every window as far inside the halo as in the single-pass code.
+        ! With ridge_iter=1 the loop body runs once and nothing changes.
+        !----------------------------------------------------------------
+        xseed(ipk) = 1.*i
+        yseed(ipk) = 1.*j
+        istop_rdg(ipk) = 0
+        icen = i
+        jcen = j
+        iprv = -HUGE(1)
+        jprv = -HUGE(1)
+        do iter_ridge = 1, MAX( 1, ridge_iter )
+
+        suba    = terr_dev_halo_r4( icen-nswx:icen+nswx , jcen-nswx:jcen+nswx, np )
+        subarw  = terr_halo_r4( icen-nswx:icen+nswx , jcen-nswx:jcen+nswx, np )
+        subx    = xv(icen-nswx:icen+nswx )
+        suby    = yv(jcen-nswx:jcen+nswx )
         call ANISO_ANA( suba , subarw , subX , subY ,NSWx, ipk )
 
         ispk = NINT(1.*xspk(ipk) )
         jspk = NINT(1.*yspk(ipk) )
         suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
         call ANISO_ANA_2( SUBA,NSWx,IPK )
+
+           niter_rdg(ipk) = iter_ridge
+           if ( ridge_iter <= 1 ) exit
+           icnx = NINT(1.*xspk(ipk) )
+           jcnx = NINT(1.*yspk(ipk) )
+           if ( (icnx == icen) .and. (jcnx == jcen) ) then
+              istop_rdg(ipk) = 1          ! converged
+              exit
+           end if
+           if ( (icnx == iprv) .and. (jcnx == jprv) ) then
+              istop_rdg(ipk) = 4          ! 2-cycle: hopping between two centres
+              exit
+           end if
+           if ( (icnx < 1) .or. (icnx > ncube) .or. (jcnx < 1) .or. (jcnx > ncube) ) then
+              istop_rdg(ipk) = 3          ! next centre would leave the panel
+              exit
+           end if
+           if ( iter_ridge == ridge_iter ) then
+              istop_rdg(ipk) = 2          ! cap reached, still moving
+              exit
+           end if
+           iprv = icen
+           jprv = jcen
+           icen = icnx
+           jcen = jcnx
+        end do
 
         !----------------------------------------------------------------
         ! ++jtb Nov 2026: geographic (lon,lat) of the 3-point wedge.
@@ -622,6 +694,14 @@ write(*,*) " SHAPE ", shape( peaks%i )
     write(*,*)
 
     write(*,*) " Done with anisotropy analysis "
+    if ( ridge_iter > 1 ) then
+       write(*,*) " Ridge iteration, ridge_iter = ", ridge_iter
+       write(*,*) "    converged             : ", COUNT( istop_rdg == 1 )
+       write(*,*) "    cap reached (moving)  : ", COUNT( istop_rdg == 2 )
+       write(*,*) "    stopped at panel edge : ", COUNT( istop_rdg == 3 )
+       write(*,*) "    stopped in a 2-cycle  : ", COUNT( istop_rdg == 4 )
+       write(*,*) "    mean passes per peak  : ", REAL( SUM( niter_rdg ) ) / REAL( MAX( 1, npeaks ) )
+    end if
 
 900 format( a1, "  Analyzed Ridges (original) ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
 902 format( a1, "  Analyzed Ridges (iterative): N="i2," Ridge ",i8," out of ",i8,"  NSWx=",i3," mxdis=",f8.2 )
@@ -704,6 +784,12 @@ write(*,*) " SHAPE ", shape( peaks%i )
       ! ++jtb Nov 2026: crest-point lon/lat (radians); ends are in lon0/lat0, lon1/lat1 above
       write(31) lonc
       write(31) latc
+      ! ++jtb Nov 2026: iteration diagnostics, ONLY when ridge_iter>1 so the
+      ! single-pass file is unchanged. Readers treat them as optional.
+      if ( ridge_iter > 1 ) then
+         write(31) niter_rdg, istop_rdg
+         write(31) xseed, yseed
+      end if
 
       CLOSE(31)
 
@@ -2973,6 +3059,14 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
    xs01=0.
   allocate( ys01(npeaks) )
    ys01=0.
+  allocate( niter_rdg(npeaks) )
+   niter_rdg=0
+  allocate( istop_rdg(npeaks) )
+   istop_rdg=0
+  allocate( xseed(npeaks) )
+   xseed=0.
+  allocate( yseed(npeaks) )
+   yseed=0.
   allocate( mxdsp(npeaks) )
    mxdsp=0.
   allocate( mxds0(npeaks) )

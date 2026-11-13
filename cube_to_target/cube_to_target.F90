@@ -137,7 +137,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(28)
+  type(option_s):: opts(29)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -170,6 +170,7 @@ program convterr
   opts(26) = option_s( "greenlndantarcsgh30_fac"   ,.true.    , '4'   ,.false.       ,.false.)
   opts(27) = option_s( "ridge_window_ratio"        ,.true.    , 'w'   ,.false.       ,.false.)
   opts(28) = option_s( "fine_smoothing_scale"      ,.true.    , 'e'   ,.false.       ,.false.)
+  opts(29) = option_s( "ridge_iter"                ,.true.    , 'k'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -183,7 +184,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -321,6 +322,12 @@ program convterr
       write(str,'(F12.4)') fine_smoothing_scale
       command_line_arguments = TRIM(command_line_arguments)//' --fine_smoothing_scale '//TRIM(ADJUSTL(str))
       opts(28)%specified = .true.
+    case( 'k' )
+      ! ridge_iter lives in module ridge_ana (public)
+      read (optarg, *) ridge_iter
+      write(str,*) ridge_iter
+      command_line_arguments = TRIM(command_line_arguments)//' --ridge_iter '//TRIM(ADJUSTL(str))
+      opts(29)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -371,6 +378,7 @@ program convterr
   write(*,*) "smoothing_scale                 = ",smoothing_scale
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
+  write(*,*) "ridge_iter                      = ",ridge_iter
   write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -518,6 +526,10 @@ program convterr
       write(*,*) "ridge_window_ratio must be > 0, got ",ridge_window_ratio
       stop
     end if
+    if (ridge_iter<1) then
+      write(*,*) "ridge_iter must be >= 1, got ",ridge_iter
+      stop
+    end if
     if (nwindow_halfwidth<=0) then
       nwindow_halfwidth = floor(ridge_window_ratio*real(ncube_sph_smooth_coarse)/sqrt(2.))
       !nwindow_halfwidth = floor(0.25*real(ncube_sph_smooth_coarse)/sqrt(2.))
@@ -628,6 +640,11 @@ program convterr
      write( str, "('_Rw',i0.3)" ) NINT(100.0_r8*ridge_window_ratio)
      ofile = TRIM(ofile)//TRIM(str)
   end if
+  ! Same for the ridge iteration: '_It##' only when ridge_iter>1.
+  if (lfind_ridges.and.ridge_iter>1) then
+     write( str, "('_It',i0.2)" ) ridge_iter
+     ofile = TRIM(ofile)//TRIM(str)
+  end if
   if (greenlndantarcsgh30_fac>0) then
      write(greenland_str,"('greenlndantarcsgh30fac',F4.2)") greenlndantarcsgh30_fac
      output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//&
@@ -712,6 +729,7 @@ program convterr
   write(nml_log,*) "smoothing_scale                 = ",smoothing_scale
   write(nml_log,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
+  write(nml_log,*) "ridge_iter                      = ",ridge_iter
   write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -1334,6 +1352,8 @@ program convterr
     write (6,*) "-r, --no_ridges                                 -> do not compute sub-grid-scale ridges"
     write (6,*) "-w, --ridge_window_ratio=<real>                 -> scale factor on default ridge-analysis"
     write (6,*) "                                                   window half-width (default 1.0)"
+    write (6,*) "-k, --ridge_iter=<int>                          -> max passes of the per-peak ridge analysis,"
+    write (6,*) "                                                   re-centred on the crest each pass (default 1)"
     write (6,*) "-x, --stop_after_smooth                         -> stop after smoothing"
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) "-z, --development_diags                         -> enable development diagnostics (for developers)"
