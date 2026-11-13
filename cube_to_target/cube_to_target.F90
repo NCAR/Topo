@@ -13,6 +13,7 @@ program convterr
   use shr_kind_mod, only: r8 => shr_kind_r8
   use smooth_topo_cube_sph
   use ridge_ana
+  use ridge_utils, only: wedge_method
   use shared_vars
   use reconstruct
   use f90getopt
@@ -137,7 +138,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(29)
+  type(option_s):: opts(30)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -171,6 +172,7 @@ program convterr
   opts(27) = option_s( "ridge_window_ratio"        ,.true.    , 'w'   ,.false.       ,.false.)
   opts(28) = option_s( "fine_smoothing_scale"      ,.true.    , 'e'   ,.false.       ,.false.)
   opts(29) = option_s( "ridge_iter"                ,.true.    , 'k'   ,.false.       ,.false.)
+  opts(30) = option_s( "wedge_method"              ,.true.    , '5'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -184,7 +186,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -328,6 +330,12 @@ program convterr
       write(str,*) ridge_iter
       command_line_arguments = TRIM(command_line_arguments)//' --ridge_iter '//TRIM(ADJUSTL(str))
       opts(29)%specified = .true.
+    case( '5' )
+      ! wedge_method lives in module ridge_utils (public)
+      read (optarg, *) wedge_method
+      write(str,*) wedge_method
+      command_line_arguments = TRIM(command_line_arguments)//' --wedge_method '//TRIM(ADJUSTL(str))
+      opts(30)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -379,6 +387,7 @@ program convterr
   write(*,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(*,*) "ridge_iter                      = ",ridge_iter
+  write(*,*) "wedge_method                    = ",wedge_method
   write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -530,6 +539,10 @@ program convterr
       write(*,*) "ridge_iter must be >= 1, got ",ridge_iter
       stop
     end if
+    if (wedge_method/=1 .and. wedge_method/=2) then
+      write(*,*) "wedge_method must be 1 (old node-based) or 2 (rms_wedge), got ",wedge_method
+      stop
+    end if
     if (nwindow_halfwidth<=0) then
       nwindow_halfwidth = floor(ridge_window_ratio*real(ncube_sph_smooth_coarse)/sqrt(2.))
       !nwindow_halfwidth = floor(0.25*real(ncube_sph_smooth_coarse)/sqrt(2.))
@@ -645,6 +658,11 @@ program convterr
      write( str, "('_It',i0.2)" ) ridge_iter
      ofile = TRIM(ofile)//TRIM(str)
   end if
+  ! And for a non-default wedge: '_Wm#' only when wedge_method/=2.
+  if (lfind_ridges.and.wedge_method/=2) then
+     write( str, "('_Wm',i0)" ) wedge_method
+     ofile = TRIM(ofile)//TRIM(str)
+  end if
   if (greenlndantarcsgh30_fac>0) then
      write(greenland_str,"('greenlndantarcsgh30fac',F4.2)") greenlndantarcsgh30_fac
      output_fname = TRIM(str_dir)//'/'//trim(output_grid)//'_'//trim(str_source)//&
@@ -730,6 +748,7 @@ program convterr
   write(nml_log,*) "nwindow_halfwidth               = ",nwindow_halfwidth
   write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(nml_log,*) "ridge_iter                      = ",ridge_iter
+  write(nml_log,*) "wedge_method                    = ",wedge_method
   write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -1354,6 +1373,8 @@ program convterr
     write (6,*) "                                                   window half-width (default 1.0)"
     write (6,*) "-k, --ridge_iter=<int>                          -> max passes of the per-peak ridge analysis,"
     write (6,*) "                                                   re-centred on the crest each pass (default 1)"
+    write (6,*) "-5, --wedge_method=<int>                        -> 3-point wedge: 1 = original node-based search,"
+    write (6,*) "                                                   2 = rms_wedge (default)"
     write (6,*) "-x, --stop_after_smooth                         -> stop after smoothing"
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) "-z, --development_diags                         -> enable development diagnostics (for developers)"

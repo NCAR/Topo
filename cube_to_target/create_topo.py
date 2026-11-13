@@ -17,6 +17,9 @@ def parse_arguments():
     parser.add_argument("--ridge_iter", type=int, default=None,
                         help="Max passes of the per-peak ridge analysis, re-centred on the "
                              "crest each pass (default 1 = single pass, as before)")
+    parser.add_argument("--wedge_method", type=int, default=None,
+                        help="3-point wedge: 1 = original node-based search, "
+                             "2 = rms_wedge (default)")
     parser.add_argument("--fine_smoothing_scale", type=float, default=None,
                         help="Band-pass: additionally low-pass terr_dev at this scale in km. "
                              "Must be < smoothing_scale. Omit to disable.")
@@ -64,6 +67,18 @@ def ridge_iter_tag(ridge_iter):
     if ridge_iter is None or ridge_iter <= 1:
         return ""
     return f"_It{int(ridge_iter):02d}"
+
+def wedge_method_tag(wedge_method):
+    """
+    Build the '_Wm#' name fragment for a non-default wedge method, or '' for
+    the default rms_wedge (2). Must stay identical to cube_to_target.F90:
+
+        if (lfind_ridges.and.wedge_method/=2) then
+           write( str, "('_Wm',i0)" ) wedge_method
+    """
+    if wedge_method is None or wedge_method == 2:
+        return ""
+    return f"_Wm{int(wedge_method)}"
 
 def fine_smoothing_tag(fine_smoothing_scale):
     """
@@ -138,7 +153,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -210,6 +225,15 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
             command.append(f"--ridge_iter={ridge_iter}")
 
     #------------------------------------------------------------
+    # 3-point wedge method. Passed only when not the default (2).
+    #------------------------------------------------------------
+    if wedge_method is not None:
+        if wedge_method not in (1, 2):
+            raise ValueError(f"wedge_method must be 1 or 2, got {wedge_method}")
+        if wedge_method != 2:
+            command.append(f"--wedge_method={wedge_method}")
+
+    #------------------------------------------------------------
     # Band-pass fine smoothing scale (km). Omitted entirely when not
     # requested, so cube_to_target skips the band-pass.
     #------------------------------------------------------------
@@ -269,6 +293,10 @@ def main():
         ridge_iter = args.ridge_iter
     else:
         ridge_iter = config.get("ridge_iter", 1)
+    if args.wedge_method is not None:
+        wedge_method = args.wedge_method
+    else:
+        wedge_method = config.get("wedge_method", 2)
     if args.fine_smoothing_scale is not None:
         fine_smoothing_scale = args.fine_smoothing_scale
     else:
@@ -285,6 +313,7 @@ def main():
     print(f"Smoothing Scale: {smoothing_scale}")
     print(f"Ridge Window Ratio: {ridge_window_ratio}")
     print(f"Ridge Iterations: {ridge_iter}")
+    print(f"Wedge Method: {wedge_method}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
     print(f"Setup only: {setup_only}")
@@ -295,7 +324,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{wedge_method_tag(wedge_method)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -378,7 +407,8 @@ def main():
                              development_diags=True,
                              ridge_window_ratio=ridge_window_ratio,
                              fine_smoothing_scale=fine_smoothing_scale,
-                             ridge_iter=ridge_iter )
+                             ridge_iter=ridge_iter,
+                             wedge_method=wedge_method )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )

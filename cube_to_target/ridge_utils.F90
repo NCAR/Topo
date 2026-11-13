@@ -15,9 +15,20 @@ public rms_wedge
 public rebuild_nodes
 public length_in_square
 public repaint
+public wedge_method
 
     REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
+
+    !-------------------------------------------------------------------------
+    ! ++jtb Nov 2026: which 3-point wedge rnodes computes.
+    !   1 = original node-based search (as before Nov 2026). Known to
+    !       collapse (x_0=x_c and/or x_c=x_1) when the peak nearest the
+    !       window centre is a minor bump on a flank.
+    !   2 = rms_wedge: best-fit 5-point polyline on the profile (default).
+    ! Set from cube_to_target (--wedge_method).
+    !-------------------------------------------------------------------------
+    integer :: wedge_method = 2
 
 contains
 
@@ -217,7 +228,7 @@ contains
     !integer :: xwedge(3)
     integer   :: xwdg0,xwdg1,xwdg2,inode_c
 
-    lnew_wedge_calc = .true.
+    lnew_wedge_calc = ( wedge_method /= 1 )    ! ++jtb Nov 2026: runtime switch, was hardwired .true.
     ns2=nsw/2
 
     hnodes(:)=0.
@@ -529,6 +540,13 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_prof
                   ( xnodes(j+1) - xnodes(j) )
           else
              ridge(i)=0.
+          ! ++jtb Nov 2026: a zero-width segment (coincident nodes, e.g. a
+          ! collapsed side of an old-style wedge, wedge_method=1) is skipped,
+          ! so the value written by the neighbouring segment stands. Writing
+          ! 0 here put a zero at the crest of a right-collapsed wedge (the
+          ! pre-Nov code divided by zero there instead). rms_wedge and the
+          ! node lists never have zero-width segments, so their profiles are
+          ! unchanged.
           end if
        end do
     end do
@@ -612,4 +630,3 @@ write(*,*) " repaint - 4 "
 end subroutine repaint
 
 end module ridge_utils
-
