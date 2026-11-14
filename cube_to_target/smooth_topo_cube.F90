@@ -15,6 +15,32 @@ IMPLICIT NONE
 PRIVATE
 
 PUBLIC smooth_intermediate_topo_wrap
+PUBLIC gauss_sigma_km, max_gauss
+PUBLIC gauss_scale_km, gauss_strength, gauss_angle
+
+  !---------------------------------------------------------------------------
+  ! ++jtb Nov 2026: index-space Gaussian ridge-scale analysis of terr_dev
+  !
+  ! Each cube face is treated as a uniform orthogonal grid (as the ridge
+  ! finder does). terr_dev is blurred with a Gaussian of width
+  ! sigma_cells = gauss_sigma_km/dx_km (dx_km = R*(pi/2)/ncube, ~3.34 km),
+  ! in two 1-D passes over a halo filled from the neighbouring faces. At each
+  ! width the Hessian (second differences in grid cells) gives the curvature
+  ! across (lam_q) and along (lam_p) a crest. A cell counts as ridge-like if
+  ! lam_q < 0 and |lam_p| < 0.5*|lam_q|. The width with the largest
+  ! sigma_cells**1.5 * (-lam_q) wins (Lindeberg 1998, gamma = 3/4: for a
+  ! Gaussian ridge the winner equals the ridge's own sigma). Outputs:
+  !   gauss_scale_km : winning width, nominal km (0 = never ridge-like)
+  !   gauss_strength : sigma_cells**2 * (-lam_q) at that width, m
+  !                    (~0.35 x ridge height, comparable across widths)
+  !   gauss_angle    : cross-ridge direction, degrees from +x (grid i)
+  !                    toward +y (grid j), [0,180); -999 = no ridge
+  ! Values <= 0 in gauss_sigma_km are unused. Set from cube_to_target
+  ! (--gauss_scales). Written to the topo_smooth file.
+  !---------------------------------------------------------------------------
+  integer,  parameter :: max_gauss = 20
+  real(r8)            :: gauss_sigma_km(max_gauss) = -1.0_r8
+  real(r8), allocatable, dimension(:,:,:) :: gauss_scale_km, gauss_strength, gauss_angle
 
 CONTAINS
 
@@ -375,11 +401,27 @@ CONTAINS
 
 
 
+      ! ++jtb Nov 2026: index-space Gaussian ridge-scale analysis of the final terr_dev
+      if ( ANY( gauss_sigma_km > 0.0_r8 ) ) call gauss_scale_analysis( terr_dev, ncube )
+
       if (stop_after_smoothing .OR. ldevelopment_diags) then
         if (lregional_refinement) then
-          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments,rr_fac=rr_updt)
+          if (allocated(gauss_scale_km)) then
+            call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname, &
+                 command_line_arguments,rr_fac=rr_updt,                                        &
+                 gscale=gauss_scale_km, gstrength=gauss_strength, gangle=gauss_angle)
+          else
+            call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname, &
+                 command_line_arguments,rr_fac=rr_updt)
+          end if
         else
-          call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments)
+          if (allocated(gauss_scale_km)) then
+            call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname, &
+                 command_line_arguments,                                                       &
+                 gscale=gauss_scale_km, gstrength=gauss_strength, gangle=gauss_angle)
+          else
+            call wrtncdf_topo_smooth_data(ncube,ncube*ncube*6,terr_sm,terr_dev,landfrac,ofname,command_line_arguments)
+          end if
         end if
         if (stop_after_smoothing ) STOP
       end if
@@ -815,7 +857,8 @@ SUBROUTINE smooth_rrfac_halo(rr_halo &
    END SUBROUTINE smooth_rrfac_halo
 !======================================================================================
 
-subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fname,command_line_arguments,rr_fac)
+subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fname,command_line_arguments,rr_fac, &
+                                    gscale,gstrength,gangle)
   use shr_kind_mod, only: r8 => shr_kind_r8
   use shared_vars, only : rad2deg
   implicit none
@@ -829,6 +872,9 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fna
   real(r8),dimension(n),           intent(in) :: terr_sm,terr_dev,landfrac
   character(len=1024),             intent(in) :: output_fname
   real(r8),dimension(n), optional, intent(in) :: rr_fac
+  ! ++jtb Nov 2026: index-space Gaussian ridge-scale analysis (all three or none)
+  real(r8),dimension(n), optional, intent(in) :: gscale, gstrength, gangle
+  integer            :: gscale_id, gstrength_id, gangle_id
   character(len=1024),             intent(in) :: command_line_arguments
 
   integer            :: foutid     ! Output file id
@@ -936,6 +982,26 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fna
     if (status .ne. NF_NOERR) call handle_err(status)    
   end if
 
+  if (present(gscale)) then
+    print *,"Create variables for output: gauss_scale, gauss_strength, gauss_angle"
+    status = nf_def_var (foutid,'gauss_scale', NF_FLOAT, 1, nid(1), gscale_id)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    str = 'dominant ridge scale: Gaussian sigma with the strongest gamma=3/4 ridge response '// &
+          '(index-space filter, nominal km = cells*R*(pi/2)/ncube); 0 = never ridge-like'
+    status = nf_put_att_text (foutid,gscale_id,'long_name', LEN_TRIM(str), TRIM(str))
+    status = nf_put_att_text (foutid,gscale_id,'units', 2, 'km')
+    status = nf_def_var (foutid,'gauss_strength', NF_FLOAT, 1, nid(1), gstrength_id)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    str = 'ridge strength sigma_cells**2*(-lam_q) at gauss_scale (~0.35 x ridge height); 0 = no ridge'
+    status = nf_put_att_text (foutid,gstrength_id,'long_name', LEN_TRIM(str), TRIM(str))
+    status = nf_put_att_text (foutid,gstrength_id,'units', 1, 'm')
+    status = nf_def_var (foutid,'gauss_angle', NF_FLOAT, 1, nid(1), gangle_id)
+    if (status .ne. NF_NOERR) call handle_err(status)
+    str = 'cross-ridge direction at gauss_scale, degrees from grid +x (i) toward +y (j), [0,180); -999 = no ridge'
+    status = nf_put_att_text (foutid,gangle_id,'long_name', LEN_TRIM(str), TRIM(str))
+    status = nf_put_att_text (foutid,gangle_id,'units', 7, 'degrees')
+  end if
+
   status = nf_def_var (foutid,'lat', NF_DOUBLE, 1, nid(1), latvid)
   if (status .ne. NF_NOERR) then
     call handle_err(status)
@@ -978,6 +1044,16 @@ subroutine wrtncdf_topo_smooth_data(ncube,n,terr_sm,terr_dev,landfrac,output_fna
   if (present(rr_fac)) then
     print*,"writing rr_fac",MINVAL(rr_fac),MAXVAL(rr_fac)
     status = nf_put_var_double (foutid, rr_fac_id, rr_fac)
+    if (status .ne. NF_NOERR) call handle_err(status)
+  end if
+
+  if (present(gscale)) then
+    print*,"writing gauss_scale",MINVAL(gscale),MAXVAL(gscale)
+    status = nf_put_var_real (foutid, gscale_id, REAL(gscale,4))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_var_real (foutid, gstrength_id, REAL(gstrength,4))
+    if (status .ne. NF_NOERR) call handle_err(status)
+    status = nf_put_var_real (foutid, gangle_id, REAL(gangle,4))
     if (status .ne. NF_NOERR) call handle_err(status)
   end if
 
@@ -1049,5 +1125,107 @@ subroutine read_topo_smooth_data(fname,ncol,terr_sm,terr_dev,rr_fac)
 end subroutine read_topo_smooth_data
 
 
+
+!=============================================================================
+! ++jtb Nov 2026: index-space Gaussian ridge-scale analysis (see gauss_sigma_km)
+!=============================================================================
+subroutine gauss_scale_analysis( dev, ncube )
+  implicit none
+  integer,  intent(in) :: ncube
+  real(r8), intent(in) :: dev(ncube,ncube,6)
+
+  real(r8), parameter  :: rearth_km = 6371.22_r8, gamma = 0.75_r8, aniso = 0.5_r8
+  real(r8), allocatable :: halo(:,:), tmp(:,:), blur(:,:), best_R(:,:), w(:)
+  real(r8) :: sig(max_gauss), dx_km, s, pi, rad2deg, rtmp
+  real(r8) :: lxx, lyy, lxy, ht, rad, lq, lp, R
+  integer  :: nsig, isig, jsig, np, i, j, k, m, mmax, nh
+
+  pi      = 4.0_r8*ATAN(1.0_r8)
+  rad2deg = 180.0_r8/pi
+  dx_km   = rearth_km*(0.5_r8*pi)/real(ncube,r8)
+
+  nsig = 0                                   ! requested widths, ascending
+  do isig = 1, max_gauss
+    if ( gauss_sigma_km(isig) > 0.0_r8 ) then
+      nsig = nsig + 1 ; sig(nsig) = gauss_sigma_km(isig)
+    end if
+  end do
+  do isig = 1, nsig-1
+    do jsig = isig+1, nsig
+      if ( sig(jsig) < sig(isig) ) then
+        rtmp = sig(isig) ; sig(isig) = sig(jsig) ; sig(jsig) = rtmp
+      end if
+    end do
+  end do
+  mmax = CEILING( 4.0_r8*sig(nsig)/dx_km )   ! kernel half-width, cells (4 sigma)
+  nh   = mmax + 1                            ! halo depth: kernel + 1 for second differences
+
+  write(*,*) " "
+  write(*,*) " Gaussian ridge-scale analysis of terr_dev (index space), dx_km = ",dx_km
+  write(*,*) "   sigmas (km) : ",sig(1:nsig)
+  write(*,*) "   halo depth  : ",nh," cells"
+
+  if (allocated(gauss_scale_km)) deallocate(gauss_scale_km, gauss_strength, gauss_angle)
+  allocate( gauss_scale_km(ncube,ncube,6), gauss_strength(ncube,ncube,6), gauss_angle(ncube,ncube,6) )
+  gauss_scale_km = 0.0_r8 ; gauss_strength = 0.0_r8 ; gauss_angle = -999.0_r8
+
+  allocate( halo(1-nh:ncube+nh, 1-nh:ncube+nh) )
+  allocate( tmp (0:ncube+1, -mmax:ncube+1+mmax) )
+  allocate( blur(0:ncube+1, 0:ncube+1) )
+  allocate( best_R(ncube,ncube) )
+
+  do np = 1, 6
+    call CubedSphereFillHalo_Linear_extended( dev, halo, np, ncube+1, nh )
+    best_R = -HUGE(1.0_r8)
+    do isig = 1, nsig
+      s = sig(isig)/dx_km
+      m = CEILING( 4.0_r8*s )
+      allocate( w(-m:m) )
+      do k = -m, m
+        w(k) = EXP( -0.5_r8*(real(k,r8)/s)**2 )
+      end do
+      w = w/SUM(w)
+      ! pass 1, along x (contiguous): tmp(i,j), i = 0..ncube+1, j = -m..ncube+1+m
+      tmp(:, -m:ncube+1+m) = 0.0_r8
+      do j = -m, ncube+1+m
+        do k = -m, m
+          tmp(0:ncube+1, j) = tmp(0:ncube+1, j) + w(k)*halo(k:ncube+1+k, j)
+        end do
+      end do
+      ! pass 2, along y: blur(i,j), i,j = 0..ncube+1
+      blur = 0.0_r8
+      do j = 0, ncube+1
+        do k = -m, m
+          blur(:, j) = blur(:, j) + w(k)*tmp(:, j+k)
+        end do
+      end do
+      deallocate( w )
+      ! curvatures (second differences in cells) and the running best width
+      do j = 1, ncube
+        do i = 1, ncube
+          lxx = blur(i+1,j) - 2.0_r8*blur(i,j) + blur(i-1,j)
+          lyy = blur(i,j+1) - 2.0_r8*blur(i,j) + blur(i,j-1)
+          lxy = 0.25_r8*( blur(i+1,j+1) - blur(i+1,j-1) - blur(i-1,j+1) + blur(i-1,j-1) )
+          ht  = 0.5_r8*(lxx + lyy)
+          rad = SQRT( 0.25_r8*(lxx - lyy)**2 + lxy**2 )
+          lq  = ht - rad                     ! across the crest
+          lp  = ht + rad                     ! along the crest
+          if ( lq < 0.0_r8 .and. ABS(lp) < aniso*ABS(lq) ) then
+            R = (s*s)**gamma * (-lq)
+            if ( R > best_R(i,j) ) then
+              best_R(i,j)              = R
+              gauss_scale_km(i,j,np)   = sig(isig)
+              gauss_strength(i,j,np)   = s*s*(-lq)
+              gauss_angle(i,j,np)      = MODULO( 0.5_r8*ATAN2(2.0_r8*lxy, lxx - lyy)*rad2deg + 90.0_r8, 180.0_r8 )
+            end if
+          end if
+        end do
+      end do
+    end do
+    write(*,*) "   face ",np," done"
+  end do
+
+  deallocate( halo, tmp, blur, best_R )
+end subroutine gauss_scale_analysis
 
 END MODULE smooth_topo_cube_sph

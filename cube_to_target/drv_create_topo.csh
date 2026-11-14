@@ -21,4 +21,4 @@
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
 
-./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --ridge_window_ratio=0.50 --ridge_iter=1 --wedge_method=1 --tag=v206_e02
+./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --gauss_scales=6,7.5,9,12,18,25,37,50,75 --ridge_window_ratio=0.50 --ridge_iter=1 --wedge_method=1 --tag=smooth_gauss_scale_v207_e05

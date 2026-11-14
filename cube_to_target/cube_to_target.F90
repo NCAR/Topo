@@ -132,13 +132,14 @@ program convterr
   character(len=1024) :: grid_descriptor_fname,intermediate_cubed_sphere_fname,output_fname=''
   character(len=1024) :: grid_descriptor_fname_gll
   character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir='', greenland_str = ''
+  character(len=1024) :: str_gauss = ''   ! ++jtb Nov 2026: --gauss_scales list
   character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
   character(len=8)  :: date
   character(len=10) :: time
 
 
-  type(option_s):: opts(30)
+  type(option_s):: opts(31)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -173,6 +174,7 @@ program convterr
   opts(28) = option_s( "fine_smoothing_scale"      ,.true.    , 'e'   ,.false.       ,.false.)
   opts(29) = option_s( "ridge_iter"                ,.true.    , 'k'   ,.false.       ,.false.)
   opts(30) = option_s( "wedge_method"              ,.true.    , '5'   ,.false.       ,.false.)
+  opts(31) = option_s( "gauss_scales"              ,.true.    , '6'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -186,7 +188,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -336,6 +338,14 @@ program convterr
       write(str,*) wedge_method
       command_line_arguments = TRIM(command_line_arguments)//' --wedge_method '//TRIM(ADJUSTL(str))
       opts(30)%specified = .true.
+    case( '6' )
+      ! gauss_sigma_km lives in module smooth_topo_cube_sph (public). The list
+      ! (km, comma or blank separated, up to max_gauss values) is read
+      ! list-directed; the trailing '/' leaves the unused entries at -1.
+      str_gauss = TRIM(optarg)//' /'
+      read (str_gauss, *) gauss_sigma_km
+      command_line_arguments = TRIM(command_line_arguments)//' --gauss_scales '//TRIM(ADJUSTL(optarg))
+      opts(31)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -345,6 +355,9 @@ program convterr
     end select
   end do
   
+  if ( ANY( gauss_sigma_km > 0.0_r8 ) .and. TRIM(smooth_topo_fname).ne.'' ) then
+    write(*,*) "WARNING: --gauss_scales is computed during smoothing; it is ignored with --smooth_topo_file."
+  end if
   if (TRIM(smooth_topo_fname).ne.'') then
     lread_smooth_topofile = .TRUE.
     write(*,*) " Use pre-computed smooth topo " 
@@ -388,6 +401,7 @@ program convterr
   write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(*,*) "ridge_iter                      = ",ridge_iter
   write(*,*) "wedge_method                    = ",wedge_method
+  write(*,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -749,6 +763,7 @@ program convterr
   write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(nml_log,*) "ridge_iter                      = ",ridge_iter
   write(nml_log,*) "wedge_method                    = ",wedge_method
+  write(nml_log,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -1375,6 +1390,9 @@ program convterr
     write (6,*) "                                                   re-centred on the crest each pass (default 1)"
     write (6,*) "-5, --wedge_method=<int>                        -> 3-point wedge: 1 = original node-based search,"
     write (6,*) "                                                   2 = rms_wedge (default)"
+    write (6,*) "-6, --gauss_scales=<s1,s2,...>                  -> Gaussian widths (km, index space) for the ridge-scale"
+    write (6,*) "                                                   analysis of terr_dev; adds gauss_scale, gauss_strength,"
+    write (6,*) "                                                   gauss_angle to the topo_smooth file (max 20)"
     write (6,*) "-x, --stop_after_smooth                         -> stop after smoothing"
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) "-z, --development_diags                         -> enable development diagnostics (for developers)"

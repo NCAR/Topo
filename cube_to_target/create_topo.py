@@ -20,6 +20,10 @@ def parse_arguments():
     parser.add_argument("--wedge_method", type=int, default=None,
                         help="3-point wedge: 1 = original node-based search, "
                              "2 = rms_wedge (default)")
+    parser.add_argument("--gauss_scales", type=str, default=None,
+                        help="Comma-separated Gaussian widths in km, e.g. 6,7.5,9,12,18,25,37,50,75: "
+                             "index-space ridge-scale analysis of terr_dev, written to the "
+                             "topo_smooth file (gauss_scale, gauss_strength, gauss_angle). Omit to disable.")
     parser.add_argument("--fine_smoothing_scale", type=float, default=None,
                         help="Band-pass: additionally low-pass terr_dev at this scale in km. "
                              "Must be < smoothing_scale. Omit to disable.")
@@ -153,7 +157,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -234,6 +238,13 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
             command.append(f"--wedge_method={wedge_method}")
 
     #------------------------------------------------------------
+    # Index-space Gaussian ridge-scale analysis. Only adds fields
+    # to the topo_smooth file, so no case-name tag.
+    #------------------------------------------------------------
+    if gauss_scales:
+        command.append(f"--gauss_scales={gauss_scales}")
+
+    #------------------------------------------------------------
     # Band-pass fine smoothing scale (km). Omitted entirely when not
     # requested, so cube_to_target skips the band-pass.
     #------------------------------------------------------------
@@ -297,6 +308,14 @@ def main():
         wedge_method = args.wedge_method
     else:
         wedge_method = config.get("wedge_method", 2)
+    if args.gauss_scales is not None:
+        gauss_scales = args.gauss_scales
+    else:
+        gauss_scales = config.get("gauss_scales", None)
+    if isinstance(gauss_scales, (list, tuple)):             # YAML list -> "6,7.5,9"
+        gauss_scales = ",".join(f"{float(s):g}" for s in gauss_scales)
+    if gauss_scales is not None:
+        gauss_scales = str(gauss_scales).replace(" ", "")
     if args.fine_smoothing_scale is not None:
         fine_smoothing_scale = args.fine_smoothing_scale
     else:
@@ -314,6 +333,7 @@ def main():
     print(f"Ridge Window Ratio: {ridge_window_ratio}")
     print(f"Ridge Iterations: {ridge_iter}")
     print(f"Wedge Method: {wedge_method}")
+    print(f"Gaussian ridge scales (km): {gauss_scales if gauss_scales else 'off'}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
     print(f"Setup only: {setup_only}")
@@ -408,7 +428,8 @@ def main():
                              ridge_window_ratio=ridge_window_ratio,
                              fine_smoothing_scale=fine_smoothing_scale,
                              ridge_iter=ridge_iter,
-                             wedge_method=wedge_method )
+                             wedge_method=wedge_method,
+                             gauss_scales=gauss_scales )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )
