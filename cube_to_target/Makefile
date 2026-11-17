@@ -26,7 +26,7 @@ cube_to_target.o: shr_kind_mod.o remap.o reconstruct.o shared_vars.o f90getopt.o
 reconstruct.o: remap.o 
 remap.o      : shr_kind_mod.o
 shared_vars.o: shr_kind_mod.o
-ridge_ana.o: ridge_utils.o ridge_angles_mod.o
+ridge_ana.o: ridge_utils.o ridge_angles_mod.o smooth_topo_cube.o
 git_version.F90:
 	@{ \
 	  GIT_DESCRIBE="$$(git describe --tags --always --dirty 2>/dev/null || echo unknown)"; \
@@ -41,4 +41,3 @@ git_version.F90:
 	  echo "  character(len=*), parameter :: GIT_DATE     = '$$GIT_DATE'"; \
 	  echo "end module git_version"; \
 	} > $@
-

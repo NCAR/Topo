@@ -133,13 +133,15 @@ program convterr
   character(len=1024) :: grid_descriptor_fname_gll
   character(len=1024) :: output_grid='', ofile,smooth_topo_fname = '',str_dir='', greenland_str = ''
   character(len=1024) :: str_gauss = ''   ! ++jtb Nov 2026: --gauss_scales list
+  character(len=1024) :: str_adapt = ''   ! ++jtb Nov 2026: --adaptive_window list
+  integer             :: iadapt
   character(len=1024) :: rrfactor_fname, command_line_arguments, str, str_creator, str_source=''
 
   character(len=8)  :: date
   character(len=10) :: time
 
 
-  type(option_s):: opts(31)
+  type(option_s):: opts(32)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -175,6 +177,7 @@ program convterr
   opts(29) = option_s( "ridge_iter"                ,.true.    , 'k'   ,.false.       ,.false.)
   opts(30) = option_s( "wedge_method"              ,.true.    , '5'   ,.false.       ,.false.)
   opts(31) = option_s( "gauss_scales"              ,.true.    , '6'   ,.false.       ,.false.)
+  opts(32) = option_s( "adaptive_window"           ,.true.    , '7'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -188,7 +191,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -346,6 +349,13 @@ program convterr
       read (str_gauss, *) gauss_sigma_km
       command_line_arguments = TRIM(command_line_arguments)//' --gauss_scales '//TRIM(ADJUSTL(optarg))
       opts(31)%specified = .true.
+    case( '7' )
+      ! adapt_c lives in module ridge_ana (public). One value, or one per
+      ! ridge_iter pass (the last value repeats); read list-directed.
+      str_adapt = TRIM(optarg)//' /'
+      read (str_adapt, *) adapt_c
+      command_line_arguments = TRIM(command_line_arguments)//' --adaptive_window '//TRIM(ADJUSTL(optarg))
+      opts(32)%specified = .true.
     case ('?')
       write(*,*) 'Error: unknown or malformed option: ', trim(optarg)
       stop 2
@@ -402,6 +412,7 @@ program convterr
   write(*,*) "ridge_iter                      = ",ridge_iter
   write(*,*) "wedge_method                    = ",wedge_method
   write(*,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
+  write(*,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
   write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(*,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(*,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -553,6 +564,15 @@ program convterr
       write(*,*) "ridge_iter must be >= 1, got ",ridge_iter
       stop
     end if
+    if ( adapt_c(1) > 0.0_r8 .and. .not. ANY( gauss_sigma_km > 0.0_r8 ) ) then
+      write(*,*) "--adaptive_window needs --gauss_scales (the Gaussian ridge scales)"
+      stop
+    end if
+    if ( adapt_c(1) > 0.0_r8 .and. TRIM(smooth_topo_fname).ne.'' ) then
+      write(*,*) "--adaptive_window needs the ridge scales computed during smoothing;"
+      write(*,*) "it can not be used with --smooth_topo_file"
+      stop
+    end if
     if (wedge_method/=1 .and. wedge_method/=2) then
       write(*,*) "wedge_method must be 1 (old node-based) or 2 (rms_wedge), got ",wedge_method
       stop
@@ -672,6 +692,15 @@ program convterr
      write( str, "('_It',i0.2)" ) ridge_iter
      ofile = TRIM(ofile)//TRIM(str)
   end if
+  ! Adaptive window: '_Aw' + NINT(10*c) for each c, joined by '-', e.g. _Aw50 or _Aw50-40.
+  if (lfind_ridges.and.adapt_c(1)>0.0_r8) then
+     ofile = TRIM(ofile)//'_Aw'
+     do iadapt = 1, COUNT( adapt_c > 0.0_r8 )
+        write( str, "(i0.2)" ) NINT( 10.0_r8*adapt_c(iadapt) )
+        if (iadapt > 1) ofile = TRIM(ofile)//'-'
+        ofile = TRIM(ofile)//TRIM(str)
+     end do
+  end if
   ! And for a non-default wedge: '_Wm#' only when wedge_method/=2.
   if (lfind_ridges.and.wedge_method/=2) then
      write( str, "('_Wm',i0)" ) wedge_method
@@ -764,6 +793,7 @@ program convterr
   write(nml_log,*) "ridge_iter                      = ",ridge_iter
   write(nml_log,*) "wedge_method                    = ",wedge_method
   write(nml_log,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
+  write(nml_log,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
   write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale
   write(nml_log,*) "ncube_sph_smooth_fine           = ",ncube_sph_smooth_fine
   write(nml_log,*) "grid_descriptor_fname           = ",trim(grid_descriptor_fname)
@@ -1393,6 +1423,9 @@ program convterr
     write (6,*) "-6, --gauss_scales=<s1,s2,...>                  -> Gaussian widths (km, index space) for the ridge-scale"
     write (6,*) "                                                   analysis of terr_dev; adds gauss_scale, gauss_strength,"
     write (6,*) "                                                   gauss_angle to the topo_smooth file (max 20)"
+    write (6,*) "-7, --adaptive_window=<c1,c2,...>               -> adaptive ridge window nswx = c*sigma/dx, clamped to"
+    write (6,*) "                                                   [4, nsw]; one c, or one per ridge_iter pass. Needs"
+    write (6,*) "                                                   --gauss_scales. ridge_window_ratio sets the ceiling nsw"
     write (6,*) "-x, --stop_after_smooth                         -> stop after smoothing"
     write (6,*) "-1, --ridge2tiles                               -> ??? "
     write (6,*) "-z, --development_diags                         -> enable development diagnostics (for developers)"

@@ -24,6 +24,10 @@ def parse_arguments():
                         help="Comma-separated Gaussian widths in km, e.g. 6,7.5,9,12,18,25,37,50,75: "
                              "index-space ridge-scale analysis of terr_dev, written to the "
                              "topo_smooth file (gauss_scale, gauss_strength, gauss_angle). Omit to disable.")
+    parser.add_argument("--adaptive_window", type=str, default=None,
+                        help="Adaptive ridge window: nswx = c*sigma/dx clamped to [4, nsw]. One c "
+                             "(e.g. 5) or one per ridge_iter pass (e.g. 5,4). Needs --gauss_scales. "
+                             "Omit for the fixed window.")
     parser.add_argument("--fine_smoothing_scale", type=float, default=None,
                         help="Band-pass: additionally low-pass terr_dev at this scale in km. "
                              "Must be < smoothing_scale. Omit to disable.")
@@ -83,6 +87,18 @@ def wedge_method_tag(wedge_method):
     if wedge_method is None or wedge_method == 2:
         return ""
     return f"_Wm{int(wedge_method)}"
+
+def adaptive_window_tag(adaptive_window):
+    """
+    '_Aw' + NINT(10*c) for each c joined by '-', e.g. '_Aw50' or '_Aw50-40';
+    '' when off. Must match cube_to_target.F90 (NINT = floor(x+0.5) here).
+    """
+    if not adaptive_window:
+        return ""
+    cs = [float(c) for c in str(adaptive_window).split(",") if c.strip()]
+    if not cs or cs[0] <= 0:
+        return ""
+    return "_Aw" + "-".join(f"{int(math.floor(10.0*c + 0.5)):02d}" for c in cs)
 
 def fine_smoothing_tag(fine_smoothing_scale):
     """
@@ -157,7 +173,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -245,6 +261,14 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
         command.append(f"--gauss_scales={gauss_scales}")
 
     #------------------------------------------------------------
+    # Adaptive ridge window (needs gauss_scales).
+    #------------------------------------------------------------
+    if adaptive_window:
+        if not gauss_scales:
+            raise ValueError("adaptive_window needs gauss_scales")
+        command.append(f"--adaptive_window={adaptive_window}")
+
+    #------------------------------------------------------------
     # Band-pass fine smoothing scale (km). Omitted entirely when not
     # requested, so cube_to_target skips the band-pass.
     #------------------------------------------------------------
@@ -316,6 +340,14 @@ def main():
         gauss_scales = ",".join(f"{float(s):g}" for s in gauss_scales)
     if gauss_scales is not None:
         gauss_scales = str(gauss_scales).replace(" ", "")
+    if args.adaptive_window is not None:
+        adaptive_window = args.adaptive_window
+    else:
+        adaptive_window = config.get("adaptive_window", None)
+    if isinstance(adaptive_window, (list, tuple)):          # YAML list -> "5,4"
+        adaptive_window = ",".join(f"{float(c):g}" for c in adaptive_window)
+    if adaptive_window is not None:
+        adaptive_window = str(adaptive_window).replace(" ", "")
     if args.fine_smoothing_scale is not None:
         fine_smoothing_scale = args.fine_smoothing_scale
     else:
@@ -334,6 +366,7 @@ def main():
     print(f"Ridge Iterations: {ridge_iter}")
     print(f"Wedge Method: {wedge_method}")
     print(f"Gaussian ridge scales (km): {gauss_scales if gauss_scales else 'off'}")
+    print(f"Adaptive ridge window c: {adaptive_window if adaptive_window else 'off'}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
     print(f"Setup only: {setup_only}")
@@ -344,7 +377,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{wedge_method_tag(wedge_method)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -429,7 +462,8 @@ def main():
                              fine_smoothing_scale=fine_smoothing_scale,
                              ridge_iter=ridge_iter,
                              wedge_method=wedge_method,
-                             gauss_scales=gauss_scales )
+                             gauss_scales=gauss_scales,
+                             adaptive_window=adaptive_window )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )

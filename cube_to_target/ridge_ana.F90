@@ -8,6 +8,7 @@ USE reconstruct
 use shr_kind_mod, only: rpx => shr_kind_r8
 use shr_kind_mod, only: r8 => shr_kind_r8
 use ridge_utils
+use smooth_topo_cube_sph, only : gauss_scale_km   ! ++jtb Nov 2026: adaptive ridge window
 
 IMPLICIT NONE
 private
@@ -38,6 +39,7 @@ public uniqid_tiles
 public ntiles_out
 public lsort_tiles
 public ridge_iter
+public adapt_c, max_adapt
 
 public peak_type
 
@@ -145,6 +147,21 @@ public peak_type
   ! output files exactly. Set from cube_to_target (--ridge_iter).
   !
   integer                               :: ridge_iter = 1
+  !
+  ! ++jtb Nov 2026: adaptive ridge-analysis window. When adapt_c(1) > 0,
+  ! each pass sets its window from the Gaussian ridge scale (gauss_scale_km,
+  ! from --gauss_scales) at the pass centre:
+  !     nswx = MAX( 4, MIN( nsw, NINT( c * sigma / grid_length_scale ) ) )
+  ! with c = adapt_c( MIN(pass, number of values given) ). nsw (set by
+  ! smoothing_scale and ridge_window_ratio) is the ceiling. DETGDEP and the
+  ! refinement factor are bypassed. A seed with sigma = 0 (never ridge-like)
+  ! is excluded (mxdis = 0, NSWx_diag = 0); a later pass landing on sigma = 0
+  ! keeps the previous window. adapt_c(1) <= 0 (default): fixed window as
+  ! before. Set from cube_to_target (--adaptive_window).
+  !
+  integer,  parameter                   :: max_adapt = 20
+  real(r8)                              :: adapt_c(max_adapt) = -1.0_r8
+  real(r8), allocatable                 :: sigwin_rdg(:)   ! sigma (km) behind the final window
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -453,6 +470,10 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     INTEGER (KIND=int_kind) :: num_iter_ridge,iter_ridge,ns0,ns1
     ! ++jtb Nov 2026: window centre of the current / next pass (ridge_iter>1)
     INTEGER (KIND=int_kind) :: icen,jcen,icnx,jcnx,iprv,jprv
+    ! ++jtb Nov 2026: adaptive window
+    logical  :: ladapt
+    integer  :: nadapt, nexcl
+    real(r8) :: cadapt, sgw
 
     REAL(KIND=dbl_kind),                                            &
          DIMENSION(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) :: terr_halo
@@ -560,6 +581,20 @@ write(*,*) " SHAPE ", shape( peaks%i )
       ncube_halo = size( terr_halo_r4, 1)
 
    call alloc_ridge_qs(npeaks , NSW)
+
+   ! ++jtb Nov 2026: adaptive window set-up
+   ladapt = ( adapt_c(1) > 0.0_r8 )
+   nadapt = COUNT( adapt_c > 0.0_r8 )
+   nexcl  = 0
+   allocate( sigwin_rdg(npeaks) )
+   sigwin_rdg = 0.0_r8
+   if ( ladapt ) then
+     if ( .not. allocated(gauss_scale_km) ) then
+       write(*,*) "find_ridges: --adaptive_window needs the Gaussian ridge scales (--gauss_scales). STOP"
+       stop
+     end if
+     write(*,*) " Adaptive ridge window: c = ",adapt_c(1:nadapt)," ; nswx in [4,",nsw,"]"
+   end if
  
    do ipk = 1,npeaks
         i  = peaks(ipk)%i
@@ -569,6 +604,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
 
 
+        if ( .not. ladapt ) then
 #ifndef DETGDEP
         ! Fixed ridge-finding window 
         nswx=  nsw 
@@ -581,6 +617,19 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
         !++jtb 05/26/24: Protection against too-small nswx
         nswx = MAX( 4 , nswx )
+        else
+          ! ++jtb Nov 2026: adaptive window from the Gaussian ridge scale at the seed
+          sgw = gauss_scale_km(i,j,np)
+          if ( sgw <= 0.0_r8 ) then
+            nexcl = nexcl + 1                 ! never ridge-like: excluded
+            NSWx_diag( ipk ) = 0
+            xseed(ipk) = 1.*i
+            yseed(ipk) = 1.*j
+            cycle
+          end if
+          nswx = MAX( 4, MIN( nsw, NINT( adapt_c(1)*sgw/grid_length_scale ) ) )
+          sigwin_rdg(ipk) = sgw
+        end if
 
         NSWx_diag( ipk ) = nswx
 
@@ -611,6 +660,24 @@ write(*,*) " SHAPE ", shape( peaks%i )
         iprv = -HUGE(1)
         jprv = -HUGE(1)
         do iter_ridge = 1, MAX( 1, ridge_iter )
+
+        ! ++jtb Nov 2026: adaptive window, passes after the first: window from
+        ! the scale at this pass's centre (keep the previous one if sigma = 0).
+        ! Clear this peak's profile arrays so a smaller window leaves no tails.
+        if ( ladapt .and. iter_ridge > 1 ) then
+          sgw = gauss_scale_km(icen,jcen,np)
+          if ( sgw > 0.0_r8 ) then
+            cadapt = adapt_c( MIN( iter_ridge, nadapt ) )
+            nswx   = MAX( 4, MIN( nsw, NINT( cadapt*sgw/grid_length_scale ) ) )
+            sigwin_rdg(ipk) = sgw
+          end if
+          NSWx_diag( ipk ) = nswx
+          deallocate( suba, subarw, subx, suby )
+          allocate( suba( 2*nswx+1 , 2*nswx+1 ), subarw( 2*nswx+1 , 2*nswx+1 ) )
+          allocate( subx( 2*nswx+1 ), suby( 2*nswx+1 ) )
+          rdg_profiles(:,ipk)   = 0.d0 ; crst_profiles(:,ipk) = 0.d0 ; crst_silhous(:,ipk) = 0.d0
+          rdg_profiles_x(:,ipk) = 0.d0 ; hnodes_list(:,ipk)   = 0.d0 ; xnodes_list(:,ipk)  = 0
+        end if
 
         suba    = terr_dev_halo_r4( icen-nswx:icen+nswx , jcen-nswx:jcen+nswx, np )
         subarw  = terr_halo_r4( icen-nswx:icen+nswx , jcen-nswx:jcen+nswx, np )
@@ -694,6 +761,13 @@ write(*,*) " SHAPE ", shape( peaks%i )
     write(*,*)
 
     write(*,*) " Done with anisotropy analysis "
+    if ( ladapt ) then
+       write(*,*) " Adaptive ridge window, c = ",adapt_c(1:nadapt)
+       write(*,*) "    seeds excluded (no ridge scale) : ", nexcl, " of ", npeaks
+       write(*,*) "    nswx: min ", MINVAL( NSWx_diag, NSWx_diag > 0 ), "  max ", MAXVAL( NSWx_diag ), &
+                  "  mean ", REAL( SUM( NSWx_diag, NSWx_diag > 0 ) ) / REAL( MAX( 1, COUNT( NSWx_diag > 0 ) ) )
+       write(*,*) "    at the ceiling nsw = ", nsw, " : ", COUNT( NSWx_diag == nsw )
+    end if
     if ( ridge_iter > 1 ) then
        write(*,*) " Ridge iteration, ridge_iter = ", ridge_iter
        write(*,*) "    converged             : ", COUNT( istop_rdg == 1 )
@@ -786,9 +860,14 @@ write(*,*) " SHAPE ", shape( peaks%i )
       write(31) latc
       ! ++jtb Nov 2026: iteration diagnostics, ONLY when ridge_iter>1 so the
       ! single-pass file is unchanged. Readers treat them as optional.
-      if ( ridge_iter > 1 ) then
+      ! Adaptive runs always write the iteration records too, so the optional
+      ! records keep a fixed order (iteration first, then sigwin).
+      if ( ridge_iter > 1 .or. ladapt ) then
          write(31) niter_rdg, istop_rdg
          write(31) xseed, yseed
+      end if
+      if ( ladapt ) then
+         write(31) sigwin_rdg                    ! ++jtb Nov 2026: sigma (km) behind each window
       end if
 
       CLOSE(31)
