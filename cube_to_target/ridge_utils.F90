@@ -16,6 +16,7 @@ public rebuild_nodes
 public length_in_square
 public repaint
 public wedge_method
+public ynudge_param
 
     REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -29,6 +30,32 @@ public wedge_method
     ! Set from cube_to_target (--wedge_method).
     !-------------------------------------------------------------------------
     integer :: wedge_method = 2
+
+    !-------------------------------------------------------------------------
+    ! ++jtb Nov 2026: damping on the along-crest shift in ridgescales.
+    !
+    ! ridgescales moves the peak along its own crest to the centroid of the
+    ! crest silhouette (yshft below). That move happens AFTER the analysis
+    ! window has been sized, so for a ridgelet that has not yet converged the
+    ! window describes the place it came from, not where it ends up. The move
+    ! is bounded by half the window, so it is largest exactly where the window
+    ! is largest. It also drags many seeds on one crest onto a single point:
+    ! at ridge_iter=3, 63 per cent of ridgelets end on a cell already claimed
+    ! by another, and only 29 per cent paint any crest at all.
+    !
+    ! ynudge_param scales that move:
+    !   1.0 = original behaviour, jump straight to the centroid
+    !   <1  = under-relaxation; approach the centroid over several passes
+    !         instead of overshooting it. The fixed point is unchanged.
+    !   0.0 = no along-crest shift at all
+    !
+    ! Note the >1 cell guard is applied to the RAW shift, so lowering
+    ! ynudge_param damps the move without also creating a dead zone in which
+    ! small shifts are discarded. Move the scaling above the guard if the
+    ! dead-zone behaviour is wanted instead.
+    ! Set from cube_to_target (--ynudge).
+    !-------------------------------------------------------------------------
+    real(r8) :: ynudge_param = 1.0_r8
 
 contains
 
@@ -177,8 +204,8 @@ contains
 
 
     if (abs(yshft) > 1) then
-       xspk0  = xspk0  + yshft *sin( ang00 )
-       yspk0  = yspk0  + yshft *cos( ang00 )
+       xspk0  = xspk0  + ynudge_param * yshft *sin( ang00 )
+       yspk0  = yspk0  + ynudge_param * yshft *cos( ang00 )
     end if
 
 

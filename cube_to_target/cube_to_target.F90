@@ -13,7 +13,7 @@ program convterr
   use shr_kind_mod, only: r8 => shr_kind_r8
   use smooth_topo_cube_sph
   use ridge_ana
-  use ridge_utils, only: wedge_method
+  use ridge_utils, only: wedge_method, ynudge_param
   use shared_vars
   use reconstruct
   use f90getopt
@@ -141,7 +141,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(32)
+  type(option_s):: opts(35)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -178,6 +178,9 @@ program convterr
   opts(30) = option_s( "wedge_method"              ,.true.    , '5'   ,.false.       ,.false.)
   opts(31) = option_s( "gauss_scales"              ,.true.    , '6'   ,.false.       ,.false.)
   opts(32) = option_s( "adaptive_window"           ,.true.    , '7'   ,.false.       ,.false.)
+  opts(33) = option_s( "ynudge"                    ,.true.    , '8'   ,.false.       ,.false.)
+  opts(34) = option_s( "profile_extend"            ,.true.    , '9'   ,.false.       ,.false.)
+  opts(35) = option_s( "gauss_smooth"              ,.true.    , '0'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -191,7 +194,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:8:9:0:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -349,7 +352,25 @@ program convterr
       read (str_gauss, *) gauss_sigma_km
       command_line_arguments = TRIM(command_line_arguments)//' --gauss_scales '//TRIM(ADJUSTL(optarg))
       opts(31)%specified = .true.
-    case( '7' )
+    case( '0' )
+      ! gauss_scale_smooth_cells lives in module smooth_topo_cube_sph (public)
+      read (optarg, *) gauss_scale_smooth_cells
+      write(str,*) gauss_scale_smooth_cells
+      command_line_arguments = TRIM(command_line_arguments)//' --gauss_smooth '//TRIM(ADJUSTL(str))
+      opts(35)%specified = .true.
+   case( '9' )
+      ! profile_extend lives in module ridge_ana (public)
+      read (optarg, *) profile_extend
+      write(str,'(F12.4)') profile_extend
+      command_line_arguments = TRIM(command_line_arguments)//' --profile_extend '//TRIM(ADJUSTL(str))
+      opts(34)%specified = .true.
+   case( '8' )
+      ! ynudge_param lives in module ridge_utils (public)
+      read (optarg, *) ynudge_param
+      write(str,'(F12.4)') ynudge_param
+      command_line_arguments = TRIM(command_line_arguments)//' --ynudge '//TRIM(ADJUSTL(str))
+      opts(33)%specified = .true.
+   case( '7' )
       ! adapt_c lives in module ridge_ana (public). One value, or one per
       ! ridge_iter pass (the last value repeats); read list-directed.
       str_adapt = TRIM(optarg)//' /'
@@ -411,6 +432,9 @@ program convterr
   write(*,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(*,*) "ridge_iter                      = ",ridge_iter
   write(*,*) "wedge_method                    = ",wedge_method
+  write(*,*) "ynudge (along-crest damping)    = ",ynudge_param
+  write(*,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
+  write(*,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(*,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(*,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
   write(*,*) "fine_smoothing_scale            = ",fine_smoothing_scale
@@ -573,6 +597,19 @@ program convterr
       write(*,*) "it can not be used with --smooth_topo_file"
       stop
     end if
+    if (gauss_scale_smooth_cells < 0) then
+      write(*,*) "gauss_smooth must be >= 0 (0, 1 or 2 all mean no smoothing), got ", &
+                 gauss_scale_smooth_cells
+      stop
+    end if
+    if (profile_extend > 0.0_r8 .and. profile_extend < 1.0_r8) then
+      write(*,*) "profile_extend must be >= 1 (or <= 0 to disable), got ",profile_extend
+      stop
+    end if
+    if (ynudge_param < 0.0_r8 .or. ynudge_param > 1.0_r8) then
+      write(*,*) "ynudge must be in [0,1], got ",ynudge_param
+      stop
+    end if
     if (wedge_method/=1 .and. wedge_method/=2) then
       write(*,*) "wedge_method must be 1 (old node-based) or 2 (rms_wedge), got ",wedge_method
       stop
@@ -701,6 +738,26 @@ program convterr
         ofile = TRIM(ofile)//TRIM(str)
      end do
   end if
+  ! gauss_scale smoothing box: '_Gs##', ALWAYS emitted so a case name says
+  ! what it used rather than only flagging departures from the default.
+  if (lfind_ridges) then
+     write( str, "('_Gs',i0.2)" ) gauss_scale_smooth_cells
+     ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
+  end if
+
+  ! ANISO_ANA_3 reach: '_Px##' holding 10*profile_extend, always emitted.
+  if (lfind_ridges) then
+     write( str, "('_Px',i0.2)" ) NINT( 10.0_r8*profile_extend )
+     ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
+  end if
+
+  ! Along-crest shift damping: '_Yn##' holding 10*ynudge, always emitted,
+  ! so 1.0 -> '_Yn10' (original), 0.5 -> '_Yn05', 0.0 -> '_Yn00' (shift off).
+  if (lfind_ridges) then
+     write( str, "('_Yn',i0.2)" ) NINT( 10.0_r8*ynudge_param )
+     ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
+  end if
+
   ! And for a non-default wedge: '_Wm#' only when wedge_method/=2.
   if (lfind_ridges.and.wedge_method/=2) then
      write( str, "('_Wm',i0)" ) wedge_method
@@ -792,6 +849,9 @@ program convterr
   write(nml_log,*) "ridge_window_ratio              = ",ridge_window_ratio
   write(nml_log,*) "ridge_iter                      = ",ridge_iter
   write(nml_log,*) "wedge_method                    = ",wedge_method
+  write(nml_log,*) "ynudge (along-crest damping)    = ",ynudge_param
+  write(nml_log,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
+  write(nml_log,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(nml_log,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(nml_log,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
   write(nml_log,*) "fine_smoothing_scale            = ",fine_smoothing_scale

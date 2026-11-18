@@ -17,6 +17,7 @@ PRIVATE
 PUBLIC smooth_intermediate_topo_wrap
 PUBLIC gauss_sigma_km, max_gauss
 PUBLIC gauss_scale_km, gauss_strength, gauss_angle
+PUBLIC gauss_scale_smooth_cells
 
   !---------------------------------------------------------------------------
   ! ++jtb Nov 2026: index-space Gaussian ridge-scale analysis of terr_dev
@@ -41,6 +42,23 @@ PUBLIC gauss_scale_km, gauss_strength, gauss_angle
   integer,  parameter :: max_gauss = 20
   real(r8)            :: gauss_sigma_km(max_gauss) = -1.0_r8
   real(r8), allocatable, dimension(:,:,:) :: gauss_scale_km, gauss_strength, gauss_angle
+
+  !---------------------------------------------------------------------------
+  ! ++jtb Nov 2026: box smoothing of gauss_scale_km, in the LOG of the scale.
+  !
+  ! The raw field is quantised onto the gauss_sigma_km ladder, and the choice
+  ! between rungs is unstable: seeds half a cell apart disagree about half the
+  ! time, typically by two rungs. Because the ridge window is set from this
+  ! scale, that flipping shows up as wedge widths varying along a single ridge.
+  ! Averaging the LOG is the right operator for a roughly geometric ladder
+  ! (6, 7.5, 9, 12, 18, 25, 37, 50, 75 km, ratios near 1.35), so a given
+  ! fractional error counts the same at every rung.
+  !
+  ! Size is the full box width in cells: 5 means 5x5, i.e. plus or minus 2.
+  ! Set to 1 (or anything < 3) to leave the field untouched. Even values are
+  ! rounded up to the next odd number so the box stays centred.
+  !---------------------------------------------------------------------------
+  integer             :: gauss_scale_smooth_cells = 5
 
 CONTAINS
 
@@ -1226,6 +1244,111 @@ subroutine gauss_scale_analysis( dev, ncube )
   end do
 
   deallocate( halo, tmp, blur, best_R )
+
+  call smooth_gauss_scale_log( ncube, gauss_scale_smooth_cells )
+
 end subroutine gauss_scale_analysis
+
+!=============================================================================
+subroutine smooth_gauss_scale_log( ncube, nbox )
+!
+! Replace gauss_scale_km by the geometric mean of its non-zero neighbours in
+! an nbox x nbox box, done as two 1-D passes in the log.
+!
+! Zeros mean "never ridge-like" and are excluded from the average rather than
+! dragged in as log(0); a cell that is zero stays zero, so the set of excluded
+! seeds is exactly what it was before. Only gauss_scale_km is touched --
+! gauss_strength and gauss_angle are left alone.
+!
+! Each face is smoothed on its own with the edge value repeated outside, i.e.
+! no exchange across panel boundaries. A 5-cell box reaches 2 cells in from an
+! edge, about 0.3 per cent of a 3000-cell face, and ridges there are already
+! handled separately by the ridge finder (istop_rdg = 3). Using the cube halo
+! would be a local change here if that ever matters.
+!=============================================================================
+  implicit none
+  integer, intent(in) :: ncube, nbox
+
+  real(r8), allocatable, dimension(:,:) :: lg, vv, slg, svv
+  integer  :: np, i, j, k, h, nb, ii, jj
+  integer  :: nz_before, nz_after
+
+  if ( nbox < 3 ) then
+     write(*,*) " gauss_scale_km: log smoothing off (box = ",nbox,")"
+     return
+  end if
+
+  nb = nbox
+  if ( MOD(nb,2) == 0 ) nb = nb + 1          ! keep the box centred
+  h  = nb/2
+
+  write(*,*) " "
+  write(*,*) " Smoothing LOG(gauss_scale_km) with a ",nb," x ",nb," box"
+
+  nz_before = COUNT( gauss_scale_km > 0.0_r8 )
+
+  allocate( lg(ncube,ncube), vv(ncube,ncube) )
+  allocate( slg(ncube,ncube), svv(ncube,ncube) )
+
+  do np = 1, 6
+
+     ! log of the scale where there is one, and a 0/1 mask of where that is
+     do j = 1, ncube
+        do i = 1, ncube
+           if ( gauss_scale_km(i,j,np) > 0.0_r8 ) then
+              lg(i,j) = LOG( gauss_scale_km(i,j,np) )
+              vv(i,j) = 1.0_r8
+           else
+              lg(i,j) = 0.0_r8
+              vv(i,j) = 0.0_r8
+           end if
+        end do
+     end do
+
+     ! pass 1, along i, edge value repeated
+     slg = 0.0_r8 ; svv = 0.0_r8
+     do j = 1, ncube
+        do k = -h, h
+           do i = 1, ncube
+              ii = MIN( MAX( i+k, 1 ), ncube )
+              slg(i,j) = slg(i,j) + lg(ii,j)
+              svv(i,j) = svv(i,j) + vv(ii,j)
+           end do
+        end do
+     end do
+
+     ! pass 2, along j, accumulating back into lg/vv
+     lg = 0.0_r8 ; vv = 0.0_r8
+     do j = 1, ncube
+        do k = -h, h
+           jj = MIN( MAX( j+k, 1 ), ncube )
+           do i = 1, ncube
+              lg(i,j) = lg(i,j) + slg(i,jj)
+              vv(i,j) = vv(i,j) + svv(i,jj)
+           end do
+        end do
+     end do
+
+     ! geometric mean of the non-zero neighbours; zeros stay zero
+     do j = 1, ncube
+        do i = 1, ncube
+           if ( gauss_scale_km(i,j,np) > 0.0_r8 .and. vv(i,j) > 0.0_r8 ) then
+              gauss_scale_km(i,j,np) = EXP( lg(i,j) / vv(i,j) )
+           end if
+        end do
+     end do
+
+     write(*,*) "   face ",np," smoothed"
+  end do
+
+  deallocate( lg, vv, slg, svv )
+
+  nz_after = COUNT( gauss_scale_km > 0.0_r8 )
+  write(*,*) "   cells with a scale, before / after : ",nz_before," / ",nz_after
+  write(*,*) "   scale (km) min / max after         : ", &
+             MINVAL( gauss_scale_km, gauss_scale_km > 0.0_r8 ), " / ", &
+             MAXVAL( gauss_scale_km )
+
+end subroutine smooth_gauss_scale_log
 
 END MODULE smooth_topo_cube_sph

@@ -24,6 +24,22 @@ def parse_arguments():
                         help="Comma-separated Gaussian widths in km, e.g. 6,7.5,9,12,18,25,37,50,75: "
                              "index-space ridge-scale analysis of terr_dev, written to the "
                              "topo_smooth file (gauss_scale, gauss_strength, gauss_angle). Omit to disable.")
+    parser.add_argument("--gauss_smooth", type=int, default=None,
+                        help="Box width in cells for the log-mean smoothing of "
+                             "gauss_scale_km (default 5, i.e. 5x5). 0, 1 or 2 "
+                             "turn the smoothing off; even values are rounded "
+                             "up to stay centred.")
+    parser.add_argument("--profile_extend", type=float, default=None,
+                        help="ANISO_ANA_3 touch-up pass: how far in x the "
+                             "re-centred diagnostic profile reaches, as a "
+                             "multiple of the analysis window (default 2.0, "
+                             "capped at PSW). <=1 skips the pass. Diagnostic "
+                             "only: writes rdg_profiles_x / the 'profi' field.")
+    parser.add_argument("--ynudge", type=float, default=None,
+                        help="Damping on the along-crest shift in ridgescales. "
+                             "1.0 (default) jumps straight to the crest centroid, "
+                             "<1 approaches it over several passes, 0 disables the "
+                             "shift entirely. Must be in [0,1].")
     parser.add_argument("--adaptive_window", type=str, default=None,
                         help="Adaptive ridge window: nswx = c*sigma/dx clamped to [4, nsw]. One c "
                              "(e.g. 5) or one per ridge_iter pass (e.g. 5,4). Needs --gauss_scales. "
@@ -87,6 +103,45 @@ def wedge_method_tag(wedge_method):
     if wedge_method is None or wedge_method == 2:
         return ""
     return f"_Wm{int(wedge_method)}"
+
+def gauss_smooth_tag(gauss_smooth):
+    """
+    '_Gs##' holding the box width. Always emitted, so a case name
+    records what it used rather than only flagging a non-default. Must stay
+    byte-identical to the tag cube_to_target.F90 appends:
+
+        if (lfind_ridges.and.gauss_scale_smooth_cells/=5) then
+           write( str, "('_Gs',i0.2)" ) gauss_scale_smooth_cells
+    """
+    g = 5 if gauss_smooth is None else int(gauss_smooth)
+    return f"_Gs{g:02d}"
+
+def profile_extend_tag(profile_extend):
+    """
+    '_Px##' holding 10*profile_extend. Always emitted. Must stay
+    byte-identical to the tag cube_to_target.F90 appends:
+
+        if (lfind_ridges.and.ABS(profile_extend-2.0_r8)>1.0e-6_r8) then
+           write( str, "('_Px',i0.2)" ) NINT( 10.0_r8*profile_extend )
+    """
+    p = 2.0 if profile_extend is None else float(profile_extend)
+    return f"_Px{int(math.floor(10.0 * p + 0.5)):02d}"
+
+def ynudge_tag(ynudge):
+    """
+    Build the '_Yn##' case-name fragment holding 10*ynudge. Always emitted,
+    so 1.0 gives '_Yn10' (the original undamped shift).
+
+    Must stay byte-identical to the tag cube_to_target.F90 appends:
+
+        if (lfind_ridges.and.ABS(ynudge_param-1.0_r8)>1.0e-6_r8) then
+           write( str, "('_Yn',i0.2)" ) NINT( 10.0_r8*ynudge_param )
+
+    floor(x+0.5) rather than round(), for the same banker's-rounding reason as
+    ridge_window_tag: Fortran NINT rounds half away from zero.
+    """
+    y = 1.0 if ynudge is None else float(ynudge)
+    return f"_Yn{int(math.floor(10.0 * y + 0.5)):02d}"
 
 def adaptive_window_tag(adaptive_window):
     """
@@ -173,7 +228,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None, ynudge=None, profile_extend=None, gauss_smooth=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -263,6 +318,26 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
     #------------------------------------------------------------
     # Adaptive ridge window (needs gauss_scales).
     #------------------------------------------------------------
+    if gauss_smooth is not None:
+        if gauss_smooth < 0:
+            raise ValueError(
+                f"gauss_smooth must be >= 0, got {gauss_smooth}")
+        if int(gauss_smooth) != 5:
+            command.append(f"--gauss_smooth={int(gauss_smooth)}")
+
+    if profile_extend is not None:
+        if 0.0 < profile_extend < 1.0:
+            raise ValueError(
+                f"profile_extend must be >= 1 (or <= 0 to disable), got {profile_extend}")
+        if abs(profile_extend - 2.0) > 1.0e-6:
+            command.append(f"--profile_extend={profile_extend}")
+
+    if ynudge is not None:
+        if not (0.0 <= ynudge <= 1.0):
+            raise ValueError(f"ynudge must be in [0,1], got {ynudge}")
+        if abs(ynudge - 1.0) > 1.0e-6:
+            command.append(f"--ynudge={ynudge}")
+
     if adaptive_window:
         if not gauss_scales:
             raise ValueError("adaptive_window needs gauss_scales")
@@ -340,6 +415,21 @@ def main():
         gauss_scales = ",".join(f"{float(s):g}" for s in gauss_scales)
     if gauss_scales is not None:
         gauss_scales = str(gauss_scales).replace(" ", "")
+    if args.gauss_smooth is not None:
+        gauss_smooth = args.gauss_smooth
+    else:
+        gauss_smooth = config.get("gauss_smooth", None)
+
+    if args.profile_extend is not None:
+        profile_extend = args.profile_extend
+    else:
+        profile_extend = config.get("profile_extend", None)
+
+    if args.ynudge is not None:
+        ynudge = args.ynudge
+    else:
+        ynudge = config.get("ynudge", None)
+
     if args.adaptive_window is not None:
         adaptive_window = args.adaptive_window
     else:
@@ -367,6 +457,9 @@ def main():
     print(f"Wedge Method: {wedge_method}")
     print(f"Gaussian ridge scales (km): {gauss_scales if gauss_scales else 'off'}")
     print(f"Adaptive ridge window c: {adaptive_window if adaptive_window else 'off'}")
+    print(f"Along-crest nudge: {ynudge if ynudge is not None else 1.0}")
+    print(f"Profile extend (ANISO_ANA_3): {profile_extend if profile_extend is not None else 2.0}")
+    print(f"gauss_scale smoothing box: {gauss_smooth if gauss_smooth is not None else 5}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
     print(f"Setup only: {setup_only}")
@@ -377,7 +470,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}{ynudge_tag(ynudge)}{profile_extend_tag(profile_extend)}{gauss_smooth_tag(gauss_smooth)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -463,7 +556,10 @@ def main():
                              ridge_iter=ridge_iter,
                              wedge_method=wedge_method,
                              gauss_scales=gauss_scales,
-                             adaptive_window=adaptive_window )
+                             adaptive_window=adaptive_window,
+                             ynudge=ynudge,
+                             profile_extend=profile_extend,
+                             gauss_smooth=gauss_smooth )
         
     subprocess.run(command, check=True)
     #print( f" Did not run, but here is command \n {' '.join(command)}" )

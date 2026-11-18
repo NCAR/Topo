@@ -39,6 +39,7 @@ public uniqid_tiles
 public ntiles_out
 public lsort_tiles
 public ridge_iter
+public profile_extend
 public adapt_c, max_adapt
 
 public peak_type
@@ -146,6 +147,30 @@ public peak_type
   ! at its seed value. 1 (default) reproduces the single-pass results and
   ! output files exactly. Set from cube_to_target (--ridge_iter).
   !
+  !--------------------------------------------------------------------
+  ! ++jtb Nov 2026: ANISO_ANA_3, the touch-up pass. Ridge scales are small
+  ! on crests and grow out onto the flanks, which is physically right but
+  ! means closely-spaced ridgelets can end up with crest-sized windows or
+  ! flank-sized ones depending only on where they happened to settle, and
+  ! hwdth follows the window. ANISO_ANA_3 runs once per ridgelet AFTER the
+  ! ridge_iter loop, re-centred on the final (xspk,yspk), and builds a
+  ! profile that is WIDER in x than the analysis window while keeping the
+  ! y-average over the same +/- c*sigma interval. The wider x reach is what
+  ! should make hwdth less jumpy.
+  !
+  ! profile_extend is the factor on the window half-width:
+  !   2.0 (default) = reach twice as far in x as the analysis window
+  !   <= 1.0        = skip the pass, leave ANISO_ANA_2's profile alone
+  ! The reach is capped at PSW = NINT(1.5*nsw), which is both the width of
+  ! rdg_profiles_x and safely inside the halo (nhalo = 2*nsw).
+  !
+  ! PASSIVE for now: it writes only rdg_profiles_x (the 'profi' field of the
+  ! remap output, which nothing computes with). mxdis, hwdth, anglx, the
+  ! wedge and the peak location are all left exactly as the loop left them.
+  ! Set from cube_to_target (--profile_extend).
+  !--------------------------------------------------------------------
+  real(r8)                              :: profile_extend = 2.0_r8
+
   integer                               :: ridge_iter = 1
   !
   ! ++jtb Nov 2026: adaptive ridge-analysis window. When adapt_c(1) > 0,
@@ -460,6 +485,8 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! Local variables
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
+    INTEGER (KIND=int_kind) :: icen3,jcen3,m3                 ! ++jtb ANISO_ANA_3
+    REAL(RPX), allocatable  :: sub3(:,:)                      ! ++jtb ANISO_ANA_3
 #ifdef DEBUGOUTPUT
     INTEGER (KIND=int_kind) :: idg
 #endif
@@ -687,6 +714,43 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
         ispk = NINT(1.*xspk(ipk) )
         jspk = NINT(1.*yspk(ipk) )
+
+        ! ++jtb Nov 2026: ANISO_ANA has just shifted the centre from (icen,jcen)
+        ! to (ispk,jspk) -- a median of about 3.6 cells for ne30pg3/Sco100, and
+        ! more than two cells for 69 per cent of ridges. ANISO_ANA_2 is what
+        ! builds the profile and fits the wedge, so size its window from the
+        ! ridge scale AT (ispk,jspk) instead of inheriting the one read where
+        ! the pass started. Without this the wedge width is always set by a
+        ! window read one shift upstream, which is seen as wedge widths varying
+        ! along a single ridge even after the seed->crest iteration converges.
+        !
+        ! gauss_scale_km is (ncube,ncube,6) with NO halo, unlike
+        ! terr_dev_halo_r4, so the read is guarded: a peak shifted off the panel
+        ! simply keeps the window it already has. Likewise when sigma = 0.
+        !
+        ! ridgescales rebuilds ridge, crest and ridge_x from suba, so clearing
+        ! the arrays it fills only stops a shrinking window from leaving stale
+        ! tails beyond nswx+1. crst_profiles is deliberately NOT cleared:
+        ! ANISO_ANA is its only writer, so it stays a diagnostic of the
+        ! pre-shift window.
+        !----------------------------------------------------------------
+        if ( ladapt .and. (ispk >= 1) .and. (ispk <= ncube) &
+                    .and. (jspk >= 1) .and. (jspk <= ncube) ) then
+          sgw = gauss_scale_km(ispk,jspk,np)
+          if ( sgw > 0.0_r8 ) then
+            cadapt = adapt_c( MIN( iter_ridge, nadapt ) )
+            nswx   = MAX( 4, MIN( nsw, NINT( cadapt*sgw/grid_length_scale ) ) )
+            sigwin_rdg(ipk) = sgw
+          end if
+          NSWx_diag( ipk ) = nswx
+          deallocate( suba, subarw, subx, suby )
+          allocate( suba( 2*nswx+1 , 2*nswx+1 ), subarw( 2*nswx+1 , 2*nswx+1 ) )
+          allocate( subx( 2*nswx+1 ), suby( 2*nswx+1 ) )
+          rdg_profiles(:,ipk)   = 0.d0 ; crst_silhous(:,ipk) = 0.d0
+          rdg_profiles_x(:,ipk) = 0.d0 ; hnodes_list(:,ipk)  = 0.d0
+          xnodes_list(:,ipk)    = 0
+        end if
+
         suba    = terr_dev_halo_r4( ispk-nswx:ispk+nswx , jspk-nswx:jspk+nswx, np )
         call ANISO_ANA_2( SUBA,NSWx,IPK )
 
@@ -754,6 +818,21 @@ write(*,*) " SHAPE ", shape( peaks%i )
         rdg_profiles_x(:,ipk) = sum( subrot( : , PSW-nsw/2:PSW+nsw/2 ) , 2 ) /(nsw+1) 
         deallocate( suba, subrot )
 #endif
+
+        ! ++jtb Nov 2026: touch-up pass (the live version of the block above).
+        ! Re-centre on the FINAL peak and build an x-extended, narrow-y-averaged
+        ! profile into rdg_profiles_x. Diagnostic only -- nothing computed
+        ! above is changed.
+        if ( profile_extend > 1.0_r8 ) then
+           icen3 = MIN( MAX( NINT(xspk(ipk)), 1 ), ncube )
+           jcen3 = MIN( MAX( NINT(yspk(ipk)), 1 ), ncube )
+           m3    = MIN( PSW, MAX( nswx, NINT( profile_extend*REAL(nswx,r8) ) ) )
+           allocate( sub3( 2*m3+1, 2*m3+1 ) )
+           sub3 = terr_dev_halo_r4( icen3-m3:icen3+m3, jcen3-m3:jcen3+m3, np )
+           call ANISO_ANA_3( sub3, m3, nswx, ipk )
+           deallocate( sub3 )
+        end if
+
         write(*,903,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
  
    end do
@@ -1233,6 +1312,45 @@ subroutine ANISO_ANA_2( SUBA,NSW,IPK )
 #endif
 
 end subroutine ANISO_ANA_2
+
+!=============================================================================
+subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
+!
+! Touch-up pass, run once per ridgelet after the ridge_iter loop.
+!
+!   SUB3 : (2*m3+1)^2 window of terr_dev cut by the caller around the FINAL
+!          peak, so the profile is centred where the ridgelet actually ended
+!          up rather than where any pass began
+!   M3   : half-width of that window in x, >= nswy, capped at PSW
+!   NSWY : half-width of the y-average, i.e. the ORIGINAL analysis window, so
+!          the along-crest averaging interval is unchanged
+!
+! Averaging over nswy+1 rows while reaching 2*m3+1 cells in x gives a
+! cross-ridge profile that runs well past the analysis window, which is what
+! lets the flanks be seen and should steady hwdth.
+!
+! Writes rdg_profiles_x only. Deliberately touches nothing else.
+!=============================================================================
+  implicit none
+  integer,   intent(in) :: m3, nswy, ipk
+  real(RPX), intent(in) :: SUB3( 2*m3+1, 2*m3+1 )
+
+  real(RPX) :: rot3( 2*m3+1, 2*m3+1 )
+  integer   :: j0, j1, nrow
+
+  rot3 = rotbyx( sub3, 2*m3+1, anglx(ipk) )
+  where( rot3 < -8000. ) rot3 = 0.
+
+  ! nswy+1 rows centred in the window, same convention as ns0:ns1-1 in
+  ! ridgescales (ns0 = nsw/2+1 in a 2*nsw+1 array)
+  j0   = (m3+1) - ( nswy - nswy/2 )
+  j1   = j0 + nswy
+  nrow = j1 - j0 + 1
+
+  rdg_profiles_x(:,ipk) = 0.d0
+  rdg_profiles_x( PSW+1-m3 : PSW+1+m3, ipk ) = SUM( rot3(:, j0:j1), 2 ) / REAL(nrow,RPX)
+
+end subroutine ANISO_ANA_3
 
 
 subroutine thinout_list( ncube, npeaks,NSW )
