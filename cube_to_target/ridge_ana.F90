@@ -824,13 +824,28 @@ write(*,*) " SHAPE ", shape( peaks%i )
         ! profile into rdg_profiles_x. Diagnostic only -- nothing computed
         ! above is changed.
         if ( profile_extend > 1.0_r8 ) then
-           icen3 = MIN( MAX( NINT(xspk(ipk)), 1 ), ncube )
-           jcen3 = MIN( MAX( NINT(yspk(ipk)), 1 ), ncube )
+           ! ++jtb Nov 19 2026: centre on the SAME cell ANISO_ANA_2 used, even when
+           ! the ridgelet has moved past the face edge into the halo. Clamping the
+           ! centre onto the face (old lines below) put 886 face-edge ridgelets on
+           ! a different cell from ANISO_ANA_2, so their profiles disagreed.
+           !icen3 = MIN( MAX( NINT(xspk(ipk)), 1 ), ncube )
+           !jcen3 = MIN( MAX( NINT(yspk(ipk)), 1 ), ncube )
+           icen3 = NINT( xspk(ipk) )
+           jcen3 = NINT( yspk(ipk) )
            m3    = MIN( PSW, MAX( nswx, NINT( profile_extend*REAL(nswx,r8) ) ) )
-           allocate( sub3( 2*m3+1, 2*m3+1 ) )
-           sub3 = terr_dev_halo_r4( icen3-m3:icen3+m3, jcen3-m3:jcen3+m3, np )
-           call ANISO_ANA_3( sub3, m3, nswx, ipk )
-           deallocate( sub3 )
+           ! keep the cut inside the halo by shortening the reach, not by moving
+           ! the centre. With ynudge=0 this never bites (centre at most nswx/2 off
+           ! the face, nswx/2 + PSW <= nhalo); with along-crest shifts it can.
+           m3    = MIN( m3, icen3 - (1-nhalo), (ncube+nhalo) - icen3, &
+                            jcen3 - (1-nhalo), (ncube+nhalo) - jcen3 )
+           ! safety: the y-average needs nswx+1 rows, i.e. m3 >= nswx - nswx/2.
+           ! Should never fail; if it does, leave ANISO_ANA_2's profile in place.
+           if ( m3 >= nswx - nswx/2 ) then
+              allocate( sub3( 2*m3+1, 2*m3+1 ) )
+              sub3 = terr_dev_halo_r4( icen3-m3:icen3+m3, jcen3-m3:jcen3+m3, np )
+              call ANISO_ANA_3( sub3, m3, nswx, ipk )
+              deallocate( sub3 )
+           end if
         end if
 
         write(*,903,advance='no') achar(13) , ipk, npeaks,nswx , mxdis(ipk)
