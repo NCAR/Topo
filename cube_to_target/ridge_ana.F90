@@ -40,6 +40,7 @@ public ntiles_out
 public lsort_tiles
 public ridge_iter
 public profile_extend
+public paint_wedge3        ! ++jtb Nov 21 2026
 public adapt_c, max_adapt
 
 public peak_type
@@ -96,6 +97,16 @@ public peak_type
   INTEGER, allocatable  :: xnodes_list(:,:), dcenter_list(:), nnodes_list(:)
   INTEGER, allocatable  :: xwedge_list(:,:)
   REAL(RPX), allocatable  :: hwedge_list(:,:)
+  ! ++jtb Nov 21 2026: lowest-foot wedge from ANISO_ANA_3 (see that routine)
+  !   xwedge3_list(1:3,ipk) : left foot, peak, right foot, as cell OFFSETS from
+  !                           the profile centre (negative = left)
+  !   hwedge3_list(1:3,ipk) : their heights (m, terr_dev)
+  !   feet3_info(1:5,ipk)   : m3 (profile half-width used), reason left,
+  !                           reason right (1 min, 2 flat, 3 end, 0 none),
+  !                           blocked left, blocked right (1 = walk stopped by
+  !                           terrain higher than the peak)
+  INTEGER, allocatable  :: xwedge3_list(:,:), feet3_info(:,:)
+  REAL(RPX), allocatable  :: hwedge3_list(:,:)
 
 
   REAL(RPX), allocatable  :: hwedge_o(:,:),hwedge_x(:,:),hnodes_x(:,:),hnodes_o(:,:)
@@ -164,12 +175,32 @@ public peak_type
   ! The reach is capped at PSW = NINT(1.5*nsw), which is both the width of
   ! rdg_profiles_x and safely inside the halo (nhalo = 2*nsw).
   !
-  ! PASSIVE for now: it writes only rdg_profiles_x (the 'profi' field of the
-  ! remap output, which nothing computes with). mxdis, hwdth, anglx, the
-  ! wedge and the peak location are all left exactly as the loop left them.
+  ! What it writes:
+  !   rdg_profiles_x        : the extended profile (the 'profi' field of the
+  !                           remap output)
+  !   xwedge3_list, hwedge3_list, feet3_info : the lowest-foot wedge
+  !                           (Nov 21 2026)
+  !   hwedge_o, hwedge_x    : with paint_wedge3 (default), rebuilt from the
+  !                           lowest-foot wedge, so the PAINTED wedges (WEDGO,
+  !                           WEDGE, the uniqwg ID map used by the tiles)
+  !                           follow it (Nov 21 2026)
+  ! mxdis, hwdth, anglx, xwedge_list/hwedge_list and the peak location are
+  ! left exactly as the loop left them, so the crest painting and the
+  ! tiles' heights and widths still come from ANISO_ANA_2's wedge.
   ! Set from cube_to_target (--profile_extend).
   !--------------------------------------------------------------------
   real(r8)                              :: profile_extend = 2.0_r8
+  !
+  ! ++jtb Nov 21 2026: paint the LOWEST-FOOT wedge. When ANISO_ANA_3 runs
+  ! (profile_extend > 1) and paint_wedge3 is .TRUE., ANISO_ANA_3 rebuilds
+  ! hwedge_o and hwedge_x -- the wedge shapes fleshout_profi and
+  ! color_on_profi paint (WEDGO, WEDGE, and the uniqwg ID map the tiles are
+  ! built from) -- from xwedge3_list/hwedge3_list instead of ANISO_ANA_2's
+  ! wedge. A ridgelet with no lowest-foot wedge keeps ANISO_ANA_2's shapes.
+  ! mxdis, hwdth and the crest painting are NOT changed (prominence comes
+  ! later, in the painting step). Module setting, not a CLI option.
+  logical                               :: paint_wedge3 = .TRUE.
+  integer                               :: nwedge3_painted = 0, nwedge3_kept_old = 0
 
   integer                               :: ridge_iter = 1
   !
@@ -821,8 +852,10 @@ write(*,*) " SHAPE ", shape( peaks%i )
 
         ! ++jtb Nov 2026: touch-up pass (the live version of the block above).
         ! Re-centre on the FINAL peak and build an x-extended, narrow-y-averaged
-        ! profile into rdg_profiles_x. Diagnostic only -- nothing computed
-        ! above is changed.
+        ! profile into rdg_profiles_x; from it (Nov 21 2026) the lowest-foot
+        ! wedge, which with paint_wedge3 replaces the PAINTED wedge shapes
+        ! hwedge_o/hwedge_x. mxdis, hwdth and the other ridge properties
+        ! computed above are not changed.
         if ( profile_extend > 1.0_r8 ) then
            ! ++jtb Nov 19 2026: centre on the SAME cell ANISO_ANA_2 used, even when
            ! the ridgelet has moved past the face edge into the halo. Clamping the
@@ -855,6 +888,10 @@ write(*,*) " SHAPE ", shape( peaks%i )
     write(*,*)
 
     write(*,*) " Done with anisotropy analysis "
+    if ( profile_extend > 1.0_r8 .and. paint_wedge3 ) then
+       write(*,*) " Lowest-foot wedge painted for ", nwedge3_painted, " ridgelets; ", &
+                  nwedge3_kept_old, " kept ANISO_ANA_2's wedge (no lowest-foot wedge)"
+    end if
     if ( ladapt ) then
        write(*,*) " Adaptive ridge window, c = ",adapt_c(1:nadapt)
        write(*,*) "    seeds excluded (no ridge scale) : ", nexcl, " of ", npeaks
@@ -962,6 +999,11 @@ write(*,*) " SHAPE ", shape( peaks%i )
       end if
       if ( ladapt ) then
          write(31) sigwin_rdg                    ! ++jtb Nov 2026: sigma (km) behind each window
+      end if
+      ! ++jtb Nov 21 2026: lowest-foot wedge from ANISO_ANA_3, only when that
+      ! pass runs. One record, so readers can recognise it by its size.
+      if ( profile_extend > 1.0_r8 ) then
+         write(31) xwedge3_list, hwedge3_list, feet3_info
       end if
 
       CLOSE(31)
@@ -1344,7 +1386,12 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
 ! cross-ridge profile that runs well past the analysis window, which is what
 ! lets the flanks be seen and should steady hwdth.
 !
-! Writes rdg_profiles_x only. Deliberately touches nothing else.
+! Writes rdg_profiles_x, and (Nov 21 2026) the lowest-foot wedge
+! xwedge3_list / hwedge3_list / feet3_info. With paint_wedge3 (default) it
+! also REBUILDS hwedge_o and hwedge_x, the wedge shapes the painting uses
+! (WEDGO, WEDGE, the uniqwg ID map), from the lowest-foot wedge.
+! It does NOT change mxdis, hwdth, xwedge_list/hwedge_list (ANISO_ANA_2's
+! wedge) or the crest painting.
 !=============================================================================
   implicit none
   integer,   intent(in) :: m3, nswy, ipk
@@ -1352,6 +1399,10 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
 
   real(RPX) :: rot3( 2*m3+1, 2*m3+1 )
   integer   :: j0, j1, nrow
+  ! ++jtb Nov 21 2026: lowest-foot wedge
+  real(RPX) :: prof3( 2*m3+1 ), hr( 2*(2*m3+1) )
+  integer   :: n3, nk, nr, ipeak, ifoot(2), reason(2), blocked(2)
+  integer   :: xk( 2*m3+1 ), xr( 2*(2*m3+1) )
 
   rot3 = rotbyx( sub3, 2*m3+1, anglx(ipk) )
   where( rot3 < -8000. ) rot3 = 0.
@@ -1364,6 +1415,85 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
 
   rdg_profiles_x(:,ipk) = 0.d0
   rdg_profiles_x( PSW+1-m3 : PSW+1+m3, ipk ) = SUM( rot3(:, j0:j1), 2 ) / REAL(nrow,RPX)
+
+  !---------------------------------------------------------------------------
+  ! ++jtb Nov 21 2026: LOWEST-FOOT WEDGE on this extended profile.
+  !   1. nodes      : turning points + ends (find_kinks, as rnodes picks them)
+  !   2. refine     : one best-fit node inserted between each neighbouring
+  !                   pair (refine_nodes)
+  !   3. feet       : walk out from the central peak node, the one nearest
+  !                   the profile centre (index m3+1); the LOWEST kept foot on
+  !                   each side (find_feet; settings feet_flat_frac and
+  !                   feet_stop_at_higher in ridge_utils)
+  !   4. 3-pt wedge : left foot, central peak, right foot
+  ! Positions are stored as cell offsets from the profile centre, so they do
+  ! not depend on m3. Prominence is deliberately NOT applied here; that is
+  ! for the painting step.
+  !---------------------------------------------------------------------------
+  n3    = 2*m3+1
+  prof3 = rdg_profiles_x( PSW+1-m3 : PSW+1+m3, ipk )
+
+  call find_kinks( n3, prof3, nk, xk )
+  call refine_nodes( n3, prof3, nk, xk(1:nk), nr, xr, hr )
+  call find_feet( nr, xr(1:nr), hr(1:nr), REAL(m3+1,r8), ipeak, ifoot, reason, blocked )
+
+  feet3_info(:,ipk) = (/ m3, reason(1), reason(2), blocked(1), blocked(2) /)
+  if ( ipeak > 0 .and. ifoot(1) > 0 .and. ifoot(2) > 0 ) then
+     xwedge3_list(:,ipk) = (/ xr(ifoot(1)), xr(ipeak), xr(ifoot(2)) /) - (m3+1)
+     hwedge3_list(:,ipk) = (/ hr(ifoot(1)), hr(ipeak), hr(ifoot(2)) /)
+  else
+     xwedge3_list(:,ipk) = 0          ! no central peak, or no foot on a side
+     hwedge3_list(:,ipk) = 0.
+  end if
+
+  !---------------------------------------------------------------------------
+  ! ++jtb Nov 21 2026: PAINT THE LOWEST-FOOT WEDGE (paint_wedge3).
+  ! Rebuild the two painted wedge shapes on the 2*PSW+1 frame whose centre,
+  ! index PSW+1, is laid on each painted crest cell by fleshout_profi:
+  !   hwedge_o : the 3-point polyline between the two feet, 0 outside
+  !   hwedge_x : the same, plus straight ramps from each foot down to 0 at
+  !              the frame ends (as rebuild_nodes does for the old wedge)
+  ! Built here rather than with rebuild_nodes because a foot can sit on the
+  ! frame end (an 'end' foot with m3 = PSW), where rebuild_nodes' ramp would
+  ! divide by zero.
+  !---------------------------------------------------------------------------
+  if ( paint_wedge3 ) then
+     if ( ipeak > 0 .and. ifoot(1) > 0 .and. ifoot(2) > 0 ) then
+        call paint_shapes( PSW+1+xwedge3_list(:,ipk), hwedge3_list(:,ipk) )
+        nwedge3_painted = nwedge3_painted + 1
+     else
+        nwedge3_kept_old = nwedge3_kept_old + 1
+     end if
+  end if
+
+contains
+
+  subroutine paint_shapes( xw, hw )
+     integer,   intent(in) :: xw(3)        ! frame indices (1..2*PSW+1) of foot, peak, foot
+     real(RPX), intent(in) :: hw(3)
+     integer :: i, nf
+     nf = 2*PSW+1
+     hwedge_o(:,ipk) = 0.
+     hwedge_x(:,ipk) = 0.
+     do i = xw(1), xw(3)
+        if ( i <= xw(2) ) then
+           if ( xw(2) > xw(1) ) then
+              hwedge_o(i,ipk) = hw(1) + (hw(2)-hw(1)) * REAL(i-xw(1),RPX) / REAL(xw(2)-xw(1),RPX)
+           else
+              hwedge_o(i,ipk) = hw(2)
+           end if
+        else
+           hwedge_o(i,ipk) = hw(2) + (hw(3)-hw(2)) * REAL(i-xw(2),RPX) / REAL(xw(3)-xw(2),RPX)
+        end if
+     end do
+     hwedge_x(:,ipk) = hwedge_o(:,ipk)
+     do i = 1, xw(1)-1                    ! ramp up from 0 at the left frame end
+        hwedge_x(i,ipk) = hw(1) * REAL(i-1,RPX) / REAL(xw(1)-1,RPX)
+     end do
+     do i = xw(3)+1, nf                   ! ramp down to 0 at the right frame end
+        hwedge_x(i,ipk) = hw(3) * REAL(nf-i,RPX) / REAL(nf-xw(3),RPX)
+     end do
+  end subroutine paint_shapes
 
 end subroutine ANISO_ANA_3
 
@@ -3382,6 +3512,11 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
        xwedge_list(:,:)=0
   allocate( hwedge_list( 3 , npeaks ) )
        hwedge_list(:,:)=0
+  ! ++jtb Nov 21 2026: lowest-foot wedge (ANISO_ANA_3)
+  allocate( xwedge3_list( 3 , npeaks ), hwedge3_list( 3 , npeaks ), feet3_info( 5 , npeaks ) )
+       xwedge3_list(:,:)=0
+       hwedge3_list(:,:)=0
+       feet3_info(:,:)=0
 
 
   allocate( rdg_profiles_x( 2*PSW+1, npeaks ) )

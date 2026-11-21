@@ -17,6 +17,11 @@ public length_in_square
 public repaint
 public wedge_method
 public ynudge_param
+public find_kinks           ! ++jtb Nov 21 2026: lowest-foot wedge (ANISO_ANA_3)
+public refine_nodes
+public find_feet
+public feet_flat_frac
+public feet_stop_at_higher
 
     REAL(KIND=dbl_kind), PARAMETER :: pi        = 3.14159265358979323846264338327
     REAL(KIND=dbl_kind), PARAMETER :: earth_radius        = 6371.0
@@ -56,6 +61,29 @@ public ynudge_param
     ! Set from cube_to_target (--ynudge).
     !-------------------------------------------------------------------------
     real(r8) :: ynudge_param = 1.0_r8
+
+    !-------------------------------------------------------------------------
+    ! ++jtb Nov 21 2026: settings for find_feet (the lowest-foot wedge built
+    ! in ANISO_ANA_3). Module settings, NOT command-line options, to avoid
+    ! option creep; promote them to the CLI only if they need tuning per run.
+    !
+    ! feet_flat_frac : a node is a 'flat' foot when the slope of the segment
+    !     just beyond it (moving out from the peak) has magnitude below this
+    !     fraction of the largest slope magnitude in the profile, having been
+    !     at or above it somewhere between the peak and the node. 0.05 = 5 %.
+    !
+    ! feet_stop_at_higher : stop each side's walk at the first node HIGHER
+    !     than the central peak, so feet never lie beyond higher terrain. On a
+    !     side blocked this way the lowest foot is the col between this peak
+    !     and the higher one. Without it, a ridgelet on the flank of a bigger
+    !     ridge walks over the bigger ridge's crest and takes a foot on its far
+    !     side.
+    !
+    ! These mirror find_feet.py (frac=0.05, prune=True, stop_at_higher=True)
+    ! as used by prominence.py in myPythonTools/TopoAna.
+    !-------------------------------------------------------------------------
+    real(r8) :: feet_flat_frac      = 0.05_r8
+    logical  :: feet_stop_at_higher = .TRUE.
 
 contains
 
@@ -597,6 +625,258 @@ subroutine rebuild_nodes (nsw , psw, nnodes, xnodes, hnodes, ridge, lextend_prof
     end if
 
 end subroutine rebuild_nodes
+
+!=============================================================================
+! ++jtb Nov 21 2026: LOWEST-FOOT WEDGE -- three routines used by ANISO_ANA_3.
+!
+!   find_kinks   : the node list rnodes builds (turning points + both ends),
+!                  without rnodes' wedge search (too costly on 127 points)
+!   refine_nodes : insert ONE best-fit node between each pair of neighbours
+!   find_feet    : walk out from the central peak node; return the LOWEST
+!                  kept foot on each side
+!
+! Fortran ports of rnodes.py (kinks only), refine_nodes.py and find_feet.py in
+! myPythonTools/TopoAna. Positions are 1-BASED indices into the profile, as in
+! rnodes and the Python.
+!=============================================================================
+subroutine find_kinks( n, prof, nk, xk )
+!-----------------------------------------------------------------------------
+! Node positions exactly as rnodes picks them: every local peak, valley and
+! mesa edge among points 2..n-1, plus the two end points.
+!-----------------------------------------------------------------------------
+    integer,   intent(in)  :: n
+    real(RPX), intent(in)  :: prof(n)
+    integer,   intent(out) :: nk
+    integer,   intent(out) :: xk(n)
+
+    integer   :: i
+    real(RPX) :: ldh, rdh
+    logical   :: kink
+
+    xk = -1
+    nk = 1
+    xk(1) = 1
+    do i = 2, n-1
+       ldh  = prof(i)   - prof(i-1)
+       rdh  = prof(i+1) - prof(i)
+       kink = ( ldh > 0. .and. rdh < 0. )                       &  ! peak
+         .or. ( ldh < 0. .and. rdh > 0. )                       &  ! valley
+         .or. ( abs(ldh) > 0. .and. rdh == 0. )                 &  ! mesa edge
+         .or. ( abs(rdh) > 0. .and. ldh == 0. )                    ! mesa edge
+       if ( kink ) then
+          nk = nk + 1
+          xk(nk) = i
+       end if
+    end do
+    if ( n > 1 ) then
+       nk = nk + 1
+       xk(nk) = n
+    end if
+end subroutine find_kinks
+
+!-----------------------------------------------------------------------------
+subroutine refine_nodes( n, prof, nk, xk, nr, xr, hr )
+!-----------------------------------------------------------------------------
+! Insert one node in every interval of the node list (intervals of at least
+! two cells), placed in x AND h so the two-segment polyline has the smallest
+! rms error against prof over that interval.
+!
+! For a trial position xm the polyline is linear in the inserted height hm,
+!     poly(x) = a(x) + b(x)*hm ,   hm = sum( b*(p-a) ) / sum( b*b )
+! so hm has a closed form and only xm is searched. On a tie in rms the first
+! (leftmost) xm wins, as in refine_nodes.py.
+!
+! Output: nr nodes, originals and inserted interleaved, positions xr (1-based)
+! and heights hr. Original nodes keep their profile heights.
+!-----------------------------------------------------------------------------
+    integer,   intent(in)  :: n, nk
+    real(RPX), intent(in)  :: prof(n)
+    integer,   intent(in)  :: xk(nk)
+    integer,   intent(out) :: nr
+    integer,   intent(out) :: xr(2*n)
+    real(RPX), intent(out) :: hr(2*n)
+
+    integer  :: k, x0, x1, xm, i, xbest
+    real(r8) :: h0, h1, a, b, sbb, sbp, hm, ss, ssbest, hbest, t
+
+    nr = 0
+    xr = -1
+    hr = 0.
+    do k = 1, nk
+       nr = nr + 1
+       xr(nr) = xk(k)
+       hr(nr) = prof(xk(k))
+       if ( k == nk ) exit
+       x0 = xk(k)
+       x1 = xk(k+1)
+       if ( x1 - x0 < 2 ) cycle
+       h0 = prof(x0)
+       h1 = prof(x1)
+       xbest  = -1
+       ssbest = HUGE(1.0_r8)
+       hbest  = 0._r8
+       do xm = x0+1, x1-1
+          ! hm from the normal equation
+          sbb = 0._r8 ; sbp = 0._r8
+          do i = x0, x1
+             if ( i <= xm ) then
+                t = REAL(i-x0,r8) / REAL(xm-x0,r8) ; a = h0*(1._r8-t) ; b = t
+             else
+                t = REAL(x1-i,r8) / REAL(x1-xm,r8) ; a = h1*(1._r8-t) ; b = t
+             end if
+             sbb = sbb + b*b
+             sbp = sbp + b*( prof(i) - a )
+          end do
+          if ( sbb <= 0._r8 ) cycle
+          hm = sbp / sbb
+          ! sum of squared residuals (same point count for every xm, so
+          ! comparing sums is comparing rms)
+          ss = 0._r8
+          do i = x0, x1
+             if ( i <= xm ) then
+                t = REAL(i-x0,r8) / REAL(xm-x0,r8) ; a = h0*(1._r8-t) ; b = t
+             else
+                t = REAL(x1-i,r8) / REAL(x1-xm,r8) ; a = h1*(1._r8-t) ; b = t
+             end if
+             ss = ss + ( prof(i) - (a + b*hm) )**2
+          end do
+          if ( ss < ssbest ) then
+             ssbest = ss ; xbest = xm ; hbest = hm
+          end if
+       end do
+       if ( xbest > 0 ) then
+          nr = nr + 1
+          xr(nr) = xbest
+          hr(nr) = hbest
+       end if
+    end do
+end subroutine refine_nodes
+
+!-----------------------------------------------------------------------------
+subroutine find_feet( nr, xr, hr, xcen, ipeak, ifoot, reason, blocked )
+!-----------------------------------------------------------------------------
+! Walk out from the central peak node, node by node, on each side. A node is
+! a candidate foot when it is
+!   1 'min'  : lower than both neighbouring nodes, or
+!   2 'flat' : the segment just beyond it (further out) has slope magnitude
+!              below feet_flat_frac * (largest slope magnitude in the profile),
+!              and the slope has been at or above that somewhere between the
+!              peak and this node (it has FALLEN below it). After a 'flat' the
+!              slope must steepen again before another 'flat' can count.
+!   3 'end'  : the last node, if no candidate was found, or if the profile ran
+!              out still descending (lower than every candidate so far and
+!              steep again since the last 'flat').
+! With feet_stop_at_higher the walk stops at the first node higher than the
+! peak (blocked = 1 for that side).
+!
+! Candidates are pruned so each side's list steps DOWN going out (a foot
+! higher than the lowest one nearer the peak is dropped); the foot returned is
+! the last one kept, i.e. the lowest (outermost on a tie).
+!
+! Central peak: the local-maximum node nearest xcen (tie -> higher node); if
+! there is no interior local maximum, the highest node.
+!
+! Outputs (side 1 = left, decreasing x; side 2 = right, increasing x):
+!   ipeak      : node index of the central peak
+!   ifoot(2)   : node index of the lowest kept foot, 0 if that side has none
+!   reason(2)  : 1 min, 2 flat, 3 end, 0 none
+!   blocked(2) : 1 if the walk was stopped by higher terrain, else 0
+!-----------------------------------------------------------------------------
+    integer,   intent(in)  :: nr
+    integer,   intent(in)  :: xr(nr)
+    real(RPX), intent(in)  :: hr(nr)
+    real(r8),  intent(in)  :: xcen
+    integer,   intent(out) :: ipeak, ifoot(2), reason(2), blocked(2)
+
+    real(r8) :: mag(MAX(nr-1,1)), thr, d, dmin, lowest
+    logical  :: okseg(MAX(nr-1,1)), seen_steep, done
+    integer  :: k, side, step, j, nxt, prv, seg_in, seg_out, ncand
+
+    ipeak = 0 ; ifoot = 0 ; reason = 0 ; blocked = 0
+    if ( nr < 2 ) return
+
+    ! slope magnitude of each segment k (joins node k and node k+1)
+    thr = 0._r8
+    do k = 1, nr-1
+       okseg(k) = ( xr(k+1) /= xr(k) )
+       if ( okseg(k) ) then
+          mag(k) = ABS( (hr(k+1)-hr(k)) / REAL(xr(k+1)-xr(k),r8) )
+          thr    = MAX( thr, mag(k) )
+       else
+          mag(k) = 0._r8
+       end if
+    end do
+    thr = feet_flat_frac * thr
+
+    ! central peak
+    dmin = HUGE(1.0_r8)
+    do k = 2, nr-1
+       if ( hr(k) > hr(k-1) .and. hr(k) > hr(k+1) ) then
+          d = ABS( REAL(xr(k),r8) - xcen )
+          if ( d < dmin ) then
+             dmin = d ; ipeak = k
+          else if ( d == dmin .and. hr(k) > hr(ipeak) ) then
+             ipeak = k
+          end if
+       end if
+    end do
+    if ( ipeak == 0 ) ipeak = MAXLOC( hr, 1 )
+
+    do side = 1, 2
+       step = MERGE( -1, 1, side == 1 )
+       seen_steep = .FALSE.
+       ncand  = 0
+       lowest = HUGE(1.0_r8)
+       j      = ipeak
+       done   = .FALSE.
+       do while ( .not. done )
+          if ( feet_stop_at_higher .and. j /= ipeak .and. hr(j) > hr(ipeak) ) then
+             blocked(side) = 1
+             exit
+          end if
+          seg_in = MERGE( j, j-1, step < 0 )        ! segment joining j and the node inward
+          if ( j /= ipeak ) then
+             if ( okseg(seg_in) .and. mag(seg_in) >= thr ) seen_steep = .TRUE.
+          end if
+          nxt = j + step
+          if ( nxt < 1 .or. nxt > nr ) then         ! j is the last node on this side
+             if ( j /= ipeak ) then
+                if ( ncand == 0 .or. ( seen_steep .and. hr(j) < lowest ) ) then
+                   call take( j, 3 )
+                end if
+             end if
+             done = .TRUE.
+             cycle
+          end if
+          if ( j /= ipeak ) then
+             seg_out = MERGE( j-1, j, step < 0 )    ! segment joining j and the node outward
+             prv     = j - step
+             if ( hr(j) < hr(prv) .and. hr(j) < hr(nxt) ) then
+                call take( j, 1 )
+             else if ( seen_steep .and. okseg(seg_out) .and. mag(seg_out) < thr ) then
+                call take( j, 2 )
+                seen_steep = .FALSE.
+             end if
+          end if
+          j = nxt
+       end do
+    end do
+
+contains
+
+    subroutine take( jn, code )
+    ! a candidate foot: count it, and keep it if it is no higher than the
+    ! lowest kept so far (the pruning step of find_feet.py)
+       integer, intent(in) :: jn, code
+       ncand = ncand + 1
+       if ( hr(jn) <= lowest ) then
+          lowest       = hr(jn)
+          ifoot(side)  = jn
+          reason(side) = code
+       end if
+    end subroutine take
+
+end subroutine find_feet
 !==================================================
 function length_in_square( anglx ) result(d)
 real(r8),intent(in) :: anglx 
