@@ -41,6 +41,10 @@ public lsort_tiles
 public ridge_iter
 public profile_extend
 public paint_wedge3        ! ++jtb Nov 21 2026
+public refine_nodos        ! ++jtb Nov 22 2026
+public layer_wedges        ! ++jtb Nov 21 2026
+public mxdis_eff, ncrest_vis
+public riseq_eff, fallq_eff   ! ++jtb Nov 22 2026
 public adapt_c, max_adapt
 
 public peak_type
@@ -186,7 +190,8 @@ public peak_type
   !                           follow it (Nov 21 2026)
   ! mxdis, hwdth, anglx, xwedge_list/hwedge_list and the peak location are
   ! left exactly as the loop left them, so the crest painting and the
-  ! tiles' heights and widths still come from ANISO_ANA_2's wedge.
+  ! tiles' widths still come from ANISO_ANA_2's wedge. The tiles' heights
+  ! come from layer_profi when layer_wedges is on (see below).
   ! Set from cube_to_target (--profile_extend).
   !--------------------------------------------------------------------
   real(r8)                              :: profile_extend = 2.0_r8
@@ -196,11 +201,49 @@ public peak_type
   ! hwedge_o and hwedge_x -- the wedge shapes fleshout_profi and
   ! color_on_profi paint (WEDGO, WEDGE, and the uniqwg ID map the tiles are
   ! built from) -- from xwedge3_list/hwedge3_list instead of ANISO_ANA_2's
-  ! wedge. A ridgelet with no lowest-foot wedge keeps ANISO_ANA_2's shapes.
-  ! mxdis, hwdth and the crest painting are NOT changed (prominence comes
-  ! later, in the painting step). Module setting, not a CLI option.
+  ! wedge. A ridgelet with no lowest-foot wedge (its extended profile has no
+  ! interior peak: a seed on a slope) is NOT painted: its shapes are zeroed.
+  ! mxdis, hwdth and the crest painting are NOT changed here; with
+  ! layer_wedges the tiles take their heights from the layered painting
+  ! instead (mxdis_eff). Module setting, not a CLI option.
   logical                               :: paint_wedge3 = .TRUE.
-  integer                               :: nwedge3_painted = 0, nwedge3_kept_old = 0
+  !
+  ! ++jtb Nov 22 2026: REFINED NODES IN NODOS (refine_nodos).
+  ! nodos is fleshout_profi(hnodes_o). Until now hnodes_o came from
+  ! rebuild_nodes acting on ridgescales' unrefined node list over the +/-nsw
+  ! window, while hwedge_o (WEDGO) had moved to the extended, refined basis of
+  ! ANISO_ANA_3 -- so the two reconstructions no longer sat on the same
+  ! profile. When .TRUE., ANISO_ANA_3 rebuilds hnodes_o from the refined node
+  ! list it already computes for find_feet. hnodes_x (the NODES field) is left
+  ! on the old basis. Module setting, not a CLI option.
+  logical                               :: refine_nodos = .TRUE.
+  integer                               :: nnodos_refined = 0
+  integer                               :: nwedge3_painted = 0, nwedge3_none = 0
+  !
+  ! ++jtb Nov 21 2026: LAYERED wedge painting (see subroutine layer_profi).
+  ! When .TRUE., remapridge2cube paints WEDGO and the uniqwg ownership map by
+  ! layering the wedges WIDEST FIRST instead of plain max-wins, and records
+  ! for each ridgelet how far it rises above the wider wedges beneath it.
+  ! remapridge2tiles then takes, for each ridgelet:
+  !   MXDIS     : its largest rise at its VISIBLE crest cells (mxdis_eff)
+  !   crest     : only its visible crest cells (uniqvisC), so CLNGT (in-column)
+  !               and CLNGT_RDG (whole ridgelet, ncrest_vis) count what shows
+  !               on top
+  ! HWDTH and the other tile fields are unchanged for now. Module setting,
+  ! not a CLI option; .FALSE. restores max-wins painting and the old tiles.
+  logical                               :: layer_wedges = .TRUE.
+  real(r8), allocatable                 :: mxdis_eff(:)    ! (npeaks) effective height, m
+  integer,  allocatable                 :: ncrest_vis(:)   ! (npeaks) visible crest cells
+  ! ++jtb Nov 22 2026: the two flanks of the VISIBLE wedge, measured at paint
+  ! time. riseq_eff is the drop from the crest to the lowest still-visible
+  ! pixel on the rise side, fallq_eff the same on the fall side, and
+  ! mxdis_eff = MAX of the two. Both are POSITIVE drops -- note riseq/fallq
+  ! from ridgescales keep the old signed convention (fallq <= 0).
+  real(r8), allocatable                 :: riseq_eff(:), fallq_eff(:)
+  real(r8), allocatable                 :: uniqvisC(:)     ! (ncube*ncube*6) visible-crest ID map
+  ! ++jtb Nov 22 2026: path of the Ridge_list file find_ridges wrote, so the
+  ! layered-painting diagnostics can be appended to it once layer_profi has run
+  character(len=1024)                   :: ridge_list_file = ''
 
   integer                               :: ridge_iter = 1
   !
@@ -890,7 +933,9 @@ write(*,*) " SHAPE ", shape( peaks%i )
     write(*,*) " Done with anisotropy analysis "
     if ( profile_extend > 1.0_r8 .and. paint_wedge3 ) then
        write(*,*) " Lowest-foot wedge painted for ", nwedge3_painted, " ridgelets; ", &
-                  nwedge3_kept_old, " kept ANISO_ANA_2's wedge (no lowest-foot wedge)"
+                  nwedge3_none, " not painted (no lowest-foot wedge)"
+       if ( refine_nodos ) write(*,*) " NODOS rebuilt from refined nodes for ", &
+            nnodos_refined, " ridgelets"
     end if
     if ( ladapt ) then
        write(*,*) " Adaptive ridge window, c = ",adapt_c(1:nadapt)
@@ -927,6 +972,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
       
       ofile  = trim(ofile)//'_'//date//'_'//time(1:4)//'.dat'
       
+      ridge_list_file = trim(ofile)   ! ++jtb Nov 22 2026: reopened after layer_profi
+
       OPEN (unit = 31, file= trim(ofile) ,form="UNFORMATTED" )
 
       write(31) npeaks  , NSW, PSW
@@ -1462,11 +1509,45 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
         call paint_shapes( PSW+1+xwedge3_list(:,ipk), hwedge3_list(:,ipk) )
         nwedge3_painted = nwedge3_painted + 1
      else
-        nwedge3_kept_old = nwedge3_kept_old + 1
+        ! no lowest-foot wedge (no interior peak: sloping ground) -> paint nothing
+        hwedge_o(:,ipk) = 0.
+        hwedge_x(:,ipk) = 0.
+        nwedge3_none = nwedge3_none + 1
      end if
   end if
 
+  !---------------------------------------------------------------------------
+  ! ++jtb Nov 22 2026: REBUILD hnodes_o FROM THE REFINED NODES (refine_nodos).
+  ! The refined list (xr,hr) is already in hand for find_feet; here it is also
+  ! laid on the 2*PSW+1 painting frame, so NODOS is built from the same
+  ! extended, refined profile as WEDGO instead of ridgescales' unrefined nodes
+  ! over the +/-nsw window. hnodes_x (NODES) is deliberately left alone.
+  !---------------------------------------------------------------------------
+  if ( refine_nodos .and. nr >= 2 ) then
+     call paint_nodes( nr, xr(1:nr), hr(1:nr) )
+     nnodos_refined = nnodos_refined + 1
+  end if
+
 contains
+
+  subroutine paint_nodes( nn, xn, hn )
+     ! piecewise-linear through the refined nodes, 0 outside their span
+     integer,   intent(in) :: nn
+     integer,   intent(in) :: xn(nn)      ! 1..2*m3+1 on the extended profile
+     real(RPX), intent(in) :: hn(nn)
+     integer :: a, i, i0, i1
+     hnodes_o(:,ipk) = 0.
+     do a = 1, nn-1
+        i0 = PSW+1 + ( xn(a)   - (m3+1) )
+        i1 = PSW+1 + ( xn(a+1) - (m3+1) )
+        if ( i0 < 1 .or. i1 > 2*PSW+1 ) cycle      ! outside the frame
+        if ( i1 <= i0 ) cycle                      ! coincident nodes
+        do i = i0, i1
+           hnodes_o(i,ipk) = hn(a) + (hn(a+1)-hn(a)) &
+                             * REAL(i-i0,RPX) / REAL(i1-i0,RPX)
+        end do
+     end do
+  end subroutine paint_nodes
 
   subroutine paint_shapes( xw, hw )
      integer,   intent(in) :: xw(3)        ! frame indices (1..2*PSW+1) of foot, peak, foot
@@ -1777,6 +1858,7 @@ end subroutine THINOUT_LIST
      tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hnodes_o )
      nodosC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
 
+     if ( .not. layer_wedges ) then
      write(*,*) " fleshing out WEDGO "
      tmpx6  = fleshout_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_o )
      wedgoC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
@@ -1784,6 +1866,34 @@ end subroutine THINOUT_LIST
      write(*,*) " Painting IDs on top of WEDGO "
      tmpx6  = color_on_profi ( ncube,nhalo,PSW,mxdisC,anglxC,uniqidC, rr_factor, hwedge_o, uniqid )
      uniqwgC = reshape( tmpx6(1:ncube, 1:ncube, 1:6 ) , (/ncube*ncube*6/) )
+     else
+     ! ++jtb Nov 21 2026: LAYERED painting, widest wedge first (layer_wedges).
+     ! Fills WEDGO and the uniqwg map in place of the two max-wins calls above,
+     ! and sets mxdis_eff, ncrest_vis and uniqvisC for remapridge2tiles.
+     write(*,*) " Layering WEDGO (widest wedge first) "
+     call layer_profi( ncube, nhalo, PSW, mxdisC, anglxC, uniqidC, rr_factor, wedgoC, uniqwgC )
+
+     ! ++jtb Nov 22 2026: append the per-ridgelet layering diagnostics to the
+     ! Ridge_list. They do not exist when find_ridges writes that file, so the
+     ! file is reopened here and two trailing records are added:
+     !   ncrest_vis (npeaks, integer) : visible crest cells per ridgelet
+     !   mxdis_eff  (npeaks, r8)      : MAX(riseq_eff, fallq_eff), m
+     !   riseq_eff  (npeaks, r8)      : visible drop from the crest, rise side
+     !   fallq_eff  (npeaks, r8)      : visible drop from the crest, fall side
+     ! Trailing and separate, so a reader that does not know about them still
+     ! finds every earlier record in place.
+     if ( len_trim(ridge_list_file) > 0 .and. &
+          allocated(ncrest_vis) .and. allocated(mxdis_eff) ) then
+        OPEN ( unit=31, file=trim(ridge_list_file), form="UNFORMATTED", &
+               position="APPEND" )
+        write(31) ncrest_vis
+        write(31) mxdis_eff
+        write(31) riseq_eff
+        write(31) fallq_eff
+        CLOSE(31)
+        write(*,*) "    appended ncrest_vis, mxdis_eff, riseq_eff, fallq_eff to ", trim(ridge_list_file)
+     end if
+     end if
                    
     i_last = -9999
 
@@ -1835,6 +1945,12 @@ end subroutine THINOUT_LIST
        write(911) uniqwgC
        write(911) wedgiC
        write(911) repntC
+       ! ++jtb Nov 21 2026: the VISIBLE-crest ID map from layer_profi, written
+       ! only when layered painting ran. A trailing record, so a reader that
+       ! does not know about it still finds every field before it in place.
+       ! Recoverable as (uniqid == uniqwg) today, but written explicitly so the
+       ! two do not have to agree about what 'visible' means.
+       if ( layer_wedges .and. allocated(uniqvisC) ) write(911) uniqvisC
 
        close(911)
               
@@ -2170,6 +2286,7 @@ end subroutine THINOUT_LIST
 
       real(r8) :: alph,beta,lono,lato,xobj,yobj
       integer  :: pobj       
+      logical  :: lvis                    ! ++jtb Nov 21 2026: layered painting in use
 
       CHARACTER(len=1024) :: ofile
       character(len=8)  :: date
@@ -2265,11 +2382,18 @@ end subroutine THINOUT_LIST
       write(*,*)" "
  
       ! Crests
+      ! ++jtb Nov 21 2026: with layered painting the crests are the VISIBLE
+      ! crest cells only (uniqvisC), see layer_profi.
+      lvis = layer_wedges .and. allocated(uniqvisC)
       do j=1,ntarget
          ird=0
          IdxOc(:) = 0.
          do i=1,idcoun(j)
-            IdxOc(i) = uniqidC( idxmap(i,j) )
+            if ( lvis ) then
+               IdxOc(i) = uniqvisC( idxmap(i,j) )
+            else
+               IdxOc(i) = uniqidC( idxmap(i,j) )
+            end if
          end do
          IdxPack = pack( IdxOc, (IdxOc>0) )
          npack   = size( IdxPack )
@@ -2396,7 +2520,11 @@ end subroutine THINOUT_LIST
          wedgoMap(:)  = -1._r8
          do i=1,idcoun(j)
             uniqwgMap(i) = uniqwgC( idxmap(i,j) )
-            uniqidMap(i) = uniqidC( idxmap(i,j) )
+            if ( lvis ) then
+               uniqidMap(i) = uniqvisC( idxmap(i,j) )        ! ++jtb Nov 21 2026
+            else
+               uniqidMap(i) = uniqidC( idxmap(i,j) )
+            end if
             xcoordMap(i) = xcoord ( idxmap(i,j) )
             ycoordMap(i) = ycoord ( idxmap(i,j) )
             wedgoMap(i)  = wedgoC ( idxmap(i,j) )
@@ -2460,10 +2588,17 @@ end subroutine THINOUT_LIST
             write(*,903,advance='no') achar(13), i,ir,ThisRidge
             panel_tiles(i,ir) = MyPanel(ThisRidge)
             mxdis_tiles(i,ir) = mxdis(ThisRidge)
+            ! ++jtb Nov 21 2026: layered painting -> effective height, the
+            ! ridgelet's largest rise above the wider wedges beneath it
+            if ( lvis ) mxdis_tiles(i,ir) = mxdis_eff(ThisRidge)
             aniso_tiles(i,ir) = aniso(ThisRidge)
             anglx_tiles(i,ir) = anglx(ThisRidge)
             hwdth_tiles(i,ir) = hwdth(ThisRidge)
             clngt_tiles(i,ir) = clngth(ThisRidge)
+            ! ++jtb Nov 21 2026: layered painting -> whole-ridgelet crest
+            ! length from its VISIBLE crest cells (cells; CLNGT_RDG in km)
+            if ( lvis .and. anglx(ThisRidge) > -900._r8 ) &
+               clngt_tiles(i,ir) = REAL( ncrest_vis(ThisRidge), r8 ) * length_in_square( anglx(ThisRidge) )
             riseq_tiles(i,ir) = riseq(ThisRidge)
             fallq_tiles(i,ir) = fallq(ThisRidge)
             anixy_tiles(i,ir) = mxvrx(ThisRidge) &
@@ -3099,6 +3234,326 @@ function color_on_profi ( ncube,nhalo,nsw,mxdisC,anglxC,uniqidC,rrfac,shape_x,co
   end do
 
 end function color_on_profi
+
+!=============================================================================
+subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgoC, uniqwgC )
+!=============================================================================
+! ++jtb Nov 21 2026: LAYERED WEDGE PAINTING (layer_wedges).
+!
+! Replaces the max-wins painting of WEDGO (fleshout_profi with hwedge_o) and
+! of the uniqwg ownership map (color_on_profi) with a layered one:
+!
+!   1. Ridgelets are painted one at a time, WIDEST WEDGE FIRST. Width is the
+!      distance between the wedge's feet. With paint_wedge3 (and ANISO_ANA_3
+!      running) that is the lowest-foot wedge (xwedge3_list), and a ridgelet
+!      WITHOUT a lowest-foot wedge is not painted at all. Otherwise every
+!      ridgelet uses ANISO_ANA_2's wedge (xwedge_list).
+!   2. Each ridgelet is stamped exactly as fleshout_profi stamps it (its
+!      wedge laid across each of its painted crest cells at the painted
+!      angle), but ONLY between its two feet -- outside them it paints nothing.
+!   3. Its RISE at a cell is its value minus the higher of (a) the surface
+!      painted before it (by wider ridgelets) and (b) its own lower foot;
+!      where nothing was painted yet, minus its own lower foot. So a ridgelet
+!      never claims more than its own lowest-foot relief. Its own
+!      neighbouring stamps never count as "beneath" it: all its stamps are
+!      collected first (kmax), then compared.
+!   4. The surface takes the higher value; ON-TOP ownership: the ridgelet
+!      that set the final surface value owns the cell. Negative and positive
+!      values are treated alike; the canvas starts UNPAINTED, not at zero.
+!
+! Afterwards, for each ridgelet:
+!   visible crest cell : one of its painted crest cells that it still owns
+!   ncrest_vis(k)      : number of visible crest cells
+!   mxdis_eff(k)       : largest rise at its visible crest cells (0 if none)
+!   uniqvisC           : crest ID map keeping only visible crest cells
+!
+! Outputs wedgoC (the layered surface, 0 where unpainted) and uniqwgC (the
+! on-top owner, 0 where unpainted) on the cube, in place of the max-wins
+! versions. Painting into the halo is kept and then discarded, as in
+! fleshout_profi.
+!=============================================================================
+  implicit none
+  integer, intent(in) :: ncube, nhalo, nsw          ! nsw = PSW, as for fleshout_profi
+  real(KIND=dbl_kind), intent(in),  dimension(ncube,ncube,6) :: mxdisC, anglxC, uniqidC, rrfac
+  real(KIND=dbl_kind), intent(out), dimension(ncube,ncube,6) :: wedgoC, uniqwgC
+
+  real(r8), parameter :: UNP = -1.0e30_r8, UNPHALF = -0.5e30_r8
+  real(r8), allocatable :: surf(:,:,:), kmax(:,:,:)
+  ! ++jtb Nov 22 2026: which side of the crest the winning kmax value came
+  ! from: -1 rise side (smaller profile index), +1 fall side, 0 on the crest
+  integer,  allocatable :: kside(:,:,:)
+  integer,  allocatable :: owner(:,:,:)
+  integer,  allocatable :: ncr(:), cstart(:), clist(:), nfill(:), order(:)
+  real(r8), allocatable :: wkey(:), lowft(:)
+  integer,  allocatable :: sL(:), sR(:)
+  integer,  allocatable :: tx(:), ty(:), tp(:), tmp(:)
+  real(RPX) :: suba(-nsw:nsw,-nsw:nsw), subm(-nsw:nsw,-nsw:nsw)
+  real(RPX) :: subr(-nsw:nsw,-nsw:nsw), subq(-nsw:nsw,-nsw:nsw)
+  ! ++jtb Nov 22 2026: side stamp. Its value IS the signed profile offset, and
+  ! it is rotated by the SAME rotbyx call as the wedge, so the side label
+  ! travels with the wedge value and no angle arithmetic is needed here.
+  real(RPX) :: subs(-nsw:nsw,-nsw:nsw), subp(-nsw:nsw,-nsw:nsw)
+  real(r8)  :: v, sv, lastang, crestv, lowvis(2)
+  real(r8), parameter :: BIGH = 1.0e30_r8
+  integer   :: sgn, isd
+  logical   :: vis
+  integer   :: npk, k, ik, i, j, ip, ic, c, jw, ii, jj, x, y, f, nswx, lim, ntouch, nmax, t
+  integer   :: ncell, ipaint, nvis_rdg, nburied, i0, kp
+  logical   :: use_new
+
+  npk = size(mxdis)
+
+  !--------------------------------------------------------------------
+  ! 1. crest cells of each ridgelet (painted crest cells: mxdisC >= 1)
+  !--------------------------------------------------------------------
+  allocate( ncr(npk), cstart(npk+1), nfill(npk) )
+  ncr = 0
+  do ip=1,6 ; do j=1,ncube ; do i=1,ncube
+     if ( mxdisC(i,j,ip) >= 1.0 ) then
+        k = INT( uniqidC(i,j,ip) )
+        if ( k >= 1 .and. k <= npk ) ncr(k) = ncr(k) + 1
+     end if
+  end do ; end do ; end do
+  cstart(1) = 1
+  do k=1,npk
+     cstart(k+1) = cstart(k) + ncr(k)
+  end do
+  ncell = cstart(npk+1) - 1
+  allocate( clist( MAX(ncell,1) ) )
+  nfill = 0
+  do ip=1,6 ; do j=1,ncube ; do i=1,ncube
+     if ( mxdisC(i,j,ip) >= 1.0 ) then
+        k = INT( uniqidC(i,j,ip) )
+        if ( k >= 1 .and. k <= npk ) then
+           clist( cstart(k) + nfill(k) ) = (ip-1)*ncube*ncube + (j-1)*ncube + i
+           nfill(k) = nfill(k) + 1
+        end if
+     end if
+  end do ; end do ; end do
+
+  !--------------------------------------------------------------------
+  ! 2. wedge support (feet, as 1..2*PSW+1 frame indices), lower foot and
+  !    painting order (widest first)
+  !--------------------------------------------------------------------
+  allocate( wkey(npk), lowft(npk), sL(npk), sR(npk), order(npk) )
+  wkey = -HUGE(1.0_r8) ; lowft = 0._r8 ; sL = 0 ; sR = -1
+  ! lowest-foot mode: the shapes in hwedge_o are lowest-foot wedges
+  use_new = paint_wedge3 .and. ( profile_extend > 1.0_r8 )
+  do k=1,npk
+     if ( ncr(k) == 0 ) cycle
+     if ( use_new ) then
+        if ( xwedge3_list(3,k) > xwedge3_list(1,k) ) then
+           sL(k)    = PSW + 1 + xwedge3_list(1,k)
+           sR(k)    = PSW + 1 + xwedge3_list(3,k)
+           lowft(k) = MIN( hwedge3_list(1,k), hwedge3_list(3,k) )
+           wkey(k)  = REAL( sR(k) - sL(k), r8 )
+        end if                       ! else: no lowest-foot wedge -> not painted (sR < sL)
+     else if ( xwedge_list(2,k) > 0 ) then
+        i0       = PSW - ( NSWx_diag(k) + 1 ) / 2          ! as in rebuild_nodes
+        sL(k)    = MAX( 1,       xwedge_list(1,k) + i0 )
+        sR(k)    = MIN( 2*PSW+1, xwedge_list(3,k) + i0 )
+        lowft(k) = MIN( hwedge_list(1,k), hwedge_list(3,k) )
+        wkey(k)  = REAL( sR(k) - sL(k), r8 )
+     end if
+  end do
+  call sort_desc( npk, wkey, order )
+
+  !--------------------------------------------------------------------
+  ! 3. layered painting
+  !--------------------------------------------------------------------
+  allocate( surf (1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
+  allocate( kmax (1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
+  allocate( owner(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
+  allocate( kside(ncube, ncube, 6) )
+  surf = UNP ; kmax = UNP ; owner = 0 ; kside = 0
+  ! ++jtb Nov 22 2026: filled per ridgelet as it is painted, not afterwards
+  if ( allocated(mxdis_eff) )  deallocate( mxdis_eff )
+  if ( allocated(riseq_eff) )  deallocate( riseq_eff )
+  if ( allocated(fallq_eff) )  deallocate( fallq_eff )
+  allocate( mxdis_eff(npk), riseq_eff(npk), fallq_eff(npk) )
+  mxdis_eff = 0._r8 ; riseq_eff = 0._r8 ; fallq_eff = 0._r8
+  nmax = 100000
+  allocate( tx(nmax), ty(nmax), tp(nmax) )
+  ipaint = 0
+
+  do ik = 1, npk
+     k = order(ik)
+     if ( ncr(k) == 0 .or. sR(k) < sL(k) ) cycle
+     ipaint = ipaint + 1
+
+     ! the stamp before rotation: 3 rows of the wedge shape, and a 1/0 mask
+     ! that is 1 only between the feet
+     suba = 0. ; subm = 0. ; subs = 0.
+     do jw = -1, 1
+        suba(:, jw) = hwedge_o( PSW+1-nsw:PSW+1+nsw, k )
+        do f = sL(k), sR(k)
+           subm( f-(PSW+1), jw ) = 1.
+           subs( f-(PSW+1), jw ) = REAL( f-(PSW+1), RPX )   ! signed offset
+        end do
+     end do
+     lowvis = BIGH
+     crestv = hwedge_o( PSW+1, k )
+     lastang = -HUGE(1.0_r8)
+
+     ! pass A: this ridgelet's own highest value at every cell it touches
+     ntouch = 0
+     ip = 0
+     do ic = cstart(k), cstart(k+1)-1
+        c  = clist(ic) - 1
+        ip = c / (ncube*ncube) + 1
+        j  = MOD( c, ncube*ncube ) / ncube + 1
+        i  = MOD( c, ncube ) + 1
+        if ( anglxC(i,j,ip) /= lastang ) then              ! rotate once per angle
+           lastang = anglxC(i,j,ip)
+           subr = rotbyx( suba, 2*nsw+1, REAL(-lastang,RPX) )
+           subq = rotbyx( subm, 2*nsw+1, REAL(-lastang,RPX) )
+           subp = rotbyx( subs, 2*nsw+1, REAL(-lastang,RPX) )
+        end if
+        nswx = NINT( nsw / rrfac(i,j,ip) )
+        lim  = MAX( 1, MIN( nsw, INT( paint_reach_wedge*nswx + 1.0e-9_r8 ) ) )
+        do jj = -lim, lim
+        do ii = -lim, lim
+           if ( subq(ii,jj) < 0.5 ) cycle                  ! outside the feet / rotation corner
+           x = i + ii ; y = j + jj
+           if ( x < 1-nhalo .or. x > ncube+nhalo .or. y < 1-nhalo .or. y > ncube+nhalo ) cycle
+           v = subr(ii,jj)
+           sgn = 0
+           if ( subp(ii,jj) < 0. ) sgn = -1
+           if ( subp(ii,jj) > 0. ) sgn =  1
+           if ( kmax(x,y,ip) <= UNPHALF ) then
+              ntouch = ntouch + 1
+              if ( ntouch > nmax ) then                    ! grow the touched list
+                 allocate( tmp(2*nmax) ) ; tmp(1:nmax) = tx ; call move_alloc( tmp, tx )
+                 allocate( tmp(2*nmax) ) ; tmp(1:nmax) = ty ; call move_alloc( tmp, ty )
+                 allocate( tmp(2*nmax) ) ; tmp(1:nmax) = tp ; call move_alloc( tmp, tp )
+                 nmax = 2*nmax
+              end if
+              tx(ntouch) = x ; ty(ntouch) = y ; tp(ntouch) = ip
+              kmax(x,y,ip)  = v
+              kside(x,y,ip) = sgn
+           else
+              if ( v > kmax(x,y,ip) ) then
+                 kmax(x,y,ip)  = v
+                 kside(x,y,ip) = sgn
+              end if
+           end if
+        end do
+        end do
+     end do
+
+     ! pass B: compare with the surface painted before this ridgelet
+     do t = 1, ntouch
+        x = tx(t) ; y = ty(t) ; ip = tp(t)
+        v  = kmax(x,y,ip)
+        sv = surf(x,y,ip)
+        ! ++jtb Nov 22 2026: a cell is VISIBLE for this ridgelet when nothing
+        ! was painted beneath it, or when its wedge stands above what was.
+        vis = ( sv <= UNPHALF )
+        if ( .not. vis ) vis = ( v > sv )
+        if ( vis ) then
+           surf(x,y,ip)  = v
+           owner(x,y,ip) = k
+           ! lowest still-visible pixel of the wedge on each side of the crest
+           isd = 0
+           if ( kside(x,y,ip) < 0 ) isd = 1          ! rise side
+           if ( kside(x,y,ip) > 0 ) isd = 2          ! fall side
+           if ( isd > 0 ) lowvis(isd) = MIN( lowvis(isd), v )
+        end if
+        kmax(x,y,ip)  = UNP
+        kside(x,y,ip) = 0
+     end do
+
+     ! ++jtb Nov 22 2026: the two visible flanks of this ridgelet, as drops
+     ! from its crest. A side with no visible pixel contributes nothing.
+     if ( lowvis(1) < BIGH ) riseq_eff(k) = MAX( crestv - lowvis(1), 0._r8 )
+     if ( lowvis(2) < BIGH ) fallq_eff(k) = MAX( crestv - lowvis(2), 0._r8 )
+     mxdis_eff(k) = MAX( riseq_eff(k), fallq_eff(k) )
+  end do
+
+  !--------------------------------------------------------------------
+  ! 4. visible crests, effective heights, outputs
+  !--------------------------------------------------------------------
+  if ( allocated(ncrest_vis) ) deallocate( ncrest_vis )
+  if ( allocated(uniqvisC) )   deallocate( uniqvisC )
+  allocate( ncrest_vis(npk), uniqvisC(ncube*ncube*6) )
+  ncrest_vis = 0 ; uniqvisC = 0._r8
+  do ip=1,6 ; do j=1,ncube ; do i=1,ncube
+     c = (ip-1)*ncube*ncube + (j-1)*ncube + i
+     if ( surf(i,j,ip) > UNPHALF ) then
+        wedgoC(i,j,ip)  = surf(i,j,ip)
+        uniqwgC(i,j,ip) = REAL( owner(i,j,ip), dbl_kind )
+     else
+        wedgoC(i,j,ip)  = 0.
+        uniqwgC(i,j,ip) = 0.
+     end if
+     if ( mxdisC(i,j,ip) >= 1.0 ) then
+        k = INT( uniqidC(i,j,ip) )
+        if ( k >= 1 .and. k <= npk ) then
+           if ( owner(i,j,ip) == k ) then
+              ncrest_vis(k) = ncrest_vis(k) + 1
+              uniqvisC(c)   = REAL( k, r8 )
+           end if
+        end if
+     end if
+  end do ; end do ; end do
+
+  ! ++jtb Nov 22 2026: a ridgelet buried by NARROWER wedges painted after it
+  ! keeps no visible crest cell, so it carries no height, as before.
+  where( ncrest_vis == 0 )
+     mxdis_eff = 0._r8 ; riseq_eff = 0._r8 ; fallq_eff = 0._r8
+  end where
+
+  nvis_rdg = COUNT( ncrest_vis > 0 )
+  nburied  = COUNT( ncr > 0 .and. ncrest_vis == 0 )
+  write(*,*) " Layered wedge painting (layer_wedges): ridgelets painted ", ipaint
+  write(*,*) "    with visible crest ", nvis_rdg, " ; fully buried ", nburied
+  write(*,*) "    crest cells ", ncell, " ; visible ", COUNT( uniqvisC > 0._r8 )
+  kp = COUNT( ncrest_vis > 0 .and. mxdis > 0. )
+  if ( kp > 0 ) write(*,*) "    mean effective / original height (visible ridgelets) ", &
+       SUM( mxdis_eff/MAX(mxdis,1._r8), mask = ( ncrest_vis > 0 .and. mxdis > 0. ) ) / REAL(kp,r8)
+
+  deallocate( surf, kmax, owner, kside, tx, ty, tp )
+  deallocate( ncr, cstart, nfill, clist, wkey, lowft, sL, sR, order )
+
+contains
+
+  subroutine sort_desc( n, key, idx )
+  ! stable merge sort: idx = indices of key in DESCENDING order (ties keep
+  ! ascending index order, so the painting order is reproducible)
+     integer,  intent(in)  :: n
+     real(r8), intent(in)  :: key(n)
+     integer,  intent(out) :: idx(n)
+     integer, allocatable  :: w(:)
+     integer :: width, lo, mid, hi, a, b, m
+     allocate( w(n) )
+     do m = 1, n
+        idx(m) = m
+     end do
+     width = 1
+     do while ( width < n )
+        lo = 1
+        do while ( lo <= n )
+           mid = MIN( lo+width-1, n ) ; hi = MIN( lo+2*width-1, n )
+           a = lo ; b = mid+1 ; m = lo
+           do while ( a <= mid .and. b <= hi )
+              if ( key(idx(b)) > key(idx(a)) ) then
+                 w(m) = idx(b) ; b = b+1
+              else
+                 w(m) = idx(a) ; a = a+1
+              end if
+              m = m+1
+           end do
+           do while ( a <= mid ) ; w(m) = idx(a) ; a = a+1 ; m = m+1 ; end do
+           do while ( b <= hi )  ; w(m) = idx(b) ; b = b+1 ; m = m+1 ; end do
+           lo = lo + 2*width
+        end do
+        idx = w
+        width = 2*width
+     end do
+     deallocate( w )
+  end subroutine sort_desc
+
+end subroutine layer_profi
 
 
 !======================================
