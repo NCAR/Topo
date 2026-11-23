@@ -29,6 +29,15 @@ def parse_arguments():
                              "gauss_scale_km (default 5, i.e. 5x5). 0, 1 or 2 "
                              "turn the smoothing off; even values are rounded "
                              "up to stay centred.")
+    parser.add_argument("--wedge_search", type=float, default=None,
+                        help="Lowest-foot search window in ANISO_ANA_3, as a "
+                             "multiple of the ridgelet's own analysis window "
+                             "nswx (default 1.0). Nodes further than "
+                             "wedge_search*nswx from the crest are dropped, "
+                             "and the window edges are used as feet if a side "
+                             "has no node of its own. <=0 restores the "
+                             "unrestricted search over the whole extended "
+                             "profile. Tag '_Ws##'.")
     parser.add_argument("--profile_extend", type=float, default=None,
                         help="ANISO_ANA_3 touch-up pass: how far in x the "
                              "re-centred diagnostic profile reaches, as a "
@@ -115,6 +124,16 @@ def gauss_smooth_tag(gauss_smooth):
     """
     g = 5 if gauss_smooth is None else int(gauss_smooth)
     return f"_Gs{g:02d}"
+
+def wedge_search_tag(wedge_search):
+    """
+    '_Ws##' holding 10*wedge_search. Always emitted. Must stay
+    byte-identical to the tag cube_to_target.F90 appends:
+
+        write( str, "('_Ws',i0.2)" ) NINT( 10.0_r8*MAX(wedge_search,0.0_r8) )
+    """
+    w = 1.0 if wedge_search is None else max(float(wedge_search), 0.0)
+    return f"_Ws{int(math.floor(10.0 * w + 0.5)):02d}"
 
 def profile_extend_tag(profile_extend):
     """
@@ -228,7 +247,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None, ynudge=None, profile_extend=None, gauss_smooth=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None, ynudge=None, profile_extend=None, gauss_smooth=None, wedge_search=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -325,6 +344,8 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
         if int(gauss_smooth) != 5:
             command.append(f"--gauss_smooth={int(gauss_smooth)}")
 
+    if wedge_search is not None and abs(wedge_search - 1.0) > 1.0e-6:
+        command.append(f"--wedge_search={wedge_search}")
     if profile_extend is not None:
         if 0.0 < profile_extend < 1.0:
             raise ValueError(
@@ -420,6 +441,10 @@ def main():
     else:
         gauss_smooth = config.get("gauss_smooth", None)
 
+    if args.wedge_search is not None:
+        wedge_search = args.wedge_search
+    else:
+        wedge_search = config.get("wedge_search", None)
     if args.profile_extend is not None:
         profile_extend = args.profile_extend
     else:
@@ -459,6 +484,7 @@ def main():
     print(f"Adaptive ridge window c: {adaptive_window if adaptive_window else 'off'}")
     print(f"Along-crest nudge: {ynudge if ynudge is not None else 1.0}")
     print(f"Profile extend (ANISO_ANA_3): {profile_extend if profile_extend is not None else 2.0}")
+    print(f"Wedge search window (x nswx): {wedge_search if wedge_search is not None else 1.0}")
     print(f"gauss_scale smoothing box: {gauss_smooth if gauss_smooth is not None else 5}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
@@ -470,7 +496,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}{ynudge_tag(ynudge)}{profile_extend_tag(profile_extend)}{gauss_smooth_tag(gauss_smooth)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}{ynudge_tag(ynudge)}{profile_extend_tag(profile_extend)}{gauss_smooth_tag(gauss_smooth)}{wedge_search_tag(wedge_search)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -559,6 +585,7 @@ def main():
                              adaptive_window=adaptive_window,
                              ynudge=ynudge,
                              profile_extend=profile_extend,
+                             wedge_search=wedge_search,
                              gauss_smooth=gauss_smooth )
         
     subprocess.run(command, check=True)

@@ -32,6 +32,7 @@ public isovar_target,isowgt_target
 ! wrtncdf_ridge_tiles. Dimensioned (ntarget,maxtiles); ntiles_out = maxtiles.
 public mxdis_tiles,aniso_tiles,anglx_tiles,angll_tiles
 public hwdth_tiles,clngt_tiles
+public hwdeff_tiles,hwdefr_tiles,hwdeff_tiles_fall
 public anixy_tiles,wghts_tiles,riseq_tiles,fallq_tiles
 public clnin_tiles
 public latc_tiles,lonc_tiles
@@ -40,11 +41,14 @@ public ntiles_out
 public lsort_tiles
 public ridge_iter
 public profile_extend
+public wedge_search          ! ++jtb Nov 22 2026
+public danakil_span, danakil_cells
 public paint_wedge3        ! ++jtb Nov 21 2026
 public refine_nodos        ! ++jtb Nov 22 2026
 public layer_wedges        ! ++jtb Nov 21 2026
 public mxdis_eff, ncrest_vis
 public riseq_eff, fallq_eff   ! ++jtb Nov 22 2026
+public hwdth_eff, hwdth_eff_rise, hwdth_eff_fall
 public adapt_c, max_adapt
 
 public peak_type
@@ -134,6 +138,8 @@ public peak_type
     INTEGER (KIND=int_kind),allocatable :: UQRID(:) 
 
   real(r8), allocatable, dimension(:,:) :: anglx_tiles,aniso_tiles,mxdis_tiles,hwdth_tiles
+  ! ++jtb Nov 22 2026: visible width, alongside HWDTH rather than replacing it
+  real(r8), allocatable, dimension(:,:) :: hwdeff_tiles,hwdefr_tiles,hwdeff_tiles_fall
   real(r8), allocatable, dimension(:,:) :: clngt_tiles,angll_tiles
   ! In-column crest length, km. LnObject (cube cells of this ridge's crest
   ! inside this target cell) converted to km and corrected for rasterization,
@@ -217,8 +223,38 @@ public peak_type
   ! list it already computes for find_feet. hnodes_x (the NODES field) is left
   ! on the old basis. Module setting, not a CLI option.
   logical                               :: refine_nodos = .TRUE.
+  !
+  ! ++jtb Nov 22 2026: FOOT-SEARCH WINDOW (--wedge_search, tag '_Ws##').
+  ! The lowest-foot search in ANISO_ANA_3 runs over the refined nodes of the
+  ! EXTENDED profile, so on a shallow run-out a foot can walk far past the
+  ! feature and inherit a distant basin's depth. This restricts the search to
+  !    +/- mw cells,  mw = MAX( 1, MIN( m3, NINT( wedge_search*nswx ) ) )
+  ! where nswx is the ridgelet's own analysis window. Nodes outside that span
+  ! are dropped, and the span's two end cells are added as nodes using the
+  ! profile there, so a side with no node of its own still gets a foot at
+  ! +/- mw ('end'). wedge_search <= 0 restores the unrestricted search.
+  real(r8)                              :: wedge_search = 1.0_r8
+  !
+  ! ++jtb Nov 22 2026: "DANAKIL FILTER". A crest standing on genuinely flat
+  ! ground has no nearby minimum, so the foot search runs until it falls into
+  ! whatever basin is next door and the ridgelet inherits that basin's depth.
+  ! The adaptive window is no protection: in the Danakil the surrounding
+  ! LARGE-scale gauss_scale pins nswx at its cap, so +/-nswx is still ~140 km.
+  ! Measured in v309: all 9 ridgelets with a <10 m profile span over +/-20
+  ! cells and a >50 m drop beyond were at the nswx cap, 6 of them in the
+  ! Danakil, the worst a 9.5 m bump credited with 478.6 m.
+  !
+  ! Test: if the profile spans less than danakil_span metres over
+  ! +/-danakil_cells of the centre, the foot search is capped at
+  ! danakil_cells REGARDLESS of gauss_scale. Self-guaranteeing: with both
+  ! feet then inside that band the relief cannot exceed the span either.
+  ! danakil_span <= 0 disables. Module settings, not CLI options.
+  real(r8)                              :: danakil_span  = 50.0_r8
+  integer                               :: danakil_cells = 20
+  integer                               :: ndanakil = 0
   integer                               :: nnodos_refined = 0
   integer                               :: nwedge3_painted = 0, nwedge3_none = 0
+  integer                               :: nwedge3_clipped = 0   ! ++jtb Nov 22 2026
   !
   ! ++jtb Nov 21 2026: LAYERED wedge painting (see subroutine layer_profi).
   ! When .TRUE., remapridge2cube paints WEDGO and the uniqwg ownership map by
@@ -240,6 +276,16 @@ public peak_type
   ! mxdis_eff = MAX of the two. Both are POSITIVE drops -- note riseq/fallq
   ! from ridgescales keep the old signed convention (fallq <= 0).
   real(r8), allocatable                 :: riseq_eff(:), fallq_eff(:)
+  ! ++jtb Nov 22 2026: VISIBLE wedge width, consistent with the layering.
+  ! Count this ridgelet's visible footprint pixels on each side of its crest
+  ! at paint time (the crest column split evenly between the two), then divide
+  ! by the TRUE visible crest length, ncrest_vis_paint*length_in_square(anglx),
+  ! not by the cell count -- a diagonal crest of N cells spans more than N
+  ! cells of distance, so the raw count would under-report width by up to
+  ! sqrt(2) at 45 deg. Units: cube cells, same as hwdth, so the tiles writer
+  ! scales both by grid_length_scale. A ridgelet with one flank buried gets
+  ! about half its geometric width, which is the point.
+  real(r8), allocatable                 :: hwdth_eff(:), hwdth_eff_rise(:), hwdth_eff_fall(:)
   real(r8), allocatable                 :: uniqvisC(:)     ! (ncube*ncube*6) visible-crest ID map
   ! ++jtb Nov 22 2026: path of the Ridge_list file find_ridges wrote, so the
   ! layered-painting diagnostics can be appended to it once layer_profi has run
@@ -261,6 +307,18 @@ public peak_type
   integer,  parameter                   :: max_adapt = 20
   real(r8)                              :: adapt_c(max_adapt) = -1.0_r8
   real(r8), allocatable                 :: sigwin_rdg(:)   ! sigma (km) behind the final window
+  ! ++jtb Nov 22 2026: PENDING SHIFT A -- the across-crest shift the FINAL
+  ! rdg_profiles implies but which is never applied, because the ridge_iter
+  ! loop ended first. Computed exactly as ridgeshift would:
+  !    ipkh  = MAXLOC( rdg_profiles(1:nswx+1) )
+  !    pshft = (ipkh-1) - nswx/2                        [profile cells]
+  ! Zero (or +/-0.5, from xmn being a half-integer for odd nswx) means the
+  ! window is centred on the profile's own maximum, i.e. shift A converged.
+  ! Units are cells ALONG THE ACROSS-RIDGE PROFILE, so the move it implies in
+  ! cube coordinates is pshft*cos(anglx) in i and -pshft*sin(anglx) in j.
+  ! |pshft| = nswx/2 means the maximum sits on the profile edge: sloping
+  ! terrain with no interior peak, which ANISO_ANA already flags via npks.
+  real(r8), allocatable                 :: pshift_rdg(:)
 
   integer :: PSW  ! NSW/PSW extremely clever analogy to ncols/pcols 
 
@@ -560,6 +618,7 @@ subroutine find_ridges ( terr_dev, terr_raw, ncube, nhalo, nsw,     &
     ! 
     INTEGER (KIND=int_kind) :: i,j,np,ncube_halo,ipanel,N,norx,nory,ip,ipk,npeaks,nswx
     INTEGER (KIND=int_kind) :: icen3,jcen3,m3                 ! ++jtb ANISO_ANA_3
+    INTEGER (KIND=int_kind) :: ipkh3(1)                       ! ++jtb Nov 22 2026: pending shift
     REAL(RPX), allocatable  :: sub3(:,:)                      ! ++jtb ANISO_ANA_3
 #ifdef DEBUGOUTPUT
     INTEGER (KIND=int_kind) :: idg
@@ -689,6 +748,8 @@ write(*,*) " SHAPE ", shape( peaks%i )
    nexcl  = 0
    allocate( sigwin_rdg(npeaks) )
    sigwin_rdg = 0.0_r8
+   allocate( pshift_rdg(npeaks) )
+   pshift_rdg = 0.0_r8
    if ( ladapt ) then
      if ( .not. allocated(gauss_scale_km) ) then
        write(*,*) "find_ridges: --adaptive_window needs the Gaussian ridge scales (--gauss_scales). STOP"
@@ -893,6 +954,14 @@ write(*,*) " SHAPE ", shape( peaks%i )
         deallocate( suba, subrot )
 #endif
 
+        ! ++jtb Nov 22 2026: the shift the final profile implies but that the
+        ! loop never applied. rdg_profiles has just been rewritten by
+        ! ridgescales at (ispk,jspk), so this is the residual of shift A.
+        if ( nswx >= 1 ) then
+           ipkh3 = MAXLOC( rdg_profiles(1:nswx+1,ipk) )
+           pshift_rdg(ipk) = REAL( ipkh3(1)-1, r8 ) - 0.5_r8*REAL( nswx, r8 )
+        end if
+
         ! ++jtb Nov 2026: touch-up pass (the live version of the block above).
         ! Re-centre on the FINAL peak and build an x-extended, narrow-y-averaged
         ! profile into rdg_profiles_x; from it (Nov 21 2026) the lowest-foot
@@ -936,6 +1005,11 @@ write(*,*) " SHAPE ", shape( peaks%i )
                   nwedge3_none, " not painted (no lowest-foot wedge)"
        if ( refine_nodos ) write(*,*) " NODOS rebuilt from refined nodes for ", &
             nnodos_refined, " ridgelets"
+       if ( wedge_search > 0.0_r8 ) write(*,*) " Foot search clipped to +/-", &
+            wedge_search," * nswx for ", nwedge3_clipped, " ridgelets"
+       if ( danakil_span > 0.0_r8 ) write(*,*) " Danakil filter (flat within ", &
+            danakil_cells," cells, span <",danakil_span," m) fired for ", &
+            ndanakil, " ridgelets"
     end if
     if ( ladapt ) then
        write(*,*) " Adaptive ridge window, c = ",adapt_c(1:nadapt)
@@ -1046,6 +1120,7 @@ write(*,*) " SHAPE ", shape( peaks%i )
       end if
       if ( ladapt ) then
          write(31) sigwin_rdg                    ! ++jtb Nov 2026: sigma (km) behind each window
+         write(31) pshift_rdg                    ! ++jtb Nov 22 2026: unapplied shift A, profile cells
       end if
       ! ++jtb Nov 21 2026: lowest-foot wedge from ANISO_ANA_3, only when that
       ! pass runs. One record, so readers can recognise it by its size.
@@ -1450,6 +1525,12 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
   real(RPX) :: prof3( 2*m3+1 ), hr( 2*(2*m3+1) )
   integer   :: n3, nk, nr, ipeak, ifoot(2), reason(2), blocked(2)
   integer   :: xk( 2*m3+1 ), xr( 2*(2*m3+1) )
+  ! ++jtb Nov 22 2026: node list restricted to the foot-search window
+  real(RPX) :: hrw( 2*(2*m3+1) + 2 )
+  integer   :: xrw( 2*(2*m3+1) + 2 )
+  integer   :: nrw, mw, ia, ileft, iright
+  integer   :: nsw_eff, i0d, i1d
+  logical   :: lflat
 
   rot3 = rotbyx( sub3, 2*m3+1, anglx(ipk) )
   where( rot3 < -8000. ) rot3 = 0.
@@ -1482,12 +1563,61 @@ subroutine ANISO_ANA_3( SUB3, M3, NSWY, IPK )
 
   call find_kinks( n3, prof3, nk, xk )
   call refine_nodes( n3, prof3, nk, xk(1:nk), nr, xr, hr )
-  call find_feet( nr, xr(1:nr), hr(1:nr), REAL(m3+1,r8), ipeak, ifoot, reason, blocked )
+
+  ! ++jtb Nov 22 2026: restrict the foot search to +/- mw cells of the centre
+  ! (--wedge_search). The window's two end cells are carried as nodes, so a
+  ! side whose nodes all lie inside the window still has somewhere to stop.
+  ! ++jtb Nov 22 2026: Danakil filter -- flat near the crest, so cap the reach
+  ! at danakil_cells whatever gauss_scale said. Applied even with
+  ! wedge_search <= 0, since it is a safety net rather than a tuning knob.
+  lflat   = .FALSE.
+  nsw_eff = nswy
+  if ( danakil_span > 0.0_r8 .and. m3 >= danakil_cells ) then
+     i0d = (m3+1) - danakil_cells
+     i1d = (m3+1) + danakil_cells
+     if ( MAXVAL( prof3(i0d:i1d) ) - MINVAL( prof3(i0d:i1d) ) < danakil_span ) then
+        lflat   = .TRUE.
+        nsw_eff = MIN( nsw_eff, danakil_cells )
+        ndanakil = ndanakil + 1
+     end if
+  end if
+
+  if ( wedge_search > 0.0_r8 .or. lflat ) then
+     if ( wedge_search > 0.0_r8 ) then
+        mw = MAX( 1, MIN( m3, NINT( wedge_search*REAL(nsw_eff,r8) ) ) )
+     else
+        mw = MAX( 1, MIN( m3, nsw_eff ) )      ! filter only
+     end if
+     ileft  = (m3+1) - mw
+     iright = (m3+1) + mw
+     nrw = 0
+     do ia = 1, nr
+        if ( xr(ia) >= ileft .and. xr(ia) <= iright ) then
+           if ( nrw == 0 .and. xr(ia) > ileft ) then
+              nrw = nrw + 1 ; xrw(nrw) = ileft  ; hrw(nrw) = prof3(ileft)
+           end if
+           nrw = nrw + 1 ; xrw(nrw) = xr(ia) ; hrw(nrw) = hr(ia)
+        end if
+     end do
+     if ( nrw == 0 ) then
+        nrw = 2
+        xrw(1) = ileft  ; hrw(1) = prof3(ileft)
+        xrw(2) = iright ; hrw(2) = prof3(iright)
+     else if ( xrw(nrw) < iright ) then
+        nrw = nrw + 1 ; xrw(nrw) = iright ; hrw(nrw) = prof3(iright)
+     end if
+     nwedge3_clipped = nwedge3_clipped + MERGE( 1, 0, nrw < nr )
+  else
+     nrw = nr
+     xrw(1:nr) = xr(1:nr) ; hrw(1:nr) = hr(1:nr)
+  end if
+
+  call find_feet( nrw, xrw(1:nrw), hrw(1:nrw), REAL(m3+1,r8), ipeak, ifoot, reason, blocked )
 
   feet3_info(:,ipk) = (/ m3, reason(1), reason(2), blocked(1), blocked(2) /)
   if ( ipeak > 0 .and. ifoot(1) > 0 .and. ifoot(2) > 0 ) then
-     xwedge3_list(:,ipk) = (/ xr(ifoot(1)), xr(ipeak), xr(ifoot(2)) /) - (m3+1)
-     hwedge3_list(:,ipk) = (/ hr(ifoot(1)), hr(ipeak), hr(ifoot(2)) /)
+     xwedge3_list(:,ipk) = (/ xrw(ifoot(1)), xrw(ipeak), xrw(ifoot(2)) /) - (m3+1)
+     hwedge3_list(:,ipk) = (/ hrw(ifoot(1)), hrw(ipeak), hrw(ifoot(2)) /)
   else
      xwedge3_list(:,ipk) = 0          ! no central peak, or no foot on a side
      hwedge3_list(:,ipk) = 0.
@@ -1880,6 +2010,8 @@ end subroutine THINOUT_LIST
      !   mxdis_eff  (npeaks, r8)      : MAX(riseq_eff, fallq_eff), m
      !   riseq_eff  (npeaks, r8)      : visible drop from the crest, rise side
      !   fallq_eff  (npeaks, r8)      : visible drop from the crest, fall side
+     !   hwdth_eff  (npeaks, r8)      : visible width, cells (rise + fall)
+     !   hwdth_eff_rise / _fall       : the two halves of it
      ! Trailing and separate, so a reader that does not know about them still
      ! finds every earlier record in place.
      if ( len_trim(ridge_list_file) > 0 .and. &
@@ -1890,6 +2022,9 @@ end subroutine THINOUT_LIST
         write(31) mxdis_eff
         write(31) riseq_eff
         write(31) fallq_eff
+        write(31) hwdth_eff
+        write(31) hwdth_eff_rise
+        write(31) hwdth_eff_fall
         CLOSE(31)
         write(*,*) "    appended ncrest_vis, mxdis_eff, riseq_eff, fallq_eff to ", trim(ridge_list_file)
      end if
@@ -2554,6 +2689,8 @@ end subroutine THINOUT_LIST
 
       allocate( mxdis_tiles(ntarget,maxtiles ), aniso_tiles(ntarget,maxtiles ), & 
                 anglx_tiles(ntarget,maxtiles ), hwdth_tiles(ntarget,maxtiles ), &  
+                hwdeff_tiles(ntarget,maxtiles ), hwdefr_tiles(ntarget,maxtiles ), &
+                hwdeff_tiles_fall(ntarget,maxtiles ), &
                 clngt_tiles(ntarget,maxtiles ), lonc_tiles(ntarget,maxtiles ) , &
                 latc_tiles(ntarget,maxtiles ) , lonw_tiles(ntarget,maxtiles ) , &
                 latw_tiles(ntarget,maxtiles ) , angll_tiles(ntarget,maxtiles ) )
@@ -2567,6 +2704,9 @@ end subroutine THINOUT_LIST
       angll_tiles(:,:) =-9999._r8  
       mxdis_tiles(:,:) =-9999._r8  
       hwdth_tiles(:,:) =-9999._r8  
+      hwdeff_tiles(:,:) =-9999._r8
+      hwdefr_tiles(:,:) =-9999._r8
+      hwdeff_tiles_fall(:,:) =-9999._r8
       clngt_tiles(:,:) =-9999._r8  
 
       allocate( anixy_tiles(ntarget,maxtiles), wghts_tiles(ntarget,maxtiles), &
@@ -2594,6 +2734,13 @@ end subroutine THINOUT_LIST
             aniso_tiles(i,ir) = aniso(ThisRidge)
             anglx_tiles(i,ir) = anglx(ThisRidge)
             hwdth_tiles(i,ir) = hwdth(ThisRidge)
+            ! ++jtb Nov 22 2026: visible width from the layered painting, in
+            ! cube cells like hwdth, so the writer scales both the same way
+            if ( lvis ) then
+               hwdeff_tiles(i,ir)      = hwdth_eff(ThisRidge)
+               hwdefr_tiles(i,ir)      = hwdth_eff_rise(ThisRidge)
+               hwdeff_tiles_fall(i,ir) = hwdth_eff_fall(ThisRidge)
+            end if
             clngt_tiles(i,ir) = clngth(ThisRidge)
             ! ++jtb Nov 21 2026: layered painting -> whole-ridgelet crest
             ! length from its VISIBLE crest cells (cells; CLNGT_RDG in km)
@@ -2736,6 +2883,9 @@ end subroutine THINOUT_LIST
             call permute_row_r8( anglx_tiles, i, n, iperm )
             call permute_row_r8( angll_tiles, i, n, iperm )
             call permute_row_r8( hwdth_tiles, i, n, iperm )
+            call permute_row_r8( hwdeff_tiles, i, n, iperm )
+            call permute_row_r8( hwdefr_tiles, i, n, iperm )
+            call permute_row_r8( hwdeff_tiles_fall, i, n, iperm )
             call permute_row_r8( clngt_tiles, i, n, iperm )
             call permute_row_r8( clnin_tiles, i, n, iperm )
             call permute_row_r8( anixy_tiles, i, n, iperm )
@@ -3293,7 +3443,8 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   ! it is rotated by the SAME rotbyx call as the wedge, so the side label
   ! travels with the wedge value and no angle arithmetic is needed here.
   real(RPX) :: subs(-nsw:nsw,-nsw:nsw), subp(-nsw:nsw,-nsw:nsw)
-  real(r8)  :: v, sv, lastang, crestv, lowvis(2)
+  real(r8)  :: v, sv, lastang, crestv, lowvis(2), clen
+  integer   :: nvis(2), nvis0, ncv_paint
   real(r8), parameter :: BIGH = 1.0e30_r8
   integer   :: sgn, isd
   logical   :: vis
@@ -3372,6 +3523,11 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   if ( allocated(fallq_eff) )  deallocate( fallq_eff )
   allocate( mxdis_eff(npk), riseq_eff(npk), fallq_eff(npk) )
   mxdis_eff = 0._r8 ; riseq_eff = 0._r8 ; fallq_eff = 0._r8
+  if ( allocated(hwdth_eff) )      deallocate( hwdth_eff )
+  if ( allocated(hwdth_eff_rise) ) deallocate( hwdth_eff_rise )
+  if ( allocated(hwdth_eff_fall) ) deallocate( hwdth_eff_fall )
+  allocate( hwdth_eff(npk), hwdth_eff_rise(npk), hwdth_eff_fall(npk) )
+  hwdth_eff = 0._r8 ; hwdth_eff_rise = 0._r8 ; hwdth_eff_fall = 0._r8
   nmax = 100000
   allocate( tx(nmax), ty(nmax), tp(nmax) )
   ipaint = 0
@@ -3392,7 +3548,14 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
         end do
      end do
      lowvis = BIGH
-     crestv = hwedge_o( PSW+1, k )
+     nvis = 0 ; nvis0 = 0 ; ncv_paint = 0
+     ! ++jtb Nov 22 2026: the wedge's own crest. NOT hwedge_o(PSW+1): the peak
+     ! node need not sit on the profile centre (31% of ridgelets have
+     ! xwedge3_list(2) /= 0, and for a few the centre is outside the wedge
+     ! span altogether, where hwedge_o reads 0). Take the maximum between the
+     ! feet, which is right for the lowest-foot wedge and for the
+     ! ANISO_ANA_2 fallback alike.
+     crestv = MAXVAL( hwedge_o( sL(k):sR(k), k ) )
      lastang = -HUGE(1.0_r8)
 
      ! pass A: this ridgelet's own highest value at every cell it touches
@@ -3457,7 +3620,18 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
            isd = 0
            if ( kside(x,y,ip) < 0 ) isd = 1          ! rise side
            if ( kside(x,y,ip) > 0 ) isd = 2          ! fall side
-           if ( isd > 0 ) lowvis(isd) = MIN( lowvis(isd), v )
+           if ( isd > 0 ) then
+              lowvis(isd) = MIN( lowvis(isd), v )
+              nvis(isd)   = nvis(isd) + 1
+           else
+              nvis0 = nvis0 + 1                 ! the crest column of the stamp
+           end if
+           ! this ridgelet's own crest cells that it still owns AT PAINT TIME:
+           ! the divisor must refer to the same instant as the area above
+           if ( x >= 1 .and. x <= ncube .and. y >= 1 .and. y <= ncube ) then
+              if ( mxdisC(x,y,ip) >= 1.0 .and. INT(uniqidC(x,y,ip)) == k ) &
+                 ncv_paint = ncv_paint + 1
+           end if
         end if
         kmax(x,y,ip)  = UNP
         kside(x,y,ip) = 0
@@ -3468,6 +3642,17 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
      if ( lowvis(1) < BIGH ) riseq_eff(k) = MAX( crestv - lowvis(1), 0._r8 )
      if ( lowvis(2) < BIGH ) fallq_eff(k) = MAX( crestv - lowvis(2), 0._r8 )
      mxdis_eff(k) = MAX( riseq_eff(k), fallq_eff(k) )
+
+     ! ++jtb Nov 22 2026: visible width. Area each side (crest column split
+     ! evenly) over the true visible crest length.
+     if ( ncv_paint > 0 .and. anglx(k) > -900._r8 ) then
+        clen = REAL( ncv_paint, r8 ) * length_in_square( REAL(anglx(k),r8) )
+        if ( clen > 0._r8 ) then
+           hwdth_eff_rise(k) = ( REAL(nvis(1),r8) + 0.5_r8*REAL(nvis0,r8) ) / clen
+           hwdth_eff_fall(k) = ( REAL(nvis(2),r8) + 0.5_r8*REAL(nvis0,r8) ) / clen
+           hwdth_eff(k)      = hwdth_eff_rise(k) + hwdth_eff_fall(k)
+        end if
+     end if
   end do
 
   !--------------------------------------------------------------------
@@ -3501,6 +3686,7 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   ! keeps no visible crest cell, so it carries no height, as before.
   where( ncrest_vis == 0 )
      mxdis_eff = 0._r8 ; riseq_eff = 0._r8 ; fallq_eff = 0._r8
+     hwdth_eff = 0._r8 ; hwdth_eff_rise = 0._r8 ; hwdth_eff_fall = 0._r8
   end where
 
   nvis_rdg = COUNT( ncrest_vis > 0 )

@@ -33,6 +33,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   use ridge_ana,    only: mxdis_tiles, aniso_tiles, anglx_tiles, angll_tiles, &
                           hwdth_tiles, clngt_tiles, anixy_tiles, wghts_tiles, &
                           riseq_tiles, fallq_tiles,                           &
+                          hwdeff_tiles, hwdefr_tiles, hwdeff_tiles_fall,      &
                           isovar_target, isowgt_target, grid_length_scale
 
   implicit none
@@ -59,6 +60,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   integer :: latvid, lonvid, isovarid, isowgtid, gbxarid
   integer :: mxdisid, ang22id, anglxid, anisoid, anixyid
   integer :: hwdthid, clngtid, wghtsid, riseqid, fallqid
+  integer :: hwdeffid, hwdefrid, hwdeffid_fall   ! ++jtb Nov 22 2026
   integer :: status
 
   real(r8), allocatable :: tmp(:,:)
@@ -113,6 +115,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call defvar('ANISO',2,anisoid)
   call defvar('ANIXY',2,anixyid)
   call defvar('HWDTH',2,hwdthid)
+  call defvar('HWDTH_EFF',2,hwdeffid)
+  call defvar('HWDTH_EFF_RISE',2,hwdefrid)
+  call defvar('HWDTH_EFF_FALL',2,hwdeffid_fall)
   call defvar('CLNGT',2,clngtid)
   call defvar('WGHTS',2,wghtsid)
   call defvar('RISEQ',2,riseqid)
@@ -138,6 +143,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put_atts(anisoid,'Variance fraction explained by ridge','1')
   call put_atts(anixyid,'Variance ratio: cross/(cross+length) -wise','1')
   call put_atts(hwdthid,'Estimated Ridge width','km')
+  call put_atts(hwdeffid,'Visible ridge width from layered painting (rise+fall)','km')
+  call put_atts(hwdefrid,'Visible ridge width, rise side','km')
+  call put_atts(hwdeffid_fall,'Visible ridge width, fall side','km')
   call put_atts(clngtid,'Estimated Ridge length along crest','km')
   call put_atts(wghtsid,'Area of target cell covered by ridge wedge','m+2')
   call put_atts(riseqid,'Rise to peak from left (ridge_finding)','m')
@@ -187,6 +195,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put2d(anisoid,'ANISO',clean(aniso_tiles))
   call put2d(anixyid,'ANIXY',clean(anixy_tiles))
   call put2d(hwdthid,'HWDTH',clean(hwdth_tiles)*grid_length_scale)
+  call put2d(hwdeffid,'HWDTH_EFF',clean(hwdeff_tiles)*grid_length_scale)
+  call put2d(hwdefrid,'HWDTH_EFF_RISE',clean(hwdefr_tiles)*grid_length_scale)
+  call put2d(hwdeffid_fall,'HWDTH_EFF_FALL',clean(hwdeff_tiles_fall)*grid_length_scale)
   call put2d(clngtid,'CLNGT',clean(clngt_tiles)*grid_length_scale)
   call put2d(wghtsid,'WGHTS',clean(wghts_tiles))
   call put2d(riseqid,'RISEQ',clean(riseq_tiles))

@@ -141,7 +141,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(35)
+  type(option_s):: opts(36)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -181,6 +181,7 @@ program convterr
   opts(33) = option_s( "ynudge"                    ,.true.    , '8'   ,.false.       ,.false.)
   opts(34) = option_s( "profile_extend"            ,.true.    , '9'   ,.false.       ,.false.)
   opts(35) = option_s( "gauss_smooth"              ,.true.    , '0'   ,.false.       ,.false.)
+  opts(36) = option_s( "wedge_search"              ,.true.    , '2'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -194,7 +195,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:8:9:0:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:8:9:0:2:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -358,6 +359,13 @@ program convterr
       write(str,*) gauss_scale_smooth_cells
       command_line_arguments = TRIM(command_line_arguments)//' --gauss_smooth '//TRIM(ADJUSTL(str))
       opts(35)%specified = .true.
+   case( '2' )
+      ! wedge_search lives in module ridge_ana (public). Foot-search half-width
+      ! in units of the ridgelet's own analysis window nswx; <= 0 disables.
+      read (optarg, *) wedge_search
+      write(str,'(F12.4)') wedge_search
+      command_line_arguments = TRIM(command_line_arguments)//' --wedge_search '//TRIM(ADJUSTL(str))
+      opts(36)%specified = .true.
    case( '9' )
       ! profile_extend lives in module ridge_ana (public)
       read (optarg, *) profile_extend
@@ -434,6 +442,7 @@ program convterr
   write(*,*) "wedge_method                    = ",wedge_method
   write(*,*) "ynudge (along-crest damping)    = ",ynudge_param
   write(*,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
+  write(*,*) "wedge_search (x nswx)           = ",wedge_search
   write(*,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(*,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(*,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
@@ -751,6 +760,13 @@ program convterr
      ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
   end if
 
+  ! Foot-search window: '_Ws##' holding 10*wedge_search, always emitted, so
+  ! 1.0 -> '_Ws10'; 0 ('_Ws00') is the unrestricted search of earlier runs.
+  if (lfind_ridges) then
+     write( str, "('_Ws',i0.2)" ) NINT( 10.0_r8*MAX(wedge_search,0.0_r8) )
+     ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
+  end if
+
   ! Along-crest shift damping: '_Yn##' holding 10*ynudge, always emitted,
   ! so 1.0 -> '_Yn10' (original), 0.5 -> '_Yn05', 0.0 -> '_Yn00' (shift off).
   if (lfind_ridges) then
@@ -851,6 +867,7 @@ program convterr
   write(nml_log,*) "wedge_method                    = ",wedge_method
   write(nml_log,*) "ynudge (along-crest damping)    = ",ynudge_param
   write(nml_log,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
+  write(nml_log,*) "wedge_search (x nswx)           = ",wedge_search
   write(nml_log,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(nml_log,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(nml_log,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
