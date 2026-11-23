@@ -2083,6 +2083,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
                           hwdth_tiles, clngt_tiles, clnin_tiles,             &
                           anixy_tiles, wghts_tiles,                          &
                           riseq_tiles, fallq_tiles, latc_tiles, lonc_tiles,   &
+                          hwdeff_tiles, hwdefr_tiles, hwdeff_tiles_fall,      &
                           uniqid_tiles,                                        &
                           isovar_target, isowgt_target, grid_length_scale
 
@@ -2110,6 +2111,7 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   integer :: latvid, lonvid, isovarid, isowgtid, gbxarid
   integer :: mxdisid, ang22id, anglxid, anisoid, anixyid
   integer :: hwdthid, clngtid, clngrid, wghtsid, riseqid, fallqid
+  integer :: hwdeffid, hwdefrid, hwdeffid_fall   ! ++jtb Nov 22 2026
   integer :: latcid,  loncid, uniqidid
   integer :: status
 
@@ -2165,6 +2167,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call defvar('ANISO',2,anisoid)
   call defvar('ANIXY',2,anixyid)
   call defvar('HWDTH',2,hwdthid)
+  call defvar('HWDTH_EFF',2,hwdeffid)
+  call defvar('HWDTH_EFF_RISE',2,hwdefrid)
+  call defvar('HWDTH_EFF_FALL',2,hwdeffid_fall)
   call defvar('CLNGT',2,clngtid)
   call defvar('CLNGT_RDG',2,clngrid)
   call defvar('WGHTS',2,wghtsid)
@@ -2194,6 +2199,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put_atts(anisoid,'Variance fraction explained by ridge','1')
   call put_atts(anixyid,'Variance ratio: cross/(cross+length) -wise','1')
   call put_atts(hwdthid,'Estimated Ridge width','km')
+  call put_atts(hwdeffid,'Visible ridge width from layered painting (rise+fall)','km')
+  call put_atts(hwdefrid,'Visible ridge width, rise side','km')
+  call put_atts(hwdeffid_fall,'Visible ridge width, fall side','km')
   call put_atts(clngtid,'Crest length of this ridge within this column','km')
   call put_atts(clngrid,'Estimated Ridge length along crest (whole ridge)','km')
   call put_atts(wghtsid,'Area of target cell covered by ridge wedge','m+2')
@@ -2250,6 +2258,9 @@ subroutine wrtncdf_ridge_tiles(n,nrdg,terr,landfrac,sgh,sgh30,landm_coslat,lon,l
   call put2d(anisoid,'ANISO',clean(aniso_tiles))
   call put2d(anixyid,'ANIXY',clean(anixy_tiles))
   call put2d(hwdthid,'HWDTH',clean(hwdth_tiles)*grid_length_scale)
+  call put2d(hwdeffid,'HWDTH_EFF',clean(hwdeff_tiles)*grid_length_scale)
+  call put2d(hwdefrid,'HWDTH_EFF_RISE',clean(hwdefr_tiles)*grid_length_scale)
+  call put2d(hwdeffid_fall,'HWDTH_EFF_FALL',clean(hwdeff_tiles_fall)*grid_length_scale)
   ! CLNGT is the IN-COLUMN crest length (clnin_tiles), already in km, to match
   ! the clngt_target definition CAM's ridge scheme expects. clngt_tiles holds
   ! the whole-ridge length and is written as CLNGT_RDG for diagnostics.

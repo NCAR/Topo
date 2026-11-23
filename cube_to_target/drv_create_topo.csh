@@ -20,4 +20,4 @@
 
 #cd /glade/work/juliob/Topo/MyTopo/cube_to_target
 
-./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --gauss_scales=6,7.5,9,12,18,25,37,50,75 --ridge_window_ratio=1.00 --adaptive_window=5.0 --ridge_iter=3 --ynudge=0.0 --wedge_method=1 --wedge_search=1.0 --tag=scale_pnt_v309_e01
+./create_topo.py --ogrid=ne30pg3 --smoothing_scale=100 --fine_smoothing_scale=-1 --gauss_scales=6,7.5,9,12,18,25,37,50,75 --ridge_window_ratio=1.00 --adaptive_window=5.0 --ridge_iter=2 --ynudge=0.0 --wedge_method=1 --wedge_search=1.0 --tag=scale_pnt_v310_e01
