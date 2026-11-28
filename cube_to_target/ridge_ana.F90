@@ -42,11 +42,13 @@ public lsort_tiles
 public ridge_iter
 public profile_extend
 public wedge_search          ! ++jtb Nov 22 2026
+public crest_perp_angle      ! ++jtb Nov 26 2026
 public danakil_span, danakil_cells
 public paint_wedge3        ! ++jtb Nov 21 2026
 public refine_nodos        ! ++jtb Nov 22 2026
 public layer_wedges        ! ++jtb Nov 21 2026
 public mxdis_eff, ncrest_vis
+public mxdeffC               ! ++jtb Nov 23 2026
 public riseq_eff, fallq_eff   ! ++jtb Nov 22 2026
 public hwdth_eff, hwdth_eff_rise, hwdth_eff_fall
 public adapt_c, max_adapt
@@ -276,17 +278,39 @@ public peak_type
   ! mxdis_eff = MAX of the two. Both are POSITIVE drops -- note riseq/fallq
   ! from ridgescales keep the old signed convention (fallq <= 0).
   real(r8), allocatable                 :: riseq_eff(:), fallq_eff(:)
-  ! ++jtb Nov 22 2026: VISIBLE wedge width, consistent with the layering.
-  ! Count this ridgelet's visible footprint pixels on each side of its crest
-  ! at paint time (the crest column split evenly between the two), then divide
-  ! by the TRUE visible crest length, ncrest_vis_paint*length_in_square(anglx),
-  ! not by the cell count -- a diagonal crest of N cells spans more than N
-  ! cells of distance, so the raw count would under-report width by up to
-  ! sqrt(2) at 45 deg. Units: cube cells, same as hwdth, so the tiles writer
-  ! scales both by grid_length_scale. A ridgelet with one flank buried gets
-  ! about half its geometric width, which is the point.
+  ! ++jtb Nov 27 2026: VISIBLE wedge width -- the HORIZONTAL companion to
+  ! riseq_eff/fallq_eff, taken from the SAME pixel.
+  !
+  ! These feed simple flow models, so what is wanted is a cross-section: a
+  ! height and a horizontal distance that together give the slope the flow
+  ! must climb. riseq_eff is crest minus the lowest still-visible pixel on
+  ! that side; hwdth_eff_rise is the across-crest OFFSET of that same pixel.
+  ! The pair closes a triangle, and riseq_eff/hwdth_eff_rise is a real
+  ! property of the visible wedge rather than a ratio of two things measured
+  ! over different objects.
+  !
+  ! (The Nov 22 version was an area-over-crest-length mean. That carried a
+  ! short-crest bias -- the stamp is 3 cells deep, so a crest of L cells
+  ! paints a footprint about L+2 long while the divisor was L -- and the
+  ! median ncrest_vis is only 3 cells. The offset form has no divisor and no
+  ! bias.)
+  !
+  ! The offset comes from koff, which is the rotated across-crest coordinate,
+  ! so it is orientation-aware by construction. It is a measured coordinate,
+  ! NOT a cell count, so NO length_in_square correction applies -- that
+  ! correction belongs only to counts along a rasterised path, like CLNGT.
+  !
+  ! Units: cube cells, as hwdth, so the tiles writer scales both by
+  ! grid_length_scale. With nothing buried the lowest visible pixel is the
+  ! wedge's own foot, so hwdth_eff -> xwedge3(3)-xwedge3(1) = the geometric
+  ! width; burial shortens it.
   real(r8), allocatable                 :: hwdth_eff(:), hwdth_eff_rise(:), hwdth_eff_fall(:)
   real(r8), allocatable                 :: uniqvisC(:)     ! (ncube*ncube*6) visible-crest ID map
+  ! ++jtb Nov 23 2026: mxdis_eff painted on the crest web, the companion to
+  ! the mxdisC map. Written on EVERY crest cell (uniqidC > 0), so it keeps the
+  ! same skeleton as mxdisC and the two can be differenced cell by cell; a
+  ! ridgelet buried by wider wedges has mxdis_eff = 0 and so reads 0 here.
+  real(r8), allocatable                 :: mxdeffC(:)      ! (ncube*ncube*6)
   ! ++jtb Nov 22 2026: path of the Ridge_list file find_ridges wrote, so the
   ! layered-painting diagnostics can be appended to it once layer_profi has run
   character(len=1024)                   :: ridge_list_file = ''
@@ -344,6 +368,23 @@ public peak_type
     ! the wedge is a footprint whose extent sets WGHTS. Lengthening crests
     ! without redistributing WGHTS means raising only paint_reach_crest.
     !-------------------------------------------------------------------------
+    ! ++jtb Nov 26 2026: ORIENTATION IN THE CREST COMPETITION (--crest_perp_angle).
+    ! paintridge2cube claims a box clngth long by hwdth/2 wide and suppresses
+    ! everything in it except the winner's own crest line. The test is a bare
+    ! comparison of mxdis with no orientation term, so a crossing ridge at 90
+    ! degrees is deleted exactly like a parallel duplicate. Measured at
+    ! v310_e02: controlling for distance, survival differs by only ~3 points
+    ! between 0-15 deg and 75-90 deg neighbours.
+    !
+    ! When the incumbent's ridge axis differs by MORE than crest_perp_angle,
+    ! the newcomer no longer suppresses the box; it claims only the cells its
+    ! own crest line passes through, and only where it is taller -- so a
+    ! genuine crossing is still won by the taller crest.
+    !
+    ! 90 (default) = off, exactly the behaviour before this option. 45 is the
+    ! natural trial value. Requires one extra haloed cube array (QA, ~482 MB
+    ! at ncube=3000), allocated only when the option is on.
+    REAL(r8) :: crest_perp_angle = 90.0_r8
     REAL(r8) :: paint_reach_crest = 1.0_r8 ! 0.5_r8   ! paintridge2cube
     REAL(r8) :: paint_reach_wedge = 1.0_r8 ! 0.5_r8   ! fleshout_block/profi, color_on_profi
 
@@ -2086,6 +2127,8 @@ end subroutine THINOUT_LIST
        ! Recoverable as (uniqid == uniqwg) today, but written explicitly so the
        ! two do not have to agree about what 'visible' means.
        if ( layer_wedges .and. allocated(uniqvisC) ) write(911) uniqvisC
+       ! ++jtb Nov 23 2026: mxdis_eff on the crest web (0 where buried)
+       if ( layer_wedges .and. allocated(mxdeffC) )  write(911) mxdeffC
 
        close(911)
               
@@ -3429,9 +3472,11 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
 
   real(r8), parameter :: UNP = -1.0e30_r8, UNPHALF = -0.5e30_r8
   real(r8), allocatable :: surf(:,:,:), kmax(:,:,:)
-  ! ++jtb Nov 22 2026: which side of the crest the winning kmax value came
-  ! from: -1 rise side (smaller profile index), +1 fall side, 0 on the crest
-  integer,  allocatable :: kside(:,:,:)
+  ! ++jtb Nov 27 2026: the SIGNED across-crest offset (cells) of the winning
+  ! kmax value, from the rotated offset stamp. Negative = rise side, positive
+  ! = fall side, 0 on the crest. Was a bare -1/0/+1 side flag; carrying the
+  ! magnitude costs nothing and gives the horizontal scale directly.
+  integer,  allocatable :: koff(:,:,:)
   integer,  allocatable :: owner(:,:,:)
   integer,  allocatable :: ncr(:), cstart(:), clist(:), nfill(:), order(:)
   real(r8), allocatable :: wkey(:), lowft(:)
@@ -3443,8 +3488,7 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   ! it is rotated by the SAME rotbyx call as the wedge, so the side label
   ! travels with the wedge value and no angle arithmetic is needed here.
   real(RPX) :: subs(-nsw:nsw,-nsw:nsw), subp(-nsw:nsw,-nsw:nsw)
-  real(r8)  :: v, sv, lastang, crestv, lowvis(2), clen
-  integer   :: nvis(2), nvis0, ncv_paint
+  real(r8)  :: v, sv, lastang, crestv, lowvis(2), lowoff(2)
   real(r8), parameter :: BIGH = 1.0e30_r8
   integer   :: sgn, isd
   logical   :: vis
@@ -3515,8 +3559,8 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   allocate( surf (1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
   allocate( kmax (1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
   allocate( owner(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
-  allocate( kside(ncube, ncube, 6) )
-  surf = UNP ; kmax = UNP ; owner = 0 ; kside = 0
+  allocate( koff(ncube, ncube, 6) )
+  surf = UNP ; kmax = UNP ; owner = 0 ; koff = 0
   ! ++jtb Nov 22 2026: filled per ridgelet as it is painted, not afterwards
   if ( allocated(mxdis_eff) )  deallocate( mxdis_eff )
   if ( allocated(riseq_eff) )  deallocate( riseq_eff )
@@ -3547,8 +3591,7 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
            subs( f-(PSW+1), jw ) = REAL( f-(PSW+1), RPX )   ! signed offset
         end do
      end do
-     lowvis = BIGH
-     nvis = 0 ; nvis0 = 0 ; ncv_paint = 0
+     lowvis = BIGH ; lowoff = 0._r8
      ! ++jtb Nov 22 2026: the wedge's own crest. NOT hwedge_o(PSW+1): the peak
      ! node need not sit on the profile centre (31% of ridgelets have
      ! xwedge3_list(2) /= 0, and for a few the centre is outside the wedge
@@ -3579,10 +3622,8 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
            if ( subq(ii,jj) < 0.5 ) cycle                  ! outside the feet / rotation corner
            x = i + ii ; y = j + jj
            if ( x < 1-nhalo .or. x > ncube+nhalo .or. y < 1-nhalo .or. y > ncube+nhalo ) cycle
-           v = subr(ii,jj)
-           sgn = 0
-           if ( subp(ii,jj) < 0. ) sgn = -1
-           if ( subp(ii,jj) > 0. ) sgn =  1
+           v   = subr(ii,jj)
+           sgn = NINT( subp(ii,jj) )          ! signed across-crest offset, cells
            if ( kmax(x,y,ip) <= UNPHALF ) then
               ntouch = ntouch + 1
               if ( ntouch > nmax ) then                    ! grow the touched list
@@ -3592,12 +3633,12 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
                  nmax = 2*nmax
               end if
               tx(ntouch) = x ; ty(ntouch) = y ; tp(ntouch) = ip
-              kmax(x,y,ip)  = v
-              kside(x,y,ip) = sgn
+              kmax(x,y,ip) = v
+              koff(x,y,ip) = sgn
            else
               if ( v > kmax(x,y,ip) ) then
-                 kmax(x,y,ip)  = v
-                 kside(x,y,ip) = sgn
+                 kmax(x,y,ip) = v
+                 koff(x,y,ip) = sgn
               end if
            end if
         end do
@@ -3618,41 +3659,34 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
            owner(x,y,ip) = k
            ! lowest still-visible pixel of the wedge on each side of the crest
            isd = 0
-           if ( kside(x,y,ip) < 0 ) isd = 1          ! rise side
-           if ( kside(x,y,ip) > 0 ) isd = 2          ! fall side
+           if ( koff(x,y,ip) < 0 ) isd = 1          ! rise side
+           if ( koff(x,y,ip) > 0 ) isd = 2          ! fall side
+           ! lowest still-visible pixel on this side, and ITS offset: the
+           ! height and the horizontal scale come from the same pixel
            if ( isd > 0 ) then
-              lowvis(isd) = MIN( lowvis(isd), v )
-              nvis(isd)   = nvis(isd) + 1
-           else
-              nvis0 = nvis0 + 1                 ! the crest column of the stamp
-           end if
-           ! this ridgelet's own crest cells that it still owns AT PAINT TIME:
-           ! the divisor must refer to the same instant as the area above
-           if ( x >= 1 .and. x <= ncube .and. y >= 1 .and. y <= ncube ) then
-              if ( mxdisC(x,y,ip) >= 1.0 .and. INT(uniqidC(x,y,ip)) == k ) &
-                 ncv_paint = ncv_paint + 1
+              if ( v < lowvis(isd) ) then
+                 lowvis(isd) = v
+                 lowoff(isd) = REAL( ABS( koff(x,y,ip) ), r8 )
+              end if
            end if
         end if
-        kmax(x,y,ip)  = UNP
-        kside(x,y,ip) = 0
+        kmax(x,y,ip) = UNP
+        koff(x,y,ip) = 0
      end do
 
      ! ++jtb Nov 22 2026: the two visible flanks of this ridgelet, as drops
      ! from its crest. A side with no visible pixel contributes nothing.
-     if ( lowvis(1) < BIGH ) riseq_eff(k) = MAX( crestv - lowvis(1), 0._r8 )
-     if ( lowvis(2) < BIGH ) fallq_eff(k) = MAX( crestv - lowvis(2), 0._r8 )
-     mxdis_eff(k) = MAX( riseq_eff(k), fallq_eff(k) )
-
-     ! ++jtb Nov 22 2026: visible width. Area each side (crest column split
-     ! evenly) over the true visible crest length.
-     if ( ncv_paint > 0 .and. anglx(k) > -900._r8 ) then
-        clen = REAL( ncv_paint, r8 ) * length_in_square( REAL(anglx(k),r8) )
-        if ( clen > 0._r8 ) then
-           hwdth_eff_rise(k) = ( REAL(nvis(1),r8) + 0.5_r8*REAL(nvis0,r8) ) / clen
-           hwdth_eff_fall(k) = ( REAL(nvis(2),r8) + 0.5_r8*REAL(nvis0,r8) ) / clen
-           hwdth_eff(k)      = hwdth_eff_rise(k) + hwdth_eff_fall(k)
-        end if
+     ! ++jtb Nov 27 2026: height and horizontal scale from the SAME pixel
+     if ( lowvis(1) < BIGH ) then
+        riseq_eff(k)      = MAX( crestv - lowvis(1), 0._r8 )
+        hwdth_eff_rise(k) = lowoff(1)
      end if
+     if ( lowvis(2) < BIGH ) then
+        fallq_eff(k)      = MAX( crestv - lowvis(2), 0._r8 )
+        hwdth_eff_fall(k) = lowoff(2)
+     end if
+     mxdis_eff(k) = MAX( riseq_eff(k), fallq_eff(k) )
+     hwdth_eff(k) = hwdth_eff_rise(k) + hwdth_eff_fall(k)
   end do
 
   !--------------------------------------------------------------------
@@ -3660,8 +3694,9 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   !--------------------------------------------------------------------
   if ( allocated(ncrest_vis) ) deallocate( ncrest_vis )
   if ( allocated(uniqvisC) )   deallocate( uniqvisC )
-  allocate( ncrest_vis(npk), uniqvisC(ncube*ncube*6) )
-  ncrest_vis = 0 ; uniqvisC = 0._r8
+  if ( allocated(mxdeffC) )    deallocate( mxdeffC )
+  allocate( ncrest_vis(npk), uniqvisC(ncube*ncube*6), mxdeffC(ncube*ncube*6) )
+  ncrest_vis = 0 ; uniqvisC = 0._r8 ; mxdeffC = 0._r8
   do ip=1,6 ; do j=1,ncube ; do i=1,ncube
      c = (ip-1)*ncube*ncube + (j-1)*ncube + i
      if ( surf(i,j,ip) > UNPHALF ) then
@@ -3674,6 +3709,8 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
      if ( mxdisC(i,j,ip) >= 1.0 ) then
         k = INT( uniqidC(i,j,ip) )
         if ( k >= 1 .and. k <= npk ) then
+           ! ++jtb Nov 23 2026: on EVERY crest cell, visible or not
+           mxdeffC(c) = mxdis_eff(k)
            if ( owner(i,j,ip) == k ) then
               ncrest_vis(k) = ncrest_vis(k) + 1
               uniqvisC(c)   = REAL( k, r8 )
@@ -3698,7 +3735,7 @@ subroutine layer_profi( ncube, nhalo, nsw, mxdisC, anglxC, uniqidC, rrfac, wedgo
   if ( kp > 0 ) write(*,*) "    mean effective / original height (visible ridgelets) ", &
        SUM( mxdis_eff/MAX(mxdis,1._r8), mask = ( ncrest_vis > 0 .and. mxdis > 0. ) ) / REAL(kp,r8)
 
-  deallocate( surf, kmax, owner, kside, tx, ty, tp )
+  deallocate( surf, kmax, owner, koff, tx, ty, tp )
   deallocate( ncr, cstart, nfill, clist, wkey, lowft, sL, sR, order )
 
 contains
@@ -3755,6 +3792,11 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: axc
        real(KIND=dbl_kind), dimension(1-nhalo:ncube+nhalo,1-nhalo:ncube+nhalo ,6) :: qc
+       ! ++jtb Nov 26 2026: incumbent's ridge axis at each cell, for the
+       ! orientation test. Allocated only when crest_perp_angle < 90.
+       real(KIND=dbl_kind), allocatable, dimension(:,:,:) :: qa
+       logical   :: lperp, lcrest, use_box
+       real(RPX) :: dang
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: suba,sub1,sub11
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subr,subq,subdis
        real(rpx), dimension(-nsw:nsw,-nsw:nsw) :: subblk,subblk0
@@ -3833,6 +3875,11 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
 !=======================================
   axc = 0.
   qc  = 0.
+  lperp = ( crest_perp_angle < 90.0_r8 )
+  if ( lperp ) then
+     allocate( qa(1-nhalo:ncube+nhalo, 1-nhalo:ncube+nhalo, 6) )
+     qa = -999._r8
+  end if
 
 
 !==================================================================
@@ -3972,8 +4019,38 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
                 x0 = NINT( 1.*xspk(ipk) )      ! do we need +1 
                 y0 = NINT( 1.*yspk(ipk) )  
                 if ( (x0+ii>=1-nhalo).and.(x0+ii<=ncube+nhalo).AND.(Y0+jj>=1-nhalo).and.(Y0+jj<=ncube+nhalo) ) then
-                       if (subblk(ii,jj) >= QC( x0+ii, y0+jj, ip ))  AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
-                       if (subblk(ii,jj) >= QC( x0+ii, y0+jj, ip ))   QC( x0+ii, y0+jj, ip ) = subblk(ii,jj)
+                   ! ++jtb Nov 26 2026: orientation test. NOTE the crest test
+                   ! uses SUBR, the rotated 0/1 line, NOT subdis = subr*axr:
+                   ! paintridge2cube is called once per field and every call
+                   ! must make identical decisions or the maps stop sharing a
+                   ! skeleton. fallq <= 0 and riseq can be 0, so subdis /= 0
+                   ! would diverge between fields. subr > 0.5 also excludes
+                   ! the -9999999.9 out-of-range corners from rotby4.
+                   use_box = .TRUE.
+                   if ( lperp ) then
+                      if ( QC( x0+ii, y0+jj, ip ) > 0._r8 ) then
+                         dang = ABS( anglx(ipk) - qa( x0+ii, y0+jj, ip ) )
+                         dang = MIN( dang, 180._r8 - dang )
+                         use_box = ( dang <= crest_perp_angle )
+                      end if
+                   end if
+                   lcrest = ( subr(ii,jj) > 0.5 )
+                   if ( use_box ) then
+                      if (subblk(ii,jj) >= QC( x0+ii, y0+jj, ip )) then
+                         AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                         QC ( x0+ii, y0+jj, ip ) = subblk(ii,jj)
+                         if ( lperp ) qa( x0+ii, y0+jj, ip ) = anglx(ipk)
+                      end if
+                   else
+                      ! near-perpendicular incumbent: do not suppress its box.
+                      ! Claim only my own crest cells, and only if taller --
+                      ! at a genuine crossing the taller crest wins.
+                      if ( lcrest .and. mxdis(ipk) >= QC( x0+ii, y0+jj, ip ) ) then
+                         AXC( x0+ii, y0+jj, ip ) = subdis(ii,jj)
+                         QC ( x0+ii, y0+jj, ip ) = subblk(ii,jj)
+                         qa ( x0+ii, y0+jj, ip ) = anglx(ipk)
+                      end if
+                   end if
                  endif
              end do
              end do
@@ -3995,6 +4072,7 @@ function paintridge2cube ( axr, ncube,nhalo,nsw, lzerovalley, crest_length, cres
           end if
       end do
 
+     if ( allocated(qa) ) deallocate( qa )
      write(*,*) " finished paintridge2cube "
      
   end function paintridge2cube

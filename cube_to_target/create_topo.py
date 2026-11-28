@@ -29,6 +29,15 @@ def parse_arguments():
                              "gauss_scale_km (default 5, i.e. 5x5). 0, 1 or 2 "
                              "turn the smoothing off; even values are rounded "
                              "up to stay centred.")
+    parser.add_argument("--crest_perp_angle", type=float, default=None,
+                        help="Orientation tolerance in degrees for the crest "
+                             "competition in paintridge2cube. When an "
+                             "incumbent's ridge axis differs by MORE than "
+                             "this, the newcomer does not suppress its box; "
+                             "it claims only its own crest cells, and only "
+                             "where taller, so a genuine crossing is won by "
+                             "the taller crest. 90 (default) = off, the "
+                             "behaviour before Nov 2026. Tag '_Cp##'.")
     parser.add_argument("--wedge_search", type=float, default=None,
                         help="Lowest-foot search window in ANISO_ANA_3, as a "
                              "multiple of the ridgelet's own analysis window "
@@ -124,6 +133,16 @@ def gauss_smooth_tag(gauss_smooth):
     """
     g = 5 if gauss_smooth is None else int(gauss_smooth)
     return f"_Gs{g:02d}"
+
+def crest_perp_tag(crest_perp_angle):
+    """
+    '_Cp##' holding NINT(crest_perp_angle). Always emitted. Must stay
+    byte-identical to the tag cube_to_target.F90 appends:
+
+        write( str, "('_Cp',i0.2)" ) NINT( crest_perp_angle )
+    """
+    a = 90.0 if crest_perp_angle is None else float(crest_perp_angle)
+    return f"_Cp{int(math.floor(a + 0.5)):02d}"
 
 def wedge_search_tag(wedge_search):
     """
@@ -247,7 +266,7 @@ def gridInfo(grid):
 
     return Res
 
-def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None, ynudge=None, profile_extend=None, gauss_smooth=None, wedge_search=None ):
+def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, scrip_gll=None, yfac=None , development_diags=False, ridge_window_ratio=None, fine_smoothing_scale=None, ridge_iter=None, wedge_method=None, gauss_scales=None, adaptive_window=None, ynudge=None, profile_extend=None, gauss_smooth=None, wedge_search=None, crest_perp_angle=None ):
     """
     Creates a command for subprocess.run, in this list form:
       Note:
@@ -344,6 +363,11 @@ def create_command(ogrid=None, cstopo=None, smoothing_scale=None, scrip=None, sc
         if int(gauss_smooth) != 5:
             command.append(f"--gauss_smooth={int(gauss_smooth)}")
 
+    if crest_perp_angle is not None and abs(crest_perp_angle - 90.0) > 1.0e-6:
+        if not (0.0 <= crest_perp_angle <= 90.0):
+            raise ValueError(
+                f"crest_perp_angle must be in [0,90] degrees, got {crest_perp_angle}")
+        command.append(f"--crest_perp_angle={crest_perp_angle}")
     if wedge_search is not None and abs(wedge_search - 1.0) > 1.0e-6:
         command.append(f"--wedge_search={wedge_search}")
     if profile_extend is not None:
@@ -441,6 +465,10 @@ def main():
     else:
         gauss_smooth = config.get("gauss_smooth", None)
 
+    if args.crest_perp_angle is not None:
+        crest_perp_angle = args.crest_perp_angle
+    else:
+        crest_perp_angle = config.get("crest_perp_angle", None)
     if args.wedge_search is not None:
         wedge_search = args.wedge_search
     else:
@@ -485,6 +513,7 @@ def main():
     print(f"Along-crest nudge: {ynudge if ynudge is not None else 1.0}")
     print(f"Profile extend (ANISO_ANA_3): {profile_extend if profile_extend is not None else 2.0}")
     print(f"Wedge search window (x nswx): {wedge_search if wedge_search is not None else 1.0}")
+    print(f"Crest perp angle (deg, 90=off): {crest_perp_angle if crest_perp_angle is not None else 90.0}")
     print(f"gauss_scale smoothing box: {gauss_smooth if gauss_smooth is not None else 5}")
     print(f"Fine Smoothing Scale: {fine_smoothing_scale if fine_smoothing_scale else 'off'}")
     print(f"Tag: {tag}")
@@ -496,7 +525,7 @@ def main():
     # directory instead of recompiling over the previous run. At the
     # default ratio of 1.0 the tag is empty and case names are unchanged.
     #------------------------------------------------------------------
-    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}{ynudge_tag(ynudge)}{profile_extend_tag(profile_extend)}{gauss_smooth_tag(gauss_smooth)}{wedge_search_tag(wedge_search)}_{tag}"
+    case = f"{ogrid}_Sco{smoothing_scale}" f"{fine_smoothing_tag(fine_smoothing_scale)}" f"{ridge_window_tag(ridge_window_ratio)}{ridge_iter_tag(ridge_iter)}{adaptive_window_tag(adaptive_window)}{wedge_method_tag(wedge_method)}{ynudge_tag(ynudge)}{profile_extend_tag(profile_extend)}{gauss_smooth_tag(gauss_smooth)}{wedge_search_tag(wedge_search)}{crest_perp_tag(crest_perp_angle)}_{tag}"
     print(case)
     case_dir = os.path.join("..", "cases", case)
 
@@ -586,6 +615,7 @@ def main():
                              ynudge=ynudge,
                              profile_extend=profile_extend,
                              wedge_search=wedge_search,
+                             crest_perp_angle=crest_perp_angle,
                              gauss_smooth=gauss_smooth )
         
     subprocess.run(command, check=True)

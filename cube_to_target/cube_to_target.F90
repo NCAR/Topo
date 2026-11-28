@@ -141,7 +141,7 @@ program convterr
   character(len=10) :: time
 
 
-  type(option_s):: opts(36)
+  type(option_s):: opts(37)
   !               
   !                     long name                   has     | short | specified    | required
   !                                                 argument| name  | command line | argument
@@ -182,6 +182,7 @@ program convterr
   opts(34) = option_s( "profile_extend"            ,.true.    , '9'   ,.false.       ,.false.)
   opts(35) = option_s( "gauss_smooth"              ,.true.    , '0'   ,.false.       ,.false.)
   opts(36) = option_s( "wedge_search"              ,.true.    , '2'   ,.false.       ,.false.)
+  opts(37) = option_s( "crest_perp_angle"          ,.true.    , 'A'   ,.false.       ,.false.)
   
   ! END longopts
   ! If no options were committed
@@ -195,7 +196,7 @@ program convterr
   
   ! Process options one by one
   do
-    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:8:9:0:2:", opts ) ) ! opts is optional (for longopts only)
+    select case( getopt( "c:f:g:hi:o:prxy:vz1:t:du:n:q:a:sbl:mj:3:4:w:e:k:5:6:7:8:9:0:2:A:", opts ) ) ! opts is optional (for longopts only)
     case( char(0) )
       exit
     case( 'c' )
@@ -359,6 +360,13 @@ program convterr
       write(str,*) gauss_scale_smooth_cells
       command_line_arguments = TRIM(command_line_arguments)//' --gauss_smooth '//TRIM(ADJUSTL(str))
       opts(35)%specified = .true.
+   case( 'A' )
+      ! crest_perp_angle lives in module ridge_ana (public). Orientation
+      ! tolerance, degrees, in the crest competition; 90 = off.
+      read (optarg, *) crest_perp_angle
+      write(str,'(F12.4)') crest_perp_angle
+      command_line_arguments = TRIM(command_line_arguments)//' --crest_perp_angle '//TRIM(ADJUSTL(str))
+      opts(37)%specified = .true.
    case( '2' )
       ! wedge_search lives in module ridge_ana (public). Foot-search half-width
       ! in units of the ridgelet's own analysis window nswx; <= 0 disables.
@@ -443,6 +451,7 @@ program convterr
   write(*,*) "ynudge (along-crest damping)    = ",ynudge_param
   write(*,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
   write(*,*) "wedge_search (x nswx)           = ",wedge_search
+  write(*,*) "crest_perp_angle (deg, 90=off)  = ",crest_perp_angle
   write(*,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(*,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(*,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
@@ -619,6 +628,10 @@ program convterr
       write(*,*) "ynudge must be in [0,1], got ",ynudge_param
       stop
     end if
+    if (crest_perp_angle < 0.0_r8 .or. crest_perp_angle > 90.0_r8) then
+      write(*,*) "crest_perp_angle must be in [0,90] degrees (90 = off), got ",crest_perp_angle
+      stop
+    end if
     if (wedge_method/=1 .and. wedge_method/=2) then
       write(*,*) "wedge_method must be 1 (old node-based) or 2 (rms_wedge), got ",wedge_method
       stop
@@ -760,6 +773,13 @@ program convterr
      ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
   end if
 
+  ! Orientation tolerance in the crest competition: '_Cp##' holding
+  ! NINT(crest_perp_angle), always emitted; 90 is off.
+  if (lfind_ridges) then
+     write( str, "('_Cp',i0.2)" ) NINT( crest_perp_angle )
+     ofile = TRIM(ofile)//TRIM(ADJUSTL(str))
+  end if
+
   ! Foot-search window: '_Ws##' holding 10*wedge_search, always emitted, so
   ! 1.0 -> '_Ws10'; 0 ('_Ws00') is the unrestricted search of earlier runs.
   if (lfind_ridges) then
@@ -868,6 +888,7 @@ program convterr
   write(nml_log,*) "ynudge (along-crest damping)    = ",ynudge_param
   write(nml_log,*) "profile_extend (ANISO_ANA_3)    = ",profile_extend
   write(nml_log,*) "wedge_search (x nswx)           = ",wedge_search
+  write(nml_log,*) "crest_perp_angle (deg, 90=off)  = ",crest_perp_angle
   write(nml_log,*) "gauss_smooth (box cells)        = ",gauss_scale_smooth_cells
   write(nml_log,*) "gauss_scales (km)               = ",PACK( gauss_sigma_km, gauss_sigma_km > 0.0_r8 )
   write(nml_log,*) "adaptive_window (c)             = ",PACK( adapt_c, adapt_c > 0.0_r8 )
